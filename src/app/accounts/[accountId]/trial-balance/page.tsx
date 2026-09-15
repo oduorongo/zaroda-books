@@ -1,12 +1,16 @@
 import { buildTrialBalance, formatKes } from "@/domain";
-import { demoHeads, demoOpening, upTo } from "@/demo/ongora-simba";
+import { getVoteHeads, getFinancialYear, getTxns, upTo } from "@/server/queries";
 import { Tabs } from "../tabs";
 
 const AS_AT = "2026-05";
 
 export default async function Page({ params }: { params: Promise<{ accountId: string }> }) {
   const { accountId } = await params;
-  const tb = buildTrialBalance("31 May 2026", demoOpening, upTo(AS_AT), demoHeads);
+  const heads = await getVoteHeads(accountId);
+  const fy = await getFinancialYear(accountId);
+  const opening = { cash: fy.openingCash, bank: fy.openingBank };
+  const txns = await getTxns(fy.id);
+  const tb = buildTrialBalance("31 May 2026", opening, upTo(txns, AS_AT), heads);
 
   return (
     <main>

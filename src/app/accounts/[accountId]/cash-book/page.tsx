@@ -1,5 +1,5 @@
 import { buildCashBook, formatKes } from "@/domain";
-import { demoHeads, demoOpening, inMonth } from "@/demo/ongora-simba";
+import { getVoteHeads, getFinancialYear, getTxns, inMonth } from "@/server/queries";
 import { Tabs } from "../tabs";
 
 const MONTH = "2025-10";
@@ -9,7 +9,11 @@ const Amount = ({ c }: { c: number }) =>
 
 export default async function Page({ params }: { params: Promise<{ accountId: string }> }) {
   const { accountId } = await params;
-  const cb = buildCashBook(demoOpening, inMonth(MONTH), demoHeads);
+  const heads = await getVoteHeads(accountId);
+  const fy = await getFinancialYear(accountId);
+  const opening = { cash: fy.openingCash, bank: fy.openingBank };
+  const txns = await getTxns(fy.id);
+  const cb = buildCashBook(opening, inMonth(txns, MONTH), heads);
 
   const side = (title: string, rows: typeof cb.receipts, totals: typeof cb.receiptTotals) => (
     <>
@@ -19,7 +23,7 @@ export default async function Page({ params }: { params: Promise<{ accountId: st
           <tr>
             <th>Date</th><th>Particulars</th><th>Ref</th>
             <th className="n">Cash</th><th className="n">Bank</th><th className="n">Total</th>
-            {demoHeads.map((h) => <th key={h.code} className="n">{h.name}</th>)}
+            {heads.map((h) => <th key={h.code} className="n">{h.name}</th>)}
           </tr>
         </thead>
         <tbody>
@@ -29,7 +33,7 @@ export default async function Page({ params }: { params: Promise<{ accountId: st
               <td className="n"><Amount c={r.cash} /></td>
               <td className="n"><Amount c={r.bank} /></td>
               <td className="n"><Amount c={r.total} /></td>
-              {demoHeads.map((h) => (
+              {heads.map((h) => (
                 <td key={h.code} className="n"><Amount c={r.analysis[h.code] ?? 0} /></td>
               ))}
             </tr>
@@ -39,7 +43,7 @@ export default async function Page({ params }: { params: Promise<{ accountId: st
             <td className="n">{formatKes(totals.cash)}</td>
             <td className="n">{formatKes(totals.bank)}</td>
             <td className="n">{formatKes(totals.total)}</td>
-            {demoHeads.map((h) => (
+            {heads.map((h) => (
               <td key={h.code} className="n">{formatKes(totals.analysis[h.code] ?? 0)}</td>
             ))}
           </tr>

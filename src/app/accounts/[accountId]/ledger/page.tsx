@@ -1,17 +1,20 @@
 import { buildLedger, formatKes } from "@/domain";
-import { demoHeads, inMonth, upTo } from "@/demo/ongora-simba";
+import { getVoteHeads, getFinancialYear, getTxns, inMonth, upTo } from "@/server/queries";
 import { Tabs } from "../tabs";
 
 const MONTH = "2026-05";
 
 export default async function Page({ params }: { params: Promise<{ accountId: string }> }) {
   const { accountId } = await params;
+  const heads = await getVoteHeads(accountId);
+  const fy = await getFinancialYear(accountId);
+  const txns = await getTxns(fy.id);
 
-  const priorMonths = upTo("2026-04");
+  const priorMonths = upTo(txns, "2026-04");
   const opening = Object.fromEntries(
-    buildLedger(priorMonths, demoHeads).map((l) => [l.code, { dr: l.dr, cr: l.cr }]),
+    buildLedger(priorMonths, heads).map((l) => [l.code, { dr: l.dr, cr: l.cr }]),
   );
-  const lines = buildLedger(inMonth(MONTH), demoHeads, opening);
+  const lines = buildLedger(inMonth(txns, MONTH), heads, opening);
 
   return (
     <main>

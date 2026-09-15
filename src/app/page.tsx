@@ -1,20 +1,19 @@
 import Link from "next/link";
+import { getFirstAccount } from "@/server/queries";
 
-export default function Home() {
+export default async function Home() {
+  const { account, school } = await getFirstAccount();
+
   return (
     <main>
       <h1>ZARODA BOOKS</h1>
       <p className="sub">Cash book, ledger and trial balance for school vote accounts.</p>
 
-      <h2>Ong&rsquo;ora Kakuru Primary &mdash; SIMBA account, 2025/26</h2>
-      <p>
-        Sample data from a real set of books, so you can see the reports before connecting a
-        database.
-      </p>
+      <h2>{school.name} &mdash; {account.name} account, 2025/26</h2>
       <ul>
-        <li><Link href="/accounts/demo/cash-book">Analysed cash book</Link></li>
-        <li><Link href="/accounts/demo/ledger">Ledger accounts</Link></li>
-        <li><Link href="/accounts/demo/trial-balance">Trial balance</Link></li>
+        <li><Link href={`/accounts/${account.id}/cash-book`}>Analysed cash book</Link></li>
+        <li><Link href={`/accounts/${account.id}/ledger`}>Ledger accounts</Link></li>
+        <li><Link href={`/accounts/${account.id}/trial-balance`}>Trial balance</Link></li>
       </ul>
     </main>
   );
