@@ -12,15 +12,14 @@ const num = (v: string) => {
 };
 
 export function ReceiptForm({
-  accountId, heads, rates: initial,
+  accountId, heads,
 }: {
   accountId: string;
   heads: VoteHead[];
-  rates: Record<string, HeadEntry>;
 }) {
   const [error, action, pending] = useActionState(postReceipt, null);
   const [amount, setAmount] = useState("");
-  const [entries, setEntries] = useState<Record<string, HeadEntry>>(initial);
+  const [entries, setEntries] = useState<Record<string, HeadEntry>>({});
 
   const entry = (code: string) => entries[code] ?? { rate: "", flat: "" };
   const set = (code: string, field: keyof HeadEntry, value: string) =>

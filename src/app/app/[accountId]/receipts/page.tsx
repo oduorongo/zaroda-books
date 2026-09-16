@@ -1,6 +1,6 @@
 import { buildLedger, formatKes, toKes } from "@/domain";
 import { loadBook } from "@/server/book-context";
-import { getTxns, getVoteHeadRates } from "@/server/queries";
+import { getTxns } from "@/server/queries";
 import { ReceiptForm } from "./form";
 import { OpeningBalances } from "./opening-balances";
 
@@ -11,7 +11,7 @@ export default async function ReceiptsPage({
 }) {
   const { accountId } = await params;
   const { heads, fy, school, account } = await loadBook(accountId);
-  const [rates, txns] = await Promise.all([getVoteHeadRates(fy.id), getTxns(fy.id)]);
+  const txns = await getTxns(fy.id);
 
   const received = Object.fromEntries(
     buildLedger(txns, heads).map((l) => [l.code, l.cr]),
@@ -37,16 +37,7 @@ export default async function ReceiptsPage({
         openingBank={fy.openingBank ? String(toKes(fy.openingBank)) : ""}
       />
 
-      <ReceiptForm
-        accountId={accountId}
-        heads={heads}
-        rates={Object.fromEntries(
-          Object.entries(rates).map(([code, r]) => [code, {
-            rate: r.perLearner ? String(toKes(r.perLearner)) : "",
-            flat: r.flatAmount ? String(toKes(r.flatAmount)) : "",
-          }]),
-        )}
-      />
+      <ReceiptForm accountId={accountId} heads={heads} />
 
       <div className="grid-2" style={{ marginTop: "1.6rem", alignItems: "start" }}>
         <div className="card">
