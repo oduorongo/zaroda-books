@@ -191,3 +191,41 @@ export async function saveOpeningBalances(
     .set({ openingCash, openingBank })
     .where(eq(schema.financialYears.id, financialYearId));
 }
+
+/** One posted receipt with the circular figures it was worked from, for amending. */
+export async function getReceiptForEdit(transactionId: string, accountId: string) {
+  const [txn] = await db
+    .select()
+    .from(schema.transactions)
+    .where(eq(schema.transactions.id, transactionId));
+  if (!txn || txn.kind !== "receipt") return null;
+
+  const lines = await db
+    .select({
+      code: schema.voteHeads.code,
+      perLearner: schema.allocations.perLearner,
+      flatAmount: schema.allocations.flatAmount,
+    })
+    .from(schema.allocations)
+    .innerJoin(schema.voteHeads, eq(schema.allocations.voteHeadId, schema.voteHeads.id))
+    .where(
+      and(
+        eq(schema.allocations.transactionId, transactionId),
+        eq(schema.voteHeads.accountId, accountId),
+      ),
+    );
+
+  return {
+    id: txn.id,
+    date: txn.date,
+    receiptNo: txn.receiptNo ?? "",
+    particulars: txn.particulars,
+    amount: txn.cash + txn.bank,
+    rates: Object.fromEntries(
+      lines.map((l) => [l.code, {
+        perLearner: l.perLearner ?? 0,
+        flatAmount: l.flatAmount ?? 0,
+      }]),
+    ) as Record<string, HeadRate>,
+  };
+}

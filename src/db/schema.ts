@@ -109,6 +109,10 @@ export const allocations = pgTable("allocations", {
   transactionId: uuid("transaction_id").references(() => transactions.id, { onDelete: "cascade" }).notNull(),
   voteHeadId: uuid("vote_head_id").references(() => voteHeads.id).notNull(),
   amount: bigint("amount", { mode: "number" }).notNull(),
+  // The circular figures this line was worked from, kept per receipt so an
+  // amendment reopens the figures actually used, not the year's current rates.
+  perLearner: bigint("per_learner", { mode: "number" }),
+  flatAmount: bigint("flat_amount", { mode: "number" }),
 });
 
 export const enrolments = pgTable("enrolments", {

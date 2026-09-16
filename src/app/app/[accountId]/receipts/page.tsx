@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { buildLedger, formatKes, toKes } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getTxns } from "@/server/queries";
@@ -72,8 +73,11 @@ export default async function ReceiptsPage({
                   {r.date}{r.kind === "receipt" && r.receiptNo ? ` · ${r.receiptNo}` : ""}
                 </div>
               </div>
-              <div className="mono" style={{ fontSize: ".9rem", whiteSpace: "nowrap" }}>
-                {formatKes(r.kind === "receipt" ? r.cash + r.bank : 0)}
+              <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                <div className="mono" style={{ fontSize: ".9rem" }}>
+                  {formatKes(r.kind === "receipt" ? r.cash + r.bank : 0)}
+                </div>
+                <Link className="note" href={`/app/${accountId}/receipts/${r.id}/edit`}>Amend</Link>
               </div>
             </div>
           ))}

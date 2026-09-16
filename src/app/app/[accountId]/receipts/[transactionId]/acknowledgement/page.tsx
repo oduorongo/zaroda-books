@@ -30,7 +30,10 @@ export default async function AcknowledgementPage({
     <div style={{ maxWidth: 720 }}>
       <div className="no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", marginBottom: "1.5rem", flexWrap: "wrap" }}>
         <Link href={`/app/${accountId}/receipts`}>← Back to receipts</Link>
-        <span className="note">Print this page to return it to the Ministry.</span>
+        <span style={{ display: "flex", gap: "1.1rem", alignItems: "center" }}>
+          <Link href={`/app/${accountId}/receipts/${transactionId}/edit`}>Amend this receipt</Link>
+          <span className="note">Print this page to return it to the Ministry.</span>
+        </span>
       </div>
 
       <div className="card">

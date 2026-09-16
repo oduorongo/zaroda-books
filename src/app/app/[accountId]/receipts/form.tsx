@@ -2,9 +2,19 @@
 
 import { useActionState, useState } from "react";
 import { allocateCapitationFromAmount, formatKes, toCents, type VoteHead } from "@/domain";
-import { postReceipt } from "./actions";
+import { amendReceipt, postReceipt } from "./actions";
 
 interface HeadEntry { rate: string; flat: string }
+
+/** A posted receipt reopened for amendment, with the figures it was worked from. */
+export interface ReceiptDraft {
+  id: string;
+  date: string;
+  receiptNo: string;
+  particulars: string;
+  amount: string;
+  entries: Record<string, HeadEntry>;
+}
 
 const num = (v: string) => {
   const n = parseFloat(v.replace(/[^0-9.]/g, ""));
@@ -12,14 +22,15 @@ const num = (v: string) => {
 };
 
 export function ReceiptForm({
-  accountId, heads,
+  accountId, heads, receipt,
 }: {
   accountId: string;
   heads: VoteHead[];
+  receipt?: ReceiptDraft;
 }) {
-  const [error, action, pending] = useActionState(postReceipt, null);
-  const [amount, setAmount] = useState("");
-  const [entries, setEntries] = useState<Record<string, HeadEntry>>({});
+  const [error, action, pending] = useActionState(receipt ? amendReceipt : postReceipt, null);
+  const [amount, setAmount] = useState(receipt?.amount ?? "");
+  const [entries, setEntries] = useState<Record<string, HeadEntry>>(receipt?.entries ?? {});
 
   const entry = (code: string) => entries[code] ?? { rate: "", flat: "" };
   const set = (code: string, field: keyof HeadEntry, value: string) =>
@@ -56,13 +67,14 @@ export function ReceiptForm({
   return (
     <form action={action} className="card">
       <input type="hidden" name="accountId" value={accountId} />
+      {receipt && <input type="hidden" name="transactionId" value={receipt.id} />}
 
       <div className="grid-4">
         <label className="field">Date
-          <input name="date" type="date" defaultValue={new Date().toISOString().slice(0, 10)} required />
+          <input name="date" type="date" defaultValue={receipt?.date ?? new Date().toISOString().slice(0, 10)} required />
         </label>
         <label className="field">Receipt no.
-          <input name="receiptNo" placeholder="RV/014" />
+          <input name="receiptNo" placeholder="RV/014" defaultValue={receipt?.receiptNo} />
         </label>
         <label className="field">Amount received (KES)
           <input name="amount" className="mono" inputMode="decimal" placeholder="0"
@@ -77,7 +89,7 @@ export function ReceiptForm({
       </div>
 
       <label className="field" style={{ marginTop: "1.25rem" }}>Particulars
-        <input name="particulars" placeholder="Capitation disbursement, Term 1" />
+        <input name="particulars" placeholder="Capitation disbursement, Term 1" defaultValue={receipt?.particulars} />
       </label>
 
       <div className="eyebrow" style={{ margin: "1.75rem 0 .6rem" }}>Vote distribution per circular</div>
@@ -130,7 +142,7 @@ export function ReceiptForm({
 
       <div style={{ display: "flex", alignItems: "center", gap: "1.1rem", marginTop: "1.25rem", flexWrap: "wrap" }}>
         <button type="submit" className="btn btn-primary" disabled={pending || !distributed}>
-          {pending ? "Posting…" : "Post receipt"}
+          {pending ? "Saving…" : receipt ? "Save changes" : "Post receipt"}
         </button>
         <div className="note">{note}</div>
       </div>
