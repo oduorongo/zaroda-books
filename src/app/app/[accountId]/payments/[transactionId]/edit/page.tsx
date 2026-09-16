@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { balancesAfter, buildLedger, toKes } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getPaymentForEdit, getTxns } from "@/server/queries";
+import { DeletePayment } from "../../delete-button";
 import { PaymentForm } from "../../form";
 
 export default async function AmendPaymentPage({
@@ -55,6 +56,8 @@ export default async function AmendPaymentPage({
           ),
         }}
       />
+
+      <DeletePayment accountId={accountId} transactionId={payment.id} />
     </>
   );
 }

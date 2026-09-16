@@ -1,7 +1,7 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { db, schema } from "@/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { validateTransaction } from "@/domain";
 import type { NewTxn, Txn } from "@/domain";
 
@@ -116,6 +116,7 @@ export async function updateTransaction(input: {
   });
   if (!from) throw new Error("Period not found.");
   if (from.status === "closed") throw new Error("This month is closed. Reopen it to amend.");
+  await assertInAccount(from.financialYearId, input.accountId);
 
   const periods = await db.query.periods.findMany({
     where: eq(schema.periods.financialYearId, from.financialYearId),
@@ -185,4 +186,66 @@ export async function updateTransaction(input: {
   await db.batch(writes as unknown as Parameters<typeof db.batch>[0]);
 
   return id;
+}
+
+/**
+ * Removes a posted entry outright. The books normally reverse rather than
+ * delete; this is for an entry posted in error. The audit row carries the whole
+ * entry and its lines, so what was removed can still be answered for.
+ */
+export async function deleteTransaction(input: {
+  transactionId: string;
+  accountId: string;
+  userId: string;
+  orgId: string;
+}) {
+  const existing = await db.query.transactions.findFirst({
+    where: eq(schema.transactions.id, input.transactionId),
+  });
+  if (!existing) throw new Error("Transaction not found.");
+
+  const period = await db.query.periods.findFirst({
+    where: eq(schema.periods.id, existing.periodId),
+  });
+  if (!period) throw new Error("Period not found.");
+  if (period.status === "closed") throw new Error("This month is closed. Reopen it to delete.");
+  await assertInAccount(period.financialYearId, input.accountId);
+
+  const lines = await db
+    .select({ code: schema.voteHeads.code, amount: schema.allocations.amount })
+    .from(schema.allocations)
+    .innerJoin(schema.voteHeads, eq(schema.allocations.voteHeadId, schema.voteHeads.id))
+    .where(
+      and(
+        eq(schema.allocations.transactionId, input.transactionId),
+        eq(schema.voteHeads.accountId, input.accountId),
+      ),
+    );
+
+  const audit = {
+    orgId: input.orgId,
+    userId: input.userId,
+    action: "delete",
+    entity: "transaction",
+    entityId: input.transactionId,
+    before: JSON.stringify({ ...existing, allocations: lines }),
+  };
+
+  const writes = [
+    db.insert(schema.auditLog).values(audit),
+    // The allocation rows go with it: they cascade on the foreign key.
+    db.delete(schema.transactions).where(eq(schema.transactions.id, input.transactionId)),
+  ] as const;
+  await db.batch(writes as unknown as Parameters<typeof db.batch>[0]);
+}
+
+/**
+ * An entry may only be amended or removed through the book it belongs to: the
+ * route supplies the transaction id, and nothing else ties the two together.
+ */
+async function assertInAccount(financialYearId: string, accountId: string) {
+  const fy = await db.query.financialYears.findFirst({
+    where: eq(schema.financialYears.id, financialYearId),
+  });
+  if (!fy || fy.accountId !== accountId) throw new Error("Transaction not found.");
 }

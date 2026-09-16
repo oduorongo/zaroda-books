@@ -6,7 +6,7 @@ import { toCents } from "@/domain";
 import type { Allocation, VoteHead } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getCurrentPeriod } from "@/server/periods";
-import { createTransaction, updateTransaction } from "@/server/transactions";
+import { createTransaction, deleteTransaction, updateTransaction } from "@/server/transactions";
 
 interface ReadResult {
   error?: string;
@@ -118,6 +118,24 @@ export async function amendPayment(
     });
   } catch (e) {
     return e instanceof Error ? e.message : "The amendment could not be saved.";
+  }
+
+  revalidatePath(`/app/${accountId}`, "layout");
+  redirect(`/app/${accountId}/payments`);
+}
+
+export async function deletePayment(
+  _prev: string | null,
+  form: FormData,
+): Promise<string | null> {
+  const accountId = String(form.get("accountId") ?? "");
+  const transactionId = String(form.get("transactionId") ?? "");
+  const { user } = await loadBook(accountId);
+
+  try {
+    await deleteTransaction({ transactionId, accountId, userId: user.id, orgId: user.orgId });
+  } catch (e) {
+    return e instanceof Error ? e.message : "The payment could not be deleted.";
   }
 
   revalidatePath(`/app/${accountId}`, "layout");
