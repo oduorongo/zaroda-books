@@ -1,4 +1,4 @@
-import { buildLedger, formatKes } from "@/domain";
+import { balancesAfter, buildLedger, formatKes } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getTxns } from "@/server/queries";
 import { PaymentForm } from "./form";
@@ -29,7 +29,12 @@ export default async function PaymentsPage({
         to either cash or bank.
       </p>
 
-      <PaymentForm accountId={accountId} heads={heads} balances={balances} />
+      <PaymentForm
+        accountId={accountId}
+        heads={heads}
+        balances={balances}
+        cashInHand={balancesAfter({ cash: fy.openingCash, bank: fy.openingBank }, txns).cash}
+      />
 
       <div className="card" style={{ marginTop: "1.6rem" }}>
         <h2 style={{ marginTop: 0, fontSize: "1.05rem" }}>Payments recorded</h2>
