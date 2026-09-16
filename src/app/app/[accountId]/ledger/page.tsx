@@ -1,15 +1,22 @@
 import { buildLedger, formatKes } from "@/domain";
 import { loadBook } from "@/server/book-context";
-import { getTxns } from "@/server/queries";
-import { getCurrentPeriod, monthName } from "@/server/periods";
+import { getTxns, upTo } from "@/server/queries";
+import { getReportPeriod, monthKey, monthName } from "@/server/periods";
 import { BookTabs } from "../book-tabs";
+import { MonthPicker } from "../month-picker";
 
-export default async function Page({ params }: { params: Promise<{ accountId: string }> }) {
+export default async function Page({ params, searchParams }: {
+  params: Promise<{ accountId: string }>;
+  searchParams: Promise<{ month?: string }>;
+}) {
   const { accountId } = await params;
+  const { month: asked } = await searchParams;
   const { heads, fy, school, account } = await loadBook(accountId);
-  const period = await getCurrentPeriod(fy.id);
   const txns = await getTxns(fy.id);
-  const lines = buildLedger(txns, heads);
+  const { period, periods } = await getReportPeriod(fy.id, txns, asked);
+  const month = monthKey(period.month);
+  const posted = new Set(txns.map((t) => t.date.slice(0, 7)));
+  const lines = buildLedger(upTo(txns, month), heads);
 
   const totals = lines.reduce(
     (a, l) => ({ dr: a.dr + l.dr, cr: a.cr + l.cr }),
@@ -23,6 +30,7 @@ export default async function Page({ params }: { params: Promise<{ accountId: st
         Year to date, {monthName(period.month)} — {school.name}, {account.name} account
       </p>
       <BookTabs accountId={accountId} active="ledger" />
+      <MonthPicker accountId={accountId} report="ledger" periods={periods} active={month} posted={posted} />
       <table>
         <thead>
           <tr>

@@ -1,24 +1,8 @@
 import "server-only";
 import { db, schema } from "@/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { buildTrialBalance } from "@/domain";
 import type { Balances, Txn, VoteHead } from "@/domain";
-
-/**
- * The month the books are open at: today's, if it falls inside the year,
- * otherwise the last month of the year. Reports default to this.
- */
-export async function getCurrentPeriod(financialYearId: string) {
-  const periods = await db
-    .select()
-    .from(schema.periods)
-    .where(eq(schema.periods.financialYearId, financialYearId))
-    .orderBy(schema.periods.month);
-  if (!periods.length) throw new Error("No periods opened for this financial year.");
-
-  const thisMonth = `${new Date().toISOString().slice(0, 7)}-01`;
-  return periods.find((p) => p.month === thisMonth) ?? periods[periods.length - 1];
-}
 
 /** "2026-05-01" -> "2026-05", the prefix the report filters match on. */
 export const monthKey = (month: string) => month.slice(0, 7);
@@ -45,4 +29,45 @@ export function assertClosable(
     );
   if (tb.closingCash < 0) throw new Error("Cash in hand cannot be negative.");
   return tb;
+}
+
+/** The month an entry belongs in: the one its own date falls in, not today's. */
+export async function getPeriodForDate(financialYearId: string, date: string) {
+  const period = await db.query.periods.findFirst({
+    where: and(
+      eq(schema.periods.financialYearId, financialYearId),
+      eq(schema.periods.month, `${date.slice(0, 7)}-01`),
+    ),
+  });
+  if (!period) throw new Error("That date falls outside this financial year.");
+  if (period.status === "closed") throw new Error("That month is closed. Reopen it to post.");
+  return period;
+}
+
+/**
+ * The month a report opens on. A book whose year has ended would otherwise open
+ * on its last month, which is usually empty — so fall back to the last month
+ * that actually holds entries.
+ */
+export async function getReportPeriod(
+  financialYearId: string,
+  txns: Txn[],
+  requested?: string,
+) {
+  const periods = await db
+    .select()
+    .from(schema.periods)
+    .where(eq(schema.periods.financialYearId, financialYearId))
+    .orderBy(schema.periods.month);
+  if (!periods.length) throw new Error("No periods opened for this financial year.");
+
+  const asked = requested && periods.find((p) => monthKey(p.month) === requested);
+  if (asked) return { period: asked, periods };
+
+  const thisMonth = `${new Date().toISOString().slice(0, 7)}-01`;
+  const current = periods.find((p) => p.month === thisMonth);
+  if (current) return { period: current, periods };
+
+  const posted = [...periods].reverse().find((p) => txns.some((t) => t.date.startsWith(monthKey(p.month))));
+  return { period: posted ?? periods[periods.length - 1], periods };
 }

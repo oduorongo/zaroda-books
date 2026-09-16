@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { toCents } from "@/domain";
 import { loadBook } from "@/server/book-context";
-import { getCurrentPeriod } from "@/server/periods";
+import { getPeriodForDate } from "@/server/periods";
 import { createTransaction } from "@/server/transactions";
 
 export async function postTransfer(
@@ -25,23 +25,26 @@ export async function postTransfer(
 
   const from = direction === "to-bank" ? "cash" : "bank";
   const to = direction === "to-bank" ? "bank" : "cash";
-  const period = await getCurrentPeriod(fy.id);
-
-  await createTransaction({
-    periodId: period.id,
-    accountId,
-    userId: user.id,
-    orgId: user.orgId,
-    txn: {
-      date,
-      kind: "contra",
-      particulars: particulars || (from === "cash" ? "Banking" : "Cash drawn from bank"),
-      from,
-      to,
-      amount,
-      chequeNo: chequeNo || undefined,
-    },
-  });
+  try {
+    const period = await getPeriodForDate(fy.id, date);
+    await createTransaction({
+      periodId: period.id,
+      accountId,
+      userId: user.id,
+      orgId: user.orgId,
+      txn: {
+        date,
+        kind: "contra",
+        particulars: particulars || (from === "cash" ? "Banking" : "Cash drawn from bank"),
+        from,
+        to,
+        amount,
+        chequeNo: chequeNo || undefined,
+      },
+    });
+  } catch (e) {
+    return e instanceof Error ? e.message : "The transfer could not be posted.";
+  }
 
   revalidatePath(`/app/${accountId}/cash-and-bank`);
   return null;

@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { toCents } from "@/domain";
 import type { Allocation, VoteHead } from "@/domain";
 import { loadBook } from "@/server/book-context";
-import { getCurrentPeriod } from "@/server/periods";
+import { getPeriodForDate } from "@/server/periods";
 import { createTransaction, deleteTransaction, updateTransaction } from "@/server/transactions";
 
 interface ReadResult {
@@ -65,24 +65,27 @@ export async function postPayment(
   const p = readPaymentForm(form, heads);
   if (p.error) return p.error;
 
-  const period = await getCurrentPeriod(fy.id);
-
-  await createTransaction({
-    periodId: period.id,
-    accountId,
-    userId: user.id,
-    orgId: user.orgId,
-    txn: {
-      date: p.date,
-      kind: "payment",
-      particulars: p.particulars || `Payment ${p.vrNo}`,
-      vrNo: p.vrNo || undefined,
-      chequeNo: p.chequeNo || undefined,
-      cash: p.method === "cash" ? p.total : 0,
-      bank: p.method === "bank" ? p.total : 0,
-      allocations: p.allocations,
-    },
-  });
+  try {
+    const period = await getPeriodForDate(fy.id, p.date);
+    await createTransaction({
+      periodId: period.id,
+      accountId,
+      userId: user.id,
+      orgId: user.orgId,
+      txn: {
+        date: p.date,
+        kind: "payment",
+        particulars: p.particulars || `Payment ${p.vrNo}`,
+        vrNo: p.vrNo || undefined,
+        chequeNo: p.chequeNo || undefined,
+        cash: p.method === "cash" ? p.total : 0,
+        bank: p.method === "bank" ? p.total : 0,
+        allocations: p.allocations,
+      },
+    });
+  } catch (e) {
+    return e instanceof Error ? e.message : "The payment could not be posted.";
+  }
 
   revalidatePath(`/app/${accountId}/payments`);
   return null;

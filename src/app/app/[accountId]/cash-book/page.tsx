@@ -2,18 +2,24 @@ import { balancesAfter, buildCashBook, formatKes } from "@/domain";
 import type { Balances } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { before, getTxns, inMonth } from "@/server/queries";
-import { getCurrentPeriod, monthKey, monthName } from "@/server/periods";
+import { getReportPeriod, monthKey, monthName } from "@/server/periods";
 import { BookTabs } from "../book-tabs";
+import { MonthPicker } from "../month-picker";
 
 const Amount = ({ c }: { c: number }) =>
   c === 0 ? <span className="zero">&ndash;</span> : <>{formatKes(c)}</>;
 
-export default async function Page({ params }: { params: Promise<{ accountId: string }> }) {
+export default async function Page({ params, searchParams }: {
+  params: Promise<{ accountId: string }>;
+  searchParams: Promise<{ month?: string }>;
+}) {
   const { accountId } = await params;
+  const { month: asked } = await searchParams;
   const { heads, fy, school, account } = await loadBook(accountId);
-  const period = await getCurrentPeriod(fy.id);
   const txns = await getTxns(fy.id);
+  const { period, periods } = await getReportPeriod(fy.id, txns, asked);
   const month = monthKey(period.month);
+  const posted = new Set(txns.map((t) => t.date.slice(0, 7)));
 
   // The month opens where the last one closed. Only the first month of the
   // year opens on the balances brought forward into the book.
@@ -102,6 +108,7 @@ export default async function Page({ params }: { params: Promise<{ accountId: st
         {monthName(period.month)} — {school.name}, {account.name} account
       </p>
       <BookTabs accountId={accountId} active="cash-book" />
+      <MonthPicker accountId={accountId} report="cash-book" periods={periods} active={month} posted={posted} />
       {side("Receipts", cb.receipts, cb.receiptTotals,
         { label: "Balance brought down", balances: cb.opening }, true)}
       {side("Payments", cb.payments, cb.paymentTotals,

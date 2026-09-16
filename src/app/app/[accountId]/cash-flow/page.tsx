@@ -1,14 +1,20 @@
 import { buildCashFlow, formatKes } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getTxns, upTo } from "@/server/queries";
-import { getCurrentPeriod, monthKey, monthName } from "@/server/periods";
+import { getReportPeriod, monthKey, monthName } from "@/server/periods";
 import { BookTabs } from "../book-tabs";
+import { MonthPicker } from "../month-picker";
 
-export default async function Page({ params }: { params: Promise<{ accountId: string }> }) {
+export default async function Page({ params, searchParams }: {
+  params: Promise<{ accountId: string }>;
+  searchParams: Promise<{ month?: string }>;
+}) {
   const { accountId } = await params;
+  const { month: asked } = await searchParams;
   const { fy, school, account } = await loadBook(accountId);
-  const period = await getCurrentPeriod(fy.id);
   const txns = await getTxns(fy.id);
+  const { period, periods } = await getReportPeriod(fy.id, txns, asked);
+  const posted = new Set(txns.map((t) => t.date.slice(0, 7)));
   const cf = buildCashFlow(
     monthName(period.month),
     { cash: fy.openingCash, bank: fy.openingBank },
@@ -29,6 +35,7 @@ export default async function Page({ params }: { params: Promise<{ accountId: st
         Year to date, {cf.asAt} — {school.name}, {account.name} account
       </p>
       <BookTabs accountId={accountId} active="cash-flow" />
+      <MonthPicker accountId={accountId} report="cash-flow" periods={periods} active={monthKey(period.month)} posted={posted} />
 
       <div className="card" style={{ maxWidth: 720 }}>
         <table>

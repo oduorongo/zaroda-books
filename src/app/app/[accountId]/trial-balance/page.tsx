@@ -1,14 +1,20 @@
 import { buildTrialBalance, formatKes } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getTxns, upTo } from "@/server/queries";
-import { getCurrentPeriod, monthKey, monthName } from "@/server/periods";
+import { getReportPeriod, monthKey, monthName } from "@/server/periods";
 import { BookTabs } from "../book-tabs";
+import { MonthPicker } from "../month-picker";
 
-export default async function Page({ params }: { params: Promise<{ accountId: string }> }) {
+export default async function Page({ params, searchParams }: {
+  params: Promise<{ accountId: string }>;
+  searchParams: Promise<{ month?: string }>;
+}) {
   const { accountId } = await params;
+  const { month: asked } = await searchParams;
   const { heads, fy, school, account } = await loadBook(accountId);
-  const period = await getCurrentPeriod(fy.id);
   const txns = await getTxns(fy.id);
+  const { period, periods } = await getReportPeriod(fy.id, txns, asked);
+  const posted = new Set(txns.map((t) => t.date.slice(0, 7)));
   const tb = buildTrialBalance(
     monthName(period.month),
     { cash: fy.openingCash, bank: fy.openingBank },
@@ -21,6 +27,7 @@ export default async function Page({ params }: { params: Promise<{ accountId: st
       <h1>Trial balance as at {tb.asAt}</h1>
       <p className="sub">{school.name} &mdash; {account.name} account</p>
       <BookTabs accountId={accountId} active="trial-balance" />
+      <MonthPicker accountId={accountId} report="trial-balance" periods={periods} active={monthKey(period.month)} posted={posted} />
       <table>
         <thead>
           <tr><th>Details</th><th className="n">Dr</th><th className="n">Cr</th></tr>

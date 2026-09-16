@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { allocateCapitationFromAmount, toCents } from "@/domain";
 import type { Allocation, VoteHead } from "@/domain";
 import { loadBook } from "@/server/book-context";
-import { getCurrentPeriod } from "@/server/periods";
+import { getPeriodForDate } from "@/server/periods";
 import { saveOpeningBalances, saveVoteHeadRates } from "@/server/queries";
 import { createTransaction, deleteTransaction, updateTransaction, type LineRates } from "@/server/transactions";
 
@@ -95,26 +95,31 @@ export async function postReceipt(
   const r = readReceiptForm(form, heads);
   if (r.error) return r.error;
 
-  const period = await getCurrentPeriod(fy.id);
-  await saveVoteHeadRates(fy.id, accountId, r.rates);
+  let transactionId: string;
+  try {
+    const period = await getPeriodForDate(fy.id, r.date);
+    await saveVoteHeadRates(fy.id, accountId, r.rates);
 
-  const transactionId = await createTransaction({
-    periodId: period.id,
-    accountId,
-    userId: user.id,
-    orgId: user.orgId,
-    enrolment: r.enrolment,
-    rates: r.rates,
-    txn: {
-      date: r.date,
-      kind: "receipt",
-      particulars: r.particulars || `Receipt ${r.receiptNo}`,
-      receiptNo: r.receiptNo || undefined,
-      cash: 0,
-      bank: r.amount,
-      allocations: r.allocations,
-    },
-  });
+    transactionId = await createTransaction({
+      periodId: period.id,
+      accountId,
+      userId: user.id,
+      orgId: user.orgId,
+      enrolment: r.enrolment,
+      rates: r.rates,
+      txn: {
+        date: r.date,
+        kind: "receipt",
+        particulars: r.particulars || `Receipt ${r.receiptNo}`,
+        receiptNo: r.receiptNo || undefined,
+        cash: 0,
+        bank: r.amount,
+        allocations: r.allocations,
+      },
+    });
+  } catch (e) {
+    return e instanceof Error ? e.message : "The receipt could not be posted.";
+  }
 
   revalidatePath(`/app/${accountId}/receipts`);
   redirect(`/app/${accountId}/receipts/${transactionId}/acknowledgement`);
