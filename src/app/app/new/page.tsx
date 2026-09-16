@@ -1,15 +1,12 @@
-import { CHART_OF_ACCOUNTS } from "@/domain";
+import { CHART_OF_ACCOUNTS, accountTypesFor } from "@/domain";
+import type { SchoolLevel } from "@/domain";
 import { NewBookForm } from "./form";
 
-const ACCOUNT_LABELS: Record<string, string> = {
-  SIMBA: "Capitation — Tuition (SIMBA)",
-  GPA: "Capitation — Operations (GPA)",
-  TUITION: "Tuition",
-  OPERATIONS: "Operations",
-  INFRASTRUCTURE: "Infrastructure",
-  BOARDING: "Boarding",
-  LUNCH: "Lunch",
-};
+const LEVELS: { id: SchoolLevel; label: string }[] = [
+  { id: "primary", label: "Primary" },
+  { id: "junior", label: "Junior School" },
+  { id: "senior", label: "Secondary" },
+];
 
 export default function NewBookPage() {
   const thisYear = new Date().getFullYear();
@@ -18,11 +15,18 @@ export default function NewBookPage() {
     return `${y}/${String((y + 1) % 100).padStart(2, "0")}`;
   });
 
-  const accountTypes = Object.keys(CHART_OF_ACCOUNTS).map((id) => ({
-    id,
-    label: ACCOUNT_LABELS[id] ?? id,
-    heads: CHART_OF_ACCOUNTS[id as keyof typeof CHART_OF_ACCOUNTS],
-  }));
+  // The chart differs by level, so the form needs all of them up front.
+  const charts = Object.fromEntries(
+    (Object.keys(CHART_OF_ACCOUNTS) as SchoolLevel[]).map((level) => [
+      level,
+      accountTypesFor(level).map((a) => ({
+        id: a.id,
+        label: a.label,
+        source: a.source ?? null,
+        heads: a.heads.map((h) => ({ code: h.code, name: h.name })),
+      })),
+    ]),
+  );
 
   return (
     <div style={{ maxWidth: 760 }}>
@@ -31,7 +35,7 @@ export default function NewBookPage() {
         The school, the level, the account and the financial year fix the chart of accounts and the
         twelve monthly periods. These cannot be renumbered afterwards.
       </p>
-      <NewBookForm years={years} accountTypes={accountTypes} />
+      <NewBookForm years={years} levels={LEVELS} charts={charts} />
     </div>
   );
 }

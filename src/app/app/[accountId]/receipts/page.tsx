@@ -32,7 +32,12 @@ export default async function ReceiptsPage({
       <ReceiptForm
         accountId={accountId}
         heads={heads}
-        rates={Object.fromEntries(Object.entries(rates).map(([code, c]) => [code, String(toKes(c))]))}
+        rates={Object.fromEntries(
+          Object.entries(rates).map(([code, r]) => [code, {
+            rate: r.perLearner ? String(toKes(r.perLearner)) : "",
+            flat: r.flatAmount ? String(toKes(r.flatAmount)) : "",
+          }]),
+        )}
       />
 
       <div className="grid-2" style={{ marginTop: "1.6rem", alignItems: "start" }}>

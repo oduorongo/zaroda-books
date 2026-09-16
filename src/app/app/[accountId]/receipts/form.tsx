@@ -4,34 +4,55 @@ import { useActionState, useState } from "react";
 import { allocateCapitationFromAmount, formatKes, toCents, type VoteHead } from "@/domain";
 import { postReceipt } from "./actions";
 
+interface HeadEntry { rate: string; flat: string }
+
 const num = (v: string) => {
   const n = parseFloat(v.replace(/[^0-9.]/g, ""));
   return Number.isFinite(n) ? n : 0;
 };
 
 export function ReceiptForm({
-  accountId, heads, rates: initialRates,
+  accountId, heads, rates: initial,
 }: {
   accountId: string;
   heads: VoteHead[];
-  rates: Record<string, string>;
+  rates: Record<string, HeadEntry>;
 }) {
   const [error, action, pending] = useActionState(postReceipt, null);
   const [amount, setAmount] = useState("");
-  const [rates, setRates] = useState<Record<string, string>>(initialRates);
+  const [entries, setEntries] = useState<Record<string, HeadEntry>>(initial);
+
+  const entry = (code: string) => entries[code] ?? { rate: "", flat: "" };
+  const set = (code: string, field: keyof HeadEntry, value: string) =>
+    setEntries({ ...entries, [code]: { ...entry(code), [field]: value } });
 
   // The same domain function the server posts with, so the preview and the
   // posted split can never disagree.
   const disbursed = toCents(num(amount));
   const rateList = heads
-    .map((h) => ({ voteHeadCode: h.code, perLearner: toCents(num(rates[h.code] ?? "")) }))
+    .map((h) => ({ voteHeadCode: h.code, perLearner: toCents(num(entry(h.code).rate)) }))
     .filter((r) => r.perLearner > 0);
+  const flatList = heads
+    .map((h) => ({ voteHeadCode: h.code, amount: toCents(num(entry(h.code).flat)) }))
+    .filter((f) => f.amount > 0);
   const basic = { voteHeadCode: heads[heads.length - 1]?.code ?? "" };
-  const { enrolment, allocations } = disbursed > 0 && rateList.length
-    ? allocateCapitationFromAmount(disbursed, rateList, basic)
+
+  const { enrolment, allocations } = disbursed > 0 && (rateList.length || flatList.length)
+    ? allocateCapitationFromAmount(disbursed, rateList, basic, flatList)
     : { enrolment: 0, allocations: [] };
   const byCode = Object.fromEntries(allocations.map((a) => [a.voteHeadCode, a.amount]));
   const distributed = allocations.reduce((a, x) => a + x.amount, 0);
+  const flatTotal = flatList.reduce((a, f) => a + f.amount, 0);
+
+  const note = !disbursed
+    ? "Enter the amount received, then the rates and any flat amounts from the circular."
+    : !rateList.length && !flatList.length
+      ? "Enter at least one rate per learner, or a flat amount."
+      : rateList.length && enrolment <= 0
+        ? "The flat amounts use up the whole disbursement — nothing is left per learner."
+        : `${enrolment.toLocaleString("en-KE")} learners at the rates entered${
+            flatTotal ? `, after ${formatKes(flatTotal)} of flat grants` : ""
+          }. The residue falls to ${basic.voteHeadCode}.`;
 
   return (
     <form action={action} className="card">
@@ -61,47 +82,58 @@ export function ReceiptForm({
       </label>
 
       <div className="eyebrow" style={{ margin: "1.75rem 0 .6rem" }}>Vote distribution per circular</div>
-      <table>
-        <thead>
-          <tr>
-            <th>Vote head</th>
-            <th className="n">Rate per learner</th>
-            <th className="n">Learners</th>
-            <th className="n">Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          {heads.map((h) => (
-            <tr key={h.code}>
-              <td><span className="code" style={{ marginRight: ".6rem" }}>{h.code}</span>{h.name}</td>
-              <td className="n">
-                <input
-                  name={`rate_${h.code}`} className="mono" inputMode="decimal" placeholder="0"
-                  style={{ width: 110, textAlign: "right", padding: ".5rem .6rem" }}
-                  value={rates[h.code] ?? ""}
-                  onChange={(e) => setRates({ ...rates, [h.code]: e.target.value })}
-                />
-              </td>
-              <td className="n" style={{ color: "var(--muted)" }}>{enrolment ? enrolment.toLocaleString("en-KE") : "—"}</td>
-              <td className="n">{byCode[h.code] ? formatKes(byCode[h.code]) : "—"}</td>
+      <div style={{ overflowX: "auto" }}>
+        <table>
+          <thead>
+            <tr>
+              <th>Vote head</th>
+              <th className="n">Rate per learner</th>
+              <th className="n">Flat amount</th>
+              <th className="n">Learners</th>
+              <th className="n">Amount</th>
             </tr>
-          ))}
-          <tr className="total">
-            <td colSpan={3}>Distributed</td>
-            <td className="n">{formatKes(distributed)}</td>
-          </tr>
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {heads.map((h) => {
+              const e = entry(h.code);
+              const rated = num(e.rate) > 0;
+              return (
+                <tr key={h.code}>
+                  <td><span className="code" style={{ marginRight: ".6rem" }}>{h.code}</span>{h.name}</td>
+                  <td className="n">
+                    <input
+                      name={`rate_${h.code}`} className="mono" inputMode="decimal" placeholder="—"
+                      style={{ width: 104, textAlign: "right", padding: ".5rem .6rem" }}
+                      value={e.rate} onChange={(ev) => set(h.code, "rate", ev.target.value)}
+                    />
+                  </td>
+                  <td className="n">
+                    <input
+                      name={`flat_${h.code}`} className="mono" inputMode="decimal" placeholder="—"
+                      style={{ width: 118, textAlign: "right", padding: ".5rem .6rem" }}
+                      value={e.flat} onChange={(ev) => set(h.code, "flat", ev.target.value)}
+                    />
+                  </td>
+                  <td className="n" style={{ color: "var(--muted)" }}>
+                    {rated && enrolment ? enrolment.toLocaleString("en-KE") : "—"}
+                  </td>
+                  <td className="n">{byCode[h.code] ? formatKes(byCode[h.code]) : "—"}</td>
+                </tr>
+              );
+            })}
+            <tr className="total">
+              <td colSpan={4}>Distributed</td>
+              <td className="n">{formatKes(distributed)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: "1.1rem", marginTop: "1.25rem", flexWrap: "wrap" }}>
-        <button type="submit" className="btn btn-primary" disabled={pending || !enrolment}>
+        <button type="submit" className="btn btn-primary" disabled={pending || !distributed}>
           {pending ? "Posting…" : "Post receipt"}
         </button>
-        <div className="note">
-          {!disbursed || !rateList.length
-            ? "Enter the amount received and at least one rate per learner."
-            : `${enrolment.toLocaleString("en-KE")} learners at the rates entered. The residue falls to ${basic.voteHeadCode}.`}
-        </div>
+        <div className="note">{note}</div>
       </div>
       {error && <p className="error">{error}</p>}
     </form>

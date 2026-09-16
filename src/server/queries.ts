@@ -45,22 +45,33 @@ export async function getBookForOrg(accountId: string, orgId: string) {
   return row;
 }
 
+export interface HeadRate {
+  perLearner: number;
+  flatAmount: number;
+}
+
 export async function getVoteHeadRates(
   financialYearId: string,
-): Promise<Record<string, number>> {
+): Promise<Record<string, HeadRate>> {
   const rows = await db
-    .select({ code: schema.voteHeads.code, perLearner: schema.voteHeadRates.perLearner })
+    .select({
+      code: schema.voteHeads.code,
+      perLearner: schema.voteHeadRates.perLearner,
+      flatAmount: schema.voteHeadRates.flatAmount,
+    })
     .from(schema.voteHeadRates)
     .innerJoin(schema.voteHeads, eq(schema.voteHeadRates.voteHeadId, schema.voteHeads.id))
     .where(eq(schema.voteHeadRates.financialYearId, financialYearId));
-  return Object.fromEntries(rows.map((r) => [r.code, r.perLearner]));
+  return Object.fromEntries(
+    rows.map((r) => [r.code, { perLearner: r.perLearner, flatAmount: r.flatAmount }]),
+  );
 }
 
 /** The rates in force for a financial year, as entered from the circular. */
 export async function saveVoteHeadRates(
   financialYearId: string,
   accountId: string,
-  ratesByCode: Record<string, number>,
+  ratesByCode: Record<string, HeadRate>,
 ) {
   const heads = await db
     .select()
@@ -72,7 +83,8 @@ export async function saveVoteHeadRates(
     .map((h) => ({
       financialYearId,
       voteHeadId: h.id,
-      perLearner: ratesByCode[h.code],
+      perLearner: ratesByCode[h.code].perLearner,
+      flatAmount: ratesByCode[h.code].flatAmount,
     }));
   if (!values.length) return;
 
@@ -81,7 +93,10 @@ export async function saveVoteHeadRates(
     .values(values)
     .onConflictDoUpdate({
       target: [schema.voteHeadRates.financialYearId, schema.voteHeadRates.voteHeadId],
-      set: { perLearner: sql`excluded.per_learner` },
+      set: {
+        perLearner: sql`excluded.per_learner`,
+        flatAmount: sql`excluded.flat_amount`,
+      },
     });
 }
 

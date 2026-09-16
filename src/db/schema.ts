@@ -68,6 +68,8 @@ export const voteHeadRates = pgTable("vote_head_rates", {
   financialYearId: uuid("financial_year_id").references(() => financialYears.id).notNull(),
   voteHeadId: uuid("vote_head_id").references(() => voteHeads.id).notNull(),
   perLearner: bigint("per_learner", { mode: "number" }).notNull(),
+  // A flat per-school grant in the same disbursement — the junior basic allocation.
+  flatAmount: bigint("flat_amount", { mode: "number" }).notNull().default(0),
 }, (t) => [unique().on(t.financialYearId, t.voteHeadId)]);
 
 export const periods = pgTable("periods", {

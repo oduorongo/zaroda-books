@@ -1,0 +1,1 @@
+ALTER TABLE "vote_head_rates" ADD COLUMN "flat_amount" bigint DEFAULT 0 NOT NULL;

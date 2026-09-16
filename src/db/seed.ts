@@ -8,50 +8,44 @@ if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set.");
 const db = drizzle(neon(process.env.DATABASE_URL), { schema });
 
 /**
- * The four transactions and one contra from src/demo/ongora-simba.ts, copied
- * here before that module is deleted. Same figures, same dates.
+ * Three FPE disbursements, a banking contra and a payment, split at the rates
+ * in the 25 July 2024 circular for Account 1: KSh 144.00 a learner across
+ * exercise books, teachers guides, stationery and assessments.
  */
+const capitation = (learners: number) => [
+  { voteHeadCode: "EXB", amount: toCents(82.69 * learners) },
+  { voteHeadCode: "TGR", amount: toCents(31.28 * learners) },
+  { voteHeadCode: "STN", amount: toCents(18.77 * learners) },
+  { voteHeadCode: "ASS", amount: toCents(11.26 * learners) },
+];
+
 const demoTxns = [
   {
-    date: "2025-10-03", kind: "receipt" as const, particulars: "MoE capitation", receiptNo: "001",
-    cash: toCents(24269), bank: 0,
-    allocations: [
-      { voteHeadCode: "TXB", amount: toCents(7282) },
-      { voteHeadCode: "TXM", amount: toCents(729) },
-      { voteHeadCode: "EXB", amount: toCents(10194) },
-      { voteHeadCode: "TGR", amount: toCents(3640) },
-      { voteHeadCode: "STN", amount: toCents(2424) },
-    ],
+    date: "2025-10-03", kind: "receipt" as const, particulars: "MoE capitation, Term 3",
+    receiptNo: "001", enrolment: 168,
+    cash: toCents(144 * 168), bank: 0,
+    allocations: capitation(168),
   },
   {
     date: "2025-10-03", kind: "contra" as const, particulars: "banking",
-    from: "cash" as const, to: "bank" as const, amount: toCents(24269),
+    from: "cash" as const, to: "bank" as const, amount: toCents(144 * 168),
   },
   {
-    date: "2026-01-02", kind: "receipt" as const, particulars: "MoE capitation", receiptNo: "002",
-    cash: 0, bank: toCents(46425.2),
-    allocations: [
-      { voteHeadCode: "TXB", amount: toCents(3962.4) },
-      { voteHeadCode: "TXM", amount: toCents(1826) },
-      { voteHeadCode: "EXB", amount: toCents(25481) },
-      { voteHeadCode: "TGR", amount: toCents(9096.8) },
-      { voteHeadCode: "STN", amount: toCents(6059) },
-    ],
+    date: "2026-01-02", kind: "receipt" as const, particulars: "MoE capitation, Term 1",
+    receiptNo: "002", enrolment: 322,
+    cash: 0, bank: toCents(144 * 322),
+    allocations: capitation(322),
   },
   {
-    date: "2026-04-01", kind: "receipt" as const, particulars: "MoE capitation", receiptNo: "003",
-    cash: 0, bank: toCents(15811.5),
-    allocations: [
-      { voteHeadCode: "TXM", amount: toCents(830) },
-      { voteHeadCode: "EXB", amount: toCents(6640) },
-      { voteHeadCode: "TGR", amount: toCents(2490) },
-      { voteHeadCode: "STN", amount: toCents(5851.5) },
-    ],
+    date: "2026-04-01", kind: "receipt" as const, particulars: "MoE capitation, Term 2",
+    receiptNo: "003", enrolment: 110,
+    cash: 0, bank: toCents(144 * 110),
+    allocations: capitation(110),
   },
   {
-    date: "2026-05-14", kind: "payment" as const, particulars: "Stationery supplier",
-    vrNo: "1", chequeNo: "000121", cash: 0, bank: toCents(70000),
-    allocations: [{ voteHeadCode: "STN", amount: toCents(70000) }],
+    date: "2026-05-14", kind: "payment" as const, particulars: "Exercise books supplier",
+    vrNo: "1", chequeNo: "000121", cash: 0, bank: toCents(45000),
+    allocations: [{ voteHeadCode: "EXB", amount: toCents(45000) }],
   },
 ];
 
@@ -71,7 +65,7 @@ async function main() {
     orgId: org.id,
     schoolName: "Ong'ora Kakuru Primary School",
     level: "primary",
-    accountType: "SIMBA",
+    accountType: "TUITION",
     fyLabel: "2025/26",
     openingCash: 0,
     openingBank: toCents(1903.45),
@@ -113,6 +107,7 @@ async function main() {
       chequeNo: t.kind === "payment" ? t.chequeNo : undefined,
       cash: t.cash,
       bank: t.bank,
+      enrolment: t.kind === "receipt" ? t.enrolment : undefined,
       createdBy: user.id,
     }).returning();
 

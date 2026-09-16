@@ -2,8 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/server/auth";
-import { createBook, type SchoolLevel } from "@/server/books";
-import { CHART_OF_ACCOUNTS, type AccountType } from "@/domain";
+import { createBook } from "@/server/books";
+import { chartFor, type AccountType, type SchoolLevel } from "@/domain";
 
 const LEVELS: SchoolLevel[] = ["primary", "junior", "senior"];
 
@@ -21,7 +21,7 @@ export async function createBookAction(
 
   if (!schoolName) return "Enter the name of the school.";
   if (!LEVELS.includes(level)) return "Choose the school level.";
-  if (!CHART_OF_ACCOUNTS[accountType]) return "Choose the account type.";
+  if (!chartFor(level, accountType)) return "Choose an account kept at that school level.";
   if (!/^\d{4}\/\d{2}$/.test(fyLabel)) return "Choose the financial year.";
 
   const { account } = await createBook({

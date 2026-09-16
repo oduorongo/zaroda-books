@@ -2,10 +2,10 @@
 // opened the same way whether they come from the UI or from a seed.
 import { db } from "../db/index.ts";
 import * as schema from "../db/schema.ts";
-import { CHART_OF_ACCOUNTS } from "../domain/vote-heads.ts";
-import type { AccountType } from "../domain/vote-heads.ts";
+import { chartFor } from "../domain/vote-heads.ts";
+import type { AccountType, SchoolLevel } from "../domain/vote-heads.ts";
 
-export type SchoolLevel = "primary" | "junior" | "senior";
+export type { SchoolLevel };
 
 /** The financial year runs 1 July to 30 June. "2026/27" starts 1 July 2026. */
 export function financialYearDates(label: string) {
@@ -37,8 +37,10 @@ export async function createBook(input: {
   openingCash?: number;
   openingBank?: number;
 }) {
-  const heads = CHART_OF_ACCOUNTS[input.accountType];
-  if (!heads) throw new Error(`Unknown account type: ${input.accountType}`);
+  const chart = chartFor(input.level, input.accountType);
+  if (!chart) {
+    throw new Error(`A ${input.level} school has no ${input.accountType} account.`);
+  }
 
   const [school] = await db.insert(schema.schools).values({
     orgId: input.orgId,
@@ -49,11 +51,13 @@ export async function createBook(input: {
   const [account] = await db.insert(schema.accounts).values({
     schoolId: school.id,
     type: input.accountType,
-    name: input.accountType,
+    name: chart.label,
   }).returning();
 
   const voteHeads = await db.insert(schema.voteHeads).values(
-    heads.map((h) => ({ accountId: account.id, code: h.code, name: h.name, order: h.order })),
+    chart.heads.map((h) => ({
+      accountId: account.id, code: h.code, name: h.name, order: h.order,
+    })),
   ).returning();
 
   const { startsOn, endsOn } = financialYearDates(input.fyLabel);
@@ -74,5 +78,18 @@ export async function createBook(input: {
     })),
   ).returning();
 
-  return { school, account, voteHeads, financialYear, periods };
+  // The circular's figures, so the book opens with the rates in force. They
+  // are editable: every disbursement is governed by the circular of the day.
+  const idByCode = new Map(voteHeads.map((h) => [h.code, h.id]));
+  const rates = chart.heads
+    .filter((h) => h.perLearner || h.flat)
+    .map((h) => ({
+      financialYearId: financialYear.id,
+      voteHeadId: idByCode.get(h.code)!,
+      perLearner: h.perLearner ?? 0,
+      flatAmount: h.flat ?? 0,
+    }));
+  if (rates.length) await db.insert(schema.voteHeadRates).values(rates);
+
+  return { school, account, voteHeads, financialYear, periods, chart };
 }

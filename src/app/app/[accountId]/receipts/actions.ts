@@ -26,17 +26,30 @@ export async function postReceipt(
   const rates = heads
     .map((h) => ({ voteHeadCode: h.code, perLearner: toCents(Number(form.get(`rate_${h.code}`) || 0)) }))
     .filter((r) => r.perLearner > 0);
-  if (!rates.length) return "Enter at least one rate per learner from the circular.";
+  const flats = heads
+    .map((h) => ({ voteHeadCode: h.code, amount: toCents(Number(form.get(`flat_${h.code}`) || 0)) }))
+    .filter((f) => f.amount > 0);
+  if (!rates.length && !flats.length) {
+    return "Enter at least one rate per learner, or a flat amount, from the circular.";
+  }
 
   // The last head in the chart is the basic/residual vote: the rounding residue
   // falls there so the split equals the disbursement to the cent.
   const basic = { voteHeadCode: heads[heads.length - 1].code };
-  const { enrolment, allocations } = allocateCapitationFromAmount(amount, rates, basic);
-  if (enrolment <= 0) return "The rates are larger than the amount received. Check the circular.";
+  const { enrolment, allocations } = allocateCapitationFromAmount(amount, rates, basic, flats);
+  if (rates.length && enrolment <= 0) {
+    return "Nothing is left for the per-learner rates once the flat amounts come off. Check the circular.";
+  }
 
   const period = await getCurrentPeriod(fy.id);
 
-  await saveVoteHeadRates(fy.id, accountId, Object.fromEntries(rates.map((r) => [r.voteHeadCode, r.perLearner])));
+  const byCode: Record<string, { perLearner: number; flatAmount: number }> = {};
+  for (const h of heads) {
+    const perLearner = rates.find((r) => r.voteHeadCode === h.code)?.perLearner ?? 0;
+    const flatAmount = flats.find((f) => f.voteHeadCode === h.code)?.amount ?? 0;
+    if (perLearner || flatAmount) byCode[h.code] = { perLearner, flatAmount };
+  }
+  await saveVoteHeadRates(fy.id, accountId, byCode);
 
   const transactionId = await createTransaction({
     periodId: period.id,

@@ -1,11 +1,23 @@
 import { test, expect } from "vitest";
 import {
   toCents, validateTransaction, buildCashBook, buildTrialBalance,
-  allocateCapitation, CHART_OF_ACCOUNTS,
+  allocateCapitation,
 } from "@/domain";
-import type { Txn } from "@/domain";
+import type { Txn, VoteHead } from "@/domain";
 
-const heads = CHART_OF_ACCOUNTS.SIMBA;
+// The SIMBA heads as the source workbook had them, when textbooks were still
+// banked for the school. Declared here rather than read from
+// CHART_OF_ACCOUNTS: this suite is the golden master for the engine, and it
+// must keep asserting the workbook's figures even as the Ministry's circulars
+// change the chart.
+const heads: VoteHead[] = [
+  { code: "TXB", name: "Textbooks and readers", order: 1 },
+  { code: "TXM", name: "Textbook maintenance", order: 2 },
+  { code: "EXB", name: "Exercise books", order: 3 },
+  { code: "TGR", name: "Teachers guides and reference materials", order: 4 },
+  { code: "STN", name: "Stationery", order: 5 },
+  { code: "BCH", name: "Bank charges", order: 6 },
+];
 const codes = heads.map((h) => h.code);
 
 // --- Invariant 1: allocations must equal cash + bank -------------------------
