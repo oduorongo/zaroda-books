@@ -1,6 +1,6 @@
 import "server-only";
 import { db, schema } from "@/db";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Txn, VoteHead } from "@/domain";
 
 export async function getAccountAndSchool(accountId: string) {
@@ -22,6 +22,67 @@ export async function getFirstAccount() {
     .limit(1);
   if (!row) throw new Error("No account seeded yet.");
   return row;
+}
+
+/** Every book the org keeps. The tenancy boundary: always scope by org here, never in a route. */
+export async function getOrgBooks(orgId: string) {
+  return db
+    .select({ account: schema.accounts, school: schema.schools })
+    .from(schema.accounts)
+    .innerJoin(schema.schools, eq(schema.accounts.schoolId, schema.schools.id))
+    .where(eq(schema.schools.orgId, orgId))
+    .orderBy(schema.schools.name);
+}
+
+/** Loads one book, refusing it if it does not belong to the caller's org. */
+export async function getBookForOrg(accountId: string, orgId: string) {
+  const [row] = await db
+    .select({ account: schema.accounts, school: schema.schools })
+    .from(schema.accounts)
+    .innerJoin(schema.schools, eq(schema.accounts.schoolId, schema.schools.id))
+    .where(and(eq(schema.accounts.id, accountId), eq(schema.schools.orgId, orgId)));
+  if (!row) throw new Error("Account not found.");
+  return row;
+}
+
+export async function getVoteHeadRates(
+  financialYearId: string,
+): Promise<Record<string, number>> {
+  const rows = await db
+    .select({ code: schema.voteHeads.code, perLearner: schema.voteHeadRates.perLearner })
+    .from(schema.voteHeadRates)
+    .innerJoin(schema.voteHeads, eq(schema.voteHeadRates.voteHeadId, schema.voteHeads.id))
+    .where(eq(schema.voteHeadRates.financialYearId, financialYearId));
+  return Object.fromEntries(rows.map((r) => [r.code, r.perLearner]));
+}
+
+/** The rates in force for a financial year, as entered from the circular. */
+export async function saveVoteHeadRates(
+  financialYearId: string,
+  accountId: string,
+  ratesByCode: Record<string, number>,
+) {
+  const heads = await db
+    .select()
+    .from(schema.voteHeads)
+    .where(eq(schema.voteHeads.accountId, accountId));
+
+  const values = heads
+    .filter((h) => ratesByCode[h.code] !== undefined)
+    .map((h) => ({
+      financialYearId,
+      voteHeadId: h.id,
+      perLearner: ratesByCode[h.code],
+    }));
+  if (!values.length) return;
+
+  await db
+    .insert(schema.voteHeadRates)
+    .values(values)
+    .onConflictDoUpdate({
+      target: [schema.voteHeadRates.financialYearId, schema.voteHeadRates.voteHeadId],
+      set: { perLearner: sql`excluded.per_learner` },
+    });
 }
 
 export async function getVoteHeads(accountId: string): Promise<VoteHead[]> {

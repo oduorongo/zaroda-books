@@ -62,6 +62,14 @@ export const financialYears = pgTable("financial_years", {
   openingBank: bigint("opening_bank", { mode: "number" }).notNull().default(0),
 });
 
+/** The circular's rate per learner, per vote head, for one financial year. */
+export const voteHeadRates = pgTable("vote_head_rates", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  financialYearId: uuid("financial_year_id").references(() => financialYears.id).notNull(),
+  voteHeadId: uuid("vote_head_id").references(() => voteHeads.id).notNull(),
+  perLearner: bigint("per_learner", { mode: "number" }).notNull(),
+}, (t) => [unique().on(t.financialYearId, t.voteHeadId)]);
+
 export const periods = pgTable("periods", {
   id: uuid("id").primaryKey().defaultRandom(),
   financialYearId: uuid("financial_year_id").references(() => financialYears.id).notNull(),
@@ -85,6 +93,9 @@ export const transactions = pgTable("transactions", {
   chequeNo: text("cheque_no"),
   cash: bigint("cash", { mode: "number" }).notNull().default(0),
   bank: bigint("bank", { mode: "number" }).notNull().default(0),
+  // Derived from the disbursement and the rates in force at posting time, then
+  // frozen — never recomputed if rates change. CLAUDE.md rule 7.
+  enrolment: integer("enrolment"),
   contraFrom: text("contra_from", { enum: ["cash", "bank"] }),
   contraTo: text("contra_to", { enum: ["cash", "bank"] }),
   createdBy: uuid("created_by").references(() => users.id).notNull(),

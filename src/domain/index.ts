@@ -4,5 +4,6 @@ export * from "./validate";
 export * from "./cash-book";
 export * from "./ledger";
 export * from "./trial-balance";
+export * from "./cash-flow";
 export * from "./capitation";
 export * from "./vote-heads";

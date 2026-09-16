@@ -1,8 +1,8 @@
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import * as schema from "./schema.ts";
-import { CHART_OF_ACCOUNTS } from "../domain/vote-heads.ts";
 import { toCents } from "../domain/money.ts";
+import { createBook } from "../server/books.ts";
 
 if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set.");
 const db = drizzle(neon(process.env.DATABASE_URL), { schema });
@@ -67,44 +67,17 @@ async function main() {
 
   await db.insert(schema.memberships).values({ orgId: org.id, userId: user.id, role: "owner" });
 
-  const [school] = await db.insert(schema.schools).values({
+  const { school, account, voteHeads, periods } = await createBook({
     orgId: org.id,
-    name: "Ong'ora Kakuru Primary School",
+    schoolName: "Ong'ora Kakuru Primary School",
     level: "primary",
-  }).returning();
-
-  const [account] = await db.insert(schema.accounts).values({
-    schoolId: school.id,
-    type: "SIMBA",
-    name: "SIMBA",
-  }).returning();
-
-  const heads = await db.insert(schema.voteHeads).values(
-    CHART_OF_ACCOUNTS.SIMBA.map((h) => ({
-      accountId: account.id,
-      code: h.code,
-      name: h.name,
-      order: h.order,
-    })),
-  ).returning();
-  const voteHeadIdByCode = new Map(heads.map((h) => [h.code, h.id]));
-
-  const [financialYear] = await db.insert(schema.financialYears).values({
-    accountId: account.id,
-    label: "2025/26",
-    startsOn: "2025-07-01",
-    endsOn: "2026-06-30",
+    accountType: "SIMBA",
+    fyLabel: "2025/26",
     openingCash: 0,
     openingBank: toCents(1903.45),
-  }).returning();
+  });
 
-  const months = [
-    "2025-07-01", "2025-08-01", "2025-09-01", "2025-10-01", "2025-11-01", "2025-12-01",
-    "2026-01-01", "2026-02-01", "2026-03-01", "2026-04-01", "2026-05-01", "2026-06-01",
-  ];
-  const periods = await db.insert(schema.periods).values(
-    months.map((month) => ({ financialYearId: financialYear.id, month, status: "open" as const })),
-  ).returning();
+  const voteHeadIdByCode = new Map(voteHeads.map((h) => [h.code, h.id]));
   const periodIdForMonth = (date: string) => {
     const month = `${date.slice(0, 7)}-01`;
     const period = periods.find((p) => p.month === month);

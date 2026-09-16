@@ -40,3 +40,25 @@ export function allocateCapitation(
   }
   return allocations.filter((a) => a.amount !== 0);
 }
+
+/**
+ * The school is never told the Ministry's enrolment figure — it derives it
+ * from the disbursement and the rates in force. See CLAUDE.md rule 7.
+ */
+export function deriveEnrolment(disbursed: Cents, rates: CapitationRate[]): number {
+  const rateSum = rates.reduce((a, r) => a + r.perLearner, 0);
+  if (rateSum <= 0) return 0;
+  return Math.round(disbursed / rateSum);
+}
+
+export function allocateCapitationFromAmount(
+  disbursed: Cents,
+  rates: CapitationRate[],
+  basic: { voteHeadCode: string },
+): { enrolment: number; allocations: Allocation[] } {
+  const enrolment = deriveEnrolment(disbursed, rates);
+  const allocations = enrolment > 0
+    ? allocateCapitation(disbursed, enrolment, rates, basic)
+    : [];
+  return { enrolment, allocations };
+}

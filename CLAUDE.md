@@ -23,8 +23,14 @@ becomes the finance module of ZARODA SMS.
    and is written to `audit_log`.
 6. All money is integer cents in a `bigint` column. Never a float, never a
    `numeric` read into a JS number.
-7. Enrolment is a stored whole number. NEVER derive it by dividing a
-   disbursement by a per-learner rate.
+7. For a capitation receipt, enrolment is not known in advance — the school
+   derives it from the disbursement and the circular's per-learner rates in
+   force, then that figure is stored on the receipt as fact (never
+   recomputed later if rates change). The residue after rounding falls to
+   the basic/residual vote head so the split equals the disbursement to the
+   cent. Posting a capitation receipt also produces an acknowledgement
+   record (enrolment used, per-head split) suitable for returning to the
+   Ministry.
 8. The financial year runs 1 July to 30 June.
 9. Ledger convention, taken from the source workbooks: a receipt allocated to
    a vote head credits it, a payment debits it, so an unspent vote carries a

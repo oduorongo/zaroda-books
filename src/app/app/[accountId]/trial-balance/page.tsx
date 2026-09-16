@@ -1,22 +1,26 @@
 import { buildTrialBalance, formatKes } from "@/domain";
-import { getVoteHeads, getFinancialYear, getTxns, upTo } from "@/server/queries";
-import { Tabs } from "../tabs";
-
-const AS_AT = "2026-05";
+import { loadBook } from "@/server/book-context";
+import { getTxns, upTo } from "@/server/queries";
+import { getCurrentPeriod, monthKey, monthName } from "@/server/periods";
+import { BookTabs } from "../book-tabs";
 
 export default async function Page({ params }: { params: Promise<{ accountId: string }> }) {
   const { accountId } = await params;
-  const heads = await getVoteHeads(accountId);
-  const fy = await getFinancialYear(accountId);
-  const opening = { cash: fy.openingCash, bank: fy.openingBank };
+  const { heads, fy, school, account } = await loadBook(accountId);
+  const period = await getCurrentPeriod(fy.id);
   const txns = await getTxns(fy.id);
-  const tb = buildTrialBalance("31 May 2026", opening, upTo(txns, AS_AT), heads);
+  const tb = buildTrialBalance(
+    monthName(period.month),
+    { cash: fy.openingCash, bank: fy.openingBank },
+    upTo(txns, monthKey(period.month)),
+    heads,
+  );
 
   return (
-    <main>
+    <>
       <h1>Trial balance as at {tb.asAt}</h1>
-      <p className="sub">Ong&rsquo;ora Kakuru Primary School &mdash; SIMBA account</p>
-      <Tabs accountId={accountId} active="trial-balance" />
+      <p className="sub">{school.name} &mdash; {account.name} account</p>
+      <BookTabs accountId={accountId} active="trial-balance" />
       <table>
         <thead>
           <tr><th>Details</th><th className="n">Dr</th><th className="n">Cr</th></tr>
@@ -45,6 +49,6 @@ export default async function Page({ params }: { params: Promise<{ accountId: st
           ? "The book balances. This month can be closed."
           : `Out by ${formatKes(tb.difference)}. Find the entry before closing.`}
       </p>
-    </main>
+    </>
   );
 }

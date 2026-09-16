@@ -42,6 +42,9 @@ export interface Contra extends Base {
 
 export type Txn = Receipt | Payment | Contra;
 
+/** A transaction before it is saved. Distributes over the union so `kind` still narrows. */
+export type NewTxn = Txn extends infer T ? (T extends Txn ? Omit<T, "id"> : never) : never;
+
 export interface Balances {
   cash: Cents;
   bank: Cents;
