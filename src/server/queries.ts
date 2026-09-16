@@ -177,3 +177,17 @@ export async function getTxns(financialYearId: string): Promise<Txn[]> {
 
 export const inMonth = (txns: Txn[], month: string) => txns.filter((t) => t.date.startsWith(month));
 export const upTo = (txns: Txn[], month: string) => txns.filter((t) => t.date <= `${month}-31`);
+/** Everything posted before this month — what a month's opening balance is built from. */
+export const before = (txns: Txn[], month: string) => txns.filter((t) => t.date < `${month}-01`);
+
+/** Last year's closing cash and bank, carried into this book. Not a transaction. */
+export async function saveOpeningBalances(
+  financialYearId: string,
+  openingCash: number,
+  openingBank: number,
+) {
+  await db
+    .update(schema.financialYears)
+    .set({ openingCash, openingBank })
+    .where(eq(schema.financialYears.id, financialYearId));
+}

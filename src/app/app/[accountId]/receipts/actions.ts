@@ -5,8 +5,25 @@ import { revalidatePath } from "next/cache";
 import { allocateCapitationFromAmount, toCents } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getCurrentPeriod } from "@/server/periods";
-import { saveVoteHeadRates } from "@/server/queries";
+import { saveOpeningBalances, saveVoteHeadRates } from "@/server/queries";
 import { createTransaction } from "@/server/transactions";
+
+export async function saveOpeningBalancesAction(
+  _prev: string | null,
+  form: FormData,
+): Promise<string | null> {
+  const accountId = String(form.get("accountId") ?? "");
+  const { fy } = await loadBook(accountId);
+
+  const cash = Number(form.get("openingCash") || 0);
+  const bank = Number(form.get("openingBank") || 0);
+  if (!Number.isFinite(cash) || !Number.isFinite(bank)) return "Enter both balances as figures.";
+
+  await saveOpeningBalances(fy.id, toCents(cash), toCents(bank));
+
+  revalidatePath(`/app/${accountId}`, "layout");
+  return "Saved.";
+}
 
 export async function postReceipt(
   _prev: string | null,

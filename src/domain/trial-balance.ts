@@ -1,4 +1,5 @@
 import type { Cents } from "./money";
+import { balancesAfter } from "./balances";
 import { buildLedger } from "./ledger";
 import type { Balances, Txn, VoteHead } from "./types";
 
@@ -27,15 +28,7 @@ export function buildTrialBalance(
   heads: VoteHead[],
 ): TrialBalance {
   const ledger = buildLedger(txnsToDate, heads);
-
-  let cash = yearOpening.cash, bank = yearOpening.bank;
-  for (const t of txnsToDate) {
-    if (t.kind === "contra") {
-      if (t.from === "cash") { cash -= t.amount; bank += t.amount; }
-      else { bank -= t.amount; cash += t.amount; }
-    } else if (t.kind === "receipt") { cash += t.cash; bank += t.bank; }
-    else { cash -= t.cash; bank -= t.bank; }
-  }
+  const { cash, bank } = balancesAfter(yearOpening, txnsToDate);
 
   const lines = ledger.map(({ code, name, dr, cr }) => ({ code, name, dr, cr }));
   const totalDr = lines.reduce((a, l) => a + l.dr, 0) + cash + bank;

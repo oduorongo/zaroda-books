@@ -2,6 +2,7 @@ import { buildLedger, formatKes, toKes } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getTxns, getVoteHeadRates } from "@/server/queries";
 import { ReceiptForm } from "./form";
+import { OpeningBalances } from "./opening-balances";
 
 export default async function ReceiptsPage({
   params,
@@ -28,6 +29,13 @@ export default async function ReceiptsPage({
         learner in force. The system derives the enrolment from the amount and the vote heads used,
         then distributes the receipt so the split equals the amount received to the shilling.
       </p>
+
+      <OpeningBalances
+        accountId={accountId}
+        fyLabel={fy.label}
+        openingCash={fy.openingCash ? String(toKes(fy.openingCash)) : ""}
+        openingBank={fy.openingBank ? String(toKes(fy.openingBank)) : ""}
+      />
 
       <ReceiptForm
         accountId={accountId}
