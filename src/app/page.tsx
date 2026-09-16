@@ -8,6 +8,12 @@ const steps = [
   { no: "04", title: "Post the books", body: "Cash book, ledger, trial balance, income and expenditure, bank reconciliation and cash flow, all from the same entries." },
 ];
 
+const levels = [
+  { name: "Primary school", price: "480", note: "Every account kept at primary level, for one financial year." },
+  { name: "Junior school", price: "580", note: "Every account kept at junior level, for one financial year." },
+  { name: "Senior school", price: "1,060", note: "Every account kept at senior level, for one financial year." },
+];
+
 const outputs = [
   { name: "Analysed cash book", note: "Both sides, cash and bank columns, monthly totals", tag: "Monthly" },
   { name: "Ledger", note: "Cumulative Dr and Cr per vote head", tag: "Running" },
@@ -115,34 +121,43 @@ export default function Home() {
       </section>
 
       <section id="pricing" style={{ borderTop: "1px solid var(--rule-card)", background: "var(--band)" }}>
-        <div className="wrap" style={{ padding: "4.75rem 2.5rem", display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: "4rem", alignItems: "center" }}>
-          <div>
-            <h2 style={{ fontSize: "2rem", margin: "0 0 .9rem" }}>One price, per school level, per financial year</h2>
-            <p style={{ color: "var(--muted)", fontSize: "1.05rem", lineHeight: 1.6, margin: "0 0 1.1rem", maxWidth: "52ch" }}>
-              Freelance book keepers hold as many schools as they keep books for under a single
-              login. You subscribe for each school level and financial year you prepare, and
-              nothing else.
+        <div className="wrap" style={{ padding: "4.75rem 2.5rem" }}>
+          <div style={{ maxWidth: "60ch", marginBottom: "2.75rem" }}>
+            <h2 style={{ fontSize: "2rem", margin: "0 0 .9rem" }}>One price per school level, per year</h2>
+            <p style={{ color: "var(--muted)", fontSize: "1.05rem", lineHeight: 1.6, margin: "0 0 1.1rem" }}>
+              The subscription covers <strong>every account in that school level</strong> — tuition,
+              operations, infrastructure, boarding, lunch — not one account each. Freelance book
+              keepers hold as many schools as they keep books for under a single login.
             </p>
-            <p style={{ color: "var(--muted)", fontSize: ".95rem", lineHeight: 1.6, margin: 0, maxWidth: "52ch" }}>
-              A school running primary and junior levels is two subscriptions. Closed years stay
+            <p style={{ color: "var(--muted)", fontSize: ".95rem", lineHeight: 1.6, margin: 0 }}>
+              A school running primary and junior levels subscribes to both. Closed years stay
               readable at no further cost.
             </p>
           </div>
-          <div className="card" style={{ padding: "2.1rem 2.25rem" }}>
-            <div style={{ display: "flex", alignItems: "flex-end", gap: ".6rem", marginBottom: ".4rem" }}>
-              <div style={{ fontFamily: "var(--font-heading)", fontSize: "3.25rem", fontWeight: 700, lineHeight: 1 }}>KSh&nbsp;480</div>
-              <div style={{ color: "var(--muted)", fontSize: ".95rem", paddingBottom: ".55rem" }}>per school level<br />per financial year</div>
-            </div>
-            <div style={{ height: 1, background: "var(--rule-soft)", margin: "1.5rem 0" }} />
-            <div style={{ display: "flex", flexDirection: "column", gap: ".7rem", fontSize: ".9rem" }}>
-              <div>All the books of accounts, printable</div>
-              <div>Unlimited schools on one account</div>
-              <div>Unlimited receipts, payments and vouchers</div>
-              <div>Acknowledgement receipts for the Ministry</div>
-            </div>
-            <Link href="/signup" className="btn btn-gold" style={{ display: "block", textAlign: "center", marginTop: "1.6rem", color: "#fff", textDecoration: "none" }}>
-              Subscribe a school
-            </Link>
+
+          <div className="grid-3">
+            {levels.map((l) => (
+              <div key={l.name} className="card" style={{ padding: "1.9rem 2rem", display: "flex", flexDirection: "column" }}>
+                <div className="eyebrow" style={{ color: "var(--gold)" }}>{l.name}</div>
+                <div style={{ display: "flex", alignItems: "flex-end", gap: ".5rem", margin: ".9rem 0 .3rem" }}>
+                  <div style={{ fontFamily: "var(--font-heading)", fontSize: "2.75rem", fontWeight: 700, lineHeight: 1 }}>
+                    KSh&nbsp;{l.price}
+                  </div>
+                  <div style={{ color: "var(--muted)", fontSize: ".9rem", paddingBottom: ".45rem" }}>per year</div>
+                </div>
+                <div style={{ color: "var(--muted)", fontSize: ".88rem", lineHeight: 1.55 }}>{l.note}</div>
+                <Link href="/signup" className="btn btn-gold" style={{ display: "block", textAlign: "center", marginTop: "1.5rem", color: "#fff", textDecoration: "none" }}>
+                  Subscribe
+                </Link>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: "flex", gap: "2.25rem", flexWrap: "wrap", marginTop: "2.25rem", fontSize: ".9rem", color: "var(--muted)" }}>
+            <div>All the books of accounts, printable</div>
+            <div>Unlimited schools on one login</div>
+            <div>Unlimited receipts, payments and vouchers</div>
+            <div>Acknowledgement receipts for the Ministry</div>
           </div>
         </div>
       </section>
