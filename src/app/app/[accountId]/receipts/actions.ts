@@ -7,7 +7,7 @@ import type { Allocation, VoteHead } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getCurrentPeriod } from "@/server/periods";
 import { saveOpeningBalances, saveVoteHeadRates } from "@/server/queries";
-import { createTransaction, updateTransaction, type LineRates } from "@/server/transactions";
+import { createTransaction, deleteTransaction, updateTransaction, type LineRates } from "@/server/transactions";
 
 export async function saveOpeningBalancesAction(
   _prev: string | null,
@@ -155,4 +155,22 @@ export async function amendReceipt(
 
   revalidatePath(`/app/${accountId}`, "layout");
   redirect(`/app/${accountId}/receipts/${transactionId}/acknowledgement`);
+}
+
+export async function deleteReceipt(
+  _prev: string | null,
+  form: FormData,
+): Promise<string | null> {
+  const accountId = String(form.get("accountId") ?? "");
+  const transactionId = String(form.get("transactionId") ?? "");
+  const { user } = await loadBook(accountId);
+
+  try {
+    await deleteTransaction({ transactionId, accountId, userId: user.id, orgId: user.orgId });
+  } catch (e) {
+    return e instanceof Error ? e.message : "The receipt could not be deleted.";
+  }
+
+  revalidatePath(`/app/${accountId}`, "layout");
+  redirect(`/app/${accountId}/receipts`);
 }

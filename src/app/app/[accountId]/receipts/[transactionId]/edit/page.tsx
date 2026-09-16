@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { toKes } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getReceiptForEdit } from "@/server/queries";
+import { DeleteReceipt } from "../../delete-button";
 import { ReceiptForm } from "../../form";
 
 export default async function AmendReceiptPage({
@@ -48,6 +49,8 @@ export default async function AmendReceiptPage({
           ),
         }}
       />
+
+      <DeleteReceipt accountId={accountId} transactionId={receipt.id} />
     </>
   );
 }
