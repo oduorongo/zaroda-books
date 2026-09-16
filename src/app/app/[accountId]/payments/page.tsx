@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { balancesAfter, buildLedger, formatKes } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getTxns } from "@/server/queries";
@@ -25,8 +26,8 @@ export default async function PaymentsPage({
     <>
       <h1>Payments</h1>
       <p className="sub">
-        {school.name} — {account.name}, FY {fy.label}. Each payment is charged to one vote head and
-        to either cash or bank.
+        {school.name} — {account.name}, FY {fy.label}. Each payment is charged to one or more vote heads,
+        each with its own amount, and to either cash or bank.
       </p>
 
       <PaymentForm
@@ -41,8 +42,8 @@ export default async function PaymentsPage({
         <table>
           <thead>
             <tr>
-              <th>Date</th><th>VR no.</th><th>Particulars</th><th>Vote head</th>
-              <th className="n">Cash</th><th className="n">Bank</th>
+              <th>Date</th><th>VR no.</th><th>Particulars</th><th>Vote heads</th>
+              <th className="n">Cash</th><th className="n">Bank</th><th></th>
             </tr>
           </thead>
           <tbody>
@@ -51,15 +52,27 @@ export default async function PaymentsPage({
                 <td className="mono" style={{ color: "var(--muted)" }}>{p.date}</td>
                 <td className="mono">{p.kind === "payment" ? p.vrNo ?? "—" : "—"}</td>
                 <td>{p.particulars}</td>
-                <td><span className="code">{p.kind === "payment" ? p.allocations[0]?.voteHeadCode ?? "—" : "—"}</span></td>
+                <td>
+                  {p.kind === "payment" && p.allocations.length
+                    ? p.allocations.map((a) => (
+                        <span key={a.voteHeadCode} className="code" style={{ marginRight: ".4rem" }}>
+                          {a.voteHeadCode} {formatKes(a.amount)}
+                        </span>
+                      ))
+                    : "—"}
+                </td>
                 <td className="n">{p.kind === "payment" && p.cash ? formatKes(p.cash) : "—"}</td>
                 <td className="n">{p.kind === "payment" && p.bank ? formatKes(p.bank) : "—"}</td>
+                <td className="n">
+                  <Link className="note" href={`/app/${accountId}/payments/${p.id}/edit`}>Amend</Link>
+                </td>
               </tr>
             ))}
             <tr className="total">
               <td colSpan={4}>Total paid</td>
               <td className="n">{formatKes(totalCash)}</td>
               <td className="n">{formatKes(totalBank)}</td>
+              <td></td>
             </tr>
           </tbody>
         </table>

@@ -3,63 +3,69 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { formatKes, toCents, type VoteHead } from "@/domain";
-import { postPayment } from "./actions";
+import { amendPayment, postPayment } from "./actions";
+
+/** A posted payment reopened for amendment. */
+export interface PaymentDraft {
+  id: string;
+  date: string;
+  vrNo: string;
+  chequeNo: string;
+  particulars: string;
+  method: string;
+  amounts: Record<string, string>;
+}
+
+const num = (v: string) => {
+  const n = parseFloat(v.replace(/[^0-9.]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+};
 
 export function PaymentForm({
-  accountId, heads, balances, cashInHand,
+  accountId, heads, balances, cashInHand, payment,
 }: {
   accountId: string;
   heads: VoteHead[];
   balances: Record<string, number>;
   cashInHand: number;
+  payment?: PaymentDraft;
 }) {
-  const [error, action, pending] = useActionState(postPayment, null);
-  const [amount, setAmount] = useState("");
-  const [voteHead, setVoteHead] = useState(heads[0]?.code ?? "");
-  const [method, setMethod] = useState("bank");
+  const [error, action, pending] = useActionState(payment ? amendPayment : postPayment, null);
+  const [amounts, setAmounts] = useState<Record<string, string>>(payment?.amounts ?? {});
+  const [method, setMethod] = useState(payment?.method ?? "bank");
 
-  const asked = toCents(parseFloat(amount.replace(/[^0-9.]/g, "")) || 0);
-  const available = balances[voteHead] ?? 0;
-  const note = !asked
-    ? "Enter the amount to post."
-    : asked > available
-      ? `Virement: ${formatKes(asked - available)} over ${voteHead} will come from another vote head.`
-      : `${formatKes(available - asked)} will remain on ${voteHead}.`;
+  const charged = (code: string) => toCents(num(amounts[code] ?? ""));
+  // The payment is the sum of its lines, never a figure typed separately, so
+  // the allocations cannot fail to equal what was paid. Rule 2.
+  const total = heads.reduce((a, h) => a + charged(h.code), 0);
+  const overdrawn = heads.filter((h) => charged(h.code) > (balances[h.code] ?? 0));
 
   // Capitation is banked, so paying cash without drawing it first sends cash
   // in hand negative — and a month cannot close on a negative cash balance.
-  const shortOfCash = method === "cash" && asked > cashInHand;
+  const shortOfCash = method === "cash" && total > cashInHand;
+
+  const note = !total
+    ? "Enter an amount against each vote head this payment is charged to."
+    : overdrawn.length
+      ? `Virement: ${overdrawn.map((h) => h.code).join(", ")} ${
+          overdrawn.length > 1 ? "are" : "is"
+        } charged beyond what the vote holds.`
+      : `${formatKes(total)} across ${heads.filter((h) => charged(h.code) > 0).length} vote head(s).`;
 
   return (
     <form action={action} className="card">
       <input type="hidden" name="accountId" value={accountId} />
+      {payment && <input type="hidden" name="transactionId" value={payment.id} />}
 
       <div className="grid-4">
         <label className="field">Date
-          <input name="date" type="date" defaultValue={new Date().toISOString().slice(0, 10)} required />
+          <input name="date" type="date" defaultValue={payment?.date ?? new Date().toISOString().slice(0, 10)} required />
         </label>
         <label className="field">Voucher no.
-          <input name="vrNo" placeholder="VR/207" />
+          <input name="vrNo" placeholder="VR/207" defaultValue={payment?.vrNo} />
         </label>
         <label className="field">Cheque no.
-          <input name="chequeNo" placeholder="001432" />
-        </label>
-        <label className="field">Amount (KES)
-          <input name="amount" className="mono" inputMode="decimal" placeholder="0"
-            value={amount} onChange={(e) => setAmount(e.target.value)} required />
-        </label>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.6fr) minmax(0,1fr) minmax(0,.7fr)", gap: "1.25rem", marginTop: "1.25rem" }}>
-        <label className="field">Paid to / particulars
-          <input name="particulars" placeholder="Text Book Centre — exercise books" />
-        </label>
-        <label className="field">Vote head
-          <select name="voteHead" value={voteHead} onChange={(e) => setVoteHead(e.target.value)}>
-            {heads.map((h) => (
-              <option key={h.code} value={h.code}>{h.code} — {h.name}</option>
-            ))}
-          </select>
+          <input name="chequeNo" placeholder="001432" defaultValue={payment?.chequeNo} />
         </label>
         <label className="field">Paid by
           <select name="method" value={method} onChange={(e) => setMethod(e.target.value)}>
@@ -69,16 +75,61 @@ export function PaymentForm({
         </label>
       </div>
 
+      <label className="field" style={{ marginTop: "1.25rem" }}>Paid to / particulars
+        <input name="particulars" placeholder="Text Book Centre — exercise books" defaultValue={payment?.particulars} />
+      </label>
+
+      <div className="eyebrow" style={{ margin: "1.75rem 0 .6rem" }}>Charged to</div>
+      <div style={{ overflowX: "auto" }}>
+        <table>
+          <thead>
+            <tr>
+              <th>Vote head</th>
+              <th className="n">Amount</th>
+              <th className="n">On the vote</th>
+              <th className="n">Left after</th>
+            </tr>
+          </thead>
+          <tbody>
+            {heads.map((h) => {
+              const available = balances[h.code] ?? 0;
+              const line = charged(h.code);
+              return (
+                <tr key={h.code}>
+                  <td><span className="code" style={{ marginRight: ".6rem" }}>{h.code}</span>{h.name}</td>
+                  <td className="n">
+                    <input
+                      name={`amount_${h.code}`} className="mono" inputMode="decimal" placeholder="—"
+                      style={{ width: 118, textAlign: "right", padding: ".5rem .6rem" }}
+                      value={amounts[h.code] ?? ""}
+                      onChange={(e) => setAmounts({ ...amounts, [h.code]: e.target.value })}
+                    />
+                  </td>
+                  <td className="n" style={{ color: "var(--muted)" }}>{formatKes(available)}</td>
+                  <td className="n" style={line > available ? { color: "var(--alarm)" } : undefined}>
+                    {line ? formatKes(available - line) : "—"}
+                  </td>
+                </tr>
+              );
+            })}
+            <tr className="total">
+              <td colSpan={3}>Total paid</td>
+              <td className="n">{formatKes(total)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
       <div style={{ display: "flex", alignItems: "center", gap: "1.1rem", marginTop: "1.4rem", flexWrap: "wrap" }}>
-        <button type="submit" className="btn btn-primary" disabled={pending}>
-          {pending ? "Posting…" : "Post payment"}
+        <button type="submit" className="btn btn-primary" disabled={pending || !total}>
+          {pending ? "Saving…" : payment ? "Save changes" : "Post payment"}
         </button>
         <div className="note">{note}</div>
       </div>
       {shortOfCash && (
         <p className="note" style={{ marginTop: ".9rem", color: "var(--alarm)" }}>
           Cash in hand is {formatKes(cashInHand)}, so this leaves it{" "}
-          {formatKes(asked - cashInHand)} short. Draw the cash from the bank first on the{" "}
+          {formatKes(total - cashInHand)} short. Draw the cash from the bank first on the{" "}
           <Link href={`/app/${accountId}/cash-and-bank`}>cash and bank</Link> page — a month cannot
           be closed while cash in hand is negative.
         </p>

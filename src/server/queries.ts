@@ -229,3 +229,33 @@ export async function getReceiptForEdit(transactionId: string, accountId: string
     ) as Record<string, HeadRate>,
   };
 }
+
+/** One posted payment in the shape the payment form amends. */
+export async function getPaymentForEdit(transactionId: string, accountId: string) {
+  const [txn] = await db
+    .select()
+    .from(schema.transactions)
+    .where(eq(schema.transactions.id, transactionId));
+  if (!txn || txn.kind !== "payment") return null;
+
+  const lines = await db
+    .select({ code: schema.voteHeads.code, amount: schema.allocations.amount })
+    .from(schema.allocations)
+    .innerJoin(schema.voteHeads, eq(schema.allocations.voteHeadId, schema.voteHeads.id))
+    .where(
+      and(
+        eq(schema.allocations.transactionId, transactionId),
+        eq(schema.voteHeads.accountId, accountId),
+      ),
+    );
+
+  return {
+    id: txn.id,
+    date: txn.date,
+    vrNo: txn.vrNo ?? "",
+    chequeNo: txn.chequeNo ?? "",
+    particulars: txn.particulars,
+    method: txn.cash > 0 ? "cash" : "bank",
+    amounts: Object.fromEntries(lines.map((l) => [l.code, l.amount])),
+  };
+}
