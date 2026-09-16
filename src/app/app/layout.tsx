@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/server/auth";
 import { getOrgBooks } from "@/server/queries";
 import { logout } from "../login/actions";
+import { Logo } from "../logo";
 import { BookSwitcher } from "./book-switcher";
 import { SideNav } from "./side-nav";
 
@@ -14,8 +15,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="shell">
       <nav className="sidebar">
-        <div className="mono" style={{ letterSpacing: ".12em", fontSize: ".75rem", textTransform: "uppercase", color: "var(--paper)" }}>
-          Zaroda&nbsp;Books
+        <div style={{ display: "flex", alignItems: "center", gap: ".7rem" }}>
+          <Logo height={34} priority />
+          <div className="mono" style={{ letterSpacing: ".12em", fontSize: ".72rem", textTransform: "uppercase", color: "var(--paper)" }}>
+            Zaroda&nbsp;Books
+          </div>
         </div>
 
         <div>

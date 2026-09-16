@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Logo } from "./logo";
 
 export function AuthLayout({
   title, subtitle, aside, children,
@@ -11,8 +12,9 @@ export function AuthLayout({
   return (
     <main className="auth">
       <aside>
-        <div className="mono" style={{ letterSpacing: ".14em", fontSize: ".8rem", textTransform: "uppercase", color: "var(--paper)" }}>
-          Zaroda&nbsp;Books
+        {/* Wrapped: the aside is a column flexbox, which would stretch the image itself. */}
+        <div>
+          <Logo height={104} variant="lockup" priority />
         </div>
         <div>
           <div style={{ fontFamily: "var(--font-heading)", color: "var(--paper)", fontSize: "2.1rem", lineHeight: 1.15, fontWeight: 600, marginBottom: "1.1rem", textWrap: "pretty" }}>

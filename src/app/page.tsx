@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Logo } from "./logo";
 
 const steps = [
   { no: "01", title: "Create the book", body: "School, level, account type and financial year. The chart of accounts and the twelve periods open with it." },
@@ -20,8 +21,11 @@ export default function Home() {
     <main>
       <div className="dark-band">
         <div className="wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1.5rem", flexWrap: "wrap" }}>
-          <div className="mono" style={{ letterSpacing: ".14em", fontSize: ".8rem", textTransform: "uppercase" }}>
-            Zaroda&nbsp;Books
+          <div style={{ display: "flex", alignItems: "center", gap: ".9rem" }}>
+            <Logo height={38} priority />
+            <div className="mono" style={{ letterSpacing: ".14em", fontSize: ".8rem", textTransform: "uppercase", borderLeft: "1px solid rgba(251,250,247,.3)", paddingLeft: ".9rem" }}>
+              Zaroda&nbsp;Books
+            </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "1.75rem", fontSize: ".9rem" }}>
             <a href="#how">How it works</a>
@@ -154,7 +158,8 @@ export default function Home() {
           <Link href="/signup" className="btn btn-gold" style={{ color: "#fff", textDecoration: "none" }}>Create account</Link>
         </div>
         <div style={{ borderTop: "1px solid rgba(251,250,247,.14)" }}>
-          <div className="wrap" style={{ padding: "1.9rem 2.5rem", display: "flex", gap: "2.75rem", flexWrap: "wrap", fontSize: ".9rem" }}>
+          <div className="wrap" style={{ padding: "1.9rem 2.5rem", display: "flex", gap: "2.75rem", flexWrap: "wrap", alignItems: "center", fontSize: ".9rem" }}>
+            <Logo height={86} variant="lockup" />
             <div>
               <div className="eyebrow" style={{ color: "var(--on-dark-dim)", marginBottom: ".35rem" }}>WhatsApp</div>
               <a href="https://wa.me/254781230805" style={{ color: "var(--paper)" }}>0781 230 805</a>
