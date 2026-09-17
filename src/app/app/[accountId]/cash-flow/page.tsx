@@ -4,6 +4,7 @@ import { getTxns, upTo } from "@/server/queries";
 import { getReportPeriod, monthKey, monthName } from "@/server/periods";
 import { BookTabs } from "../book-tabs";
 import { MonthPicker } from "../month-picker";
+import { ReportShell } from "../report-shell";
 
 export default async function Page({ params, searchParams }: {
   params: Promise<{ accountId: string }>;
@@ -29,11 +30,13 @@ export default async function Page({ params, searchParams }: {
   ];
 
   return (
-    <>
-      <h1>Cash flow statement</h1>
-      <p className="sub">
-        Year to date, {cf.asAt} — {school.name}, {account.name} account
-      </p>
+    <ReportShell
+      title="Cash flow statement"
+      sub={<>Year to date, {cf.asAt} — {school.name}, {account.name} account</>}
+      school={school.name} account={account.name} fyLabel={fy.label}
+      period={`Year to date, ${cf.asAt}`}
+      csvHref={`/app/${accountId}/cash-flow/export?month=${monthKey(period.month)}`}
+    >
       <BookTabs accountId={accountId} active="cash-flow" />
       <MonthPicker accountId={accountId} report="cash-flow" periods={periods} active={monthKey(period.month)} posted={posted} />
 
@@ -64,6 +67,6 @@ export default async function Page({ params, searchParams }: {
           </div>
         </div>
       </div>
-    </>
+    </ReportShell>
   );
 }

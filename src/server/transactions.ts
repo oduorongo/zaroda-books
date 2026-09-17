@@ -2,7 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { db, schema } from "@/db";
 import { and, eq } from "drizzle-orm";
-import { validateTransaction } from "@/domain";
+import { bankingContraFor, validateTransaction } from "@/domain";
 import type { NewTxn, Txn } from "@/domain";
 
 /** The circular figures behind each allocation line, by vote head code. */
@@ -20,6 +20,8 @@ export async function createTransaction(input: {
   txn: NewTxn;
   enrolment?: number;
   rates?: LineRates;
+  /** Bank this receipt the same call: the contra lands in the same batch. */
+  banking?: { date: string };
 }) {
   const period = await db.query.periods.findFirst({
     where: eq(schema.periods.id, input.periodId),
@@ -78,17 +80,59 @@ export async function createTransaction(input: {
     after: JSON.stringify(candidate),
   };
 
+  const banking = input.banking && t.kind === "receipt"
+    ? await bankingRow(t, input.banking.date, id, period.financialYearId, input.userId)
+    : null;
+
   // The Neon HTTP driver has no interactive transactions; `batch` is Neon's
-  // atomic multi-statement call, so the transaction, its allocations and the
-  // audit row still land together or not at all.
+  // atomic multi-statement call, so the transaction, its allocations, its
+  // banking and the audit row still land together or not at all.
   const writes = [
     db.insert(schema.transactions).values(row),
     ...(allocationRows.length ? [db.insert(schema.allocations).values(allocationRows)] : []),
+    ...(banking ? [db.insert(schema.transactions).values(banking)] : []),
     db.insert(schema.auditLog).values(audit),
   ] as const;
   await db.batch(writes as unknown as Parameters<typeof db.batch>[0]);
 
   return id;
+}
+
+/**
+ * The banking leg of a receipt. It carries `bankedFrom`, so the pair stays
+ * together through an amendment and goes together on a delete.
+ */
+async function bankingRow(
+  receipt: Extract<NewTxn, { kind: "receipt" }>,
+  date: string,
+  receiptId: string,
+  financialYearId: string,
+  userId: string,
+) {
+  const contra = bankingContraFor(receipt, date);
+  const period = await db.query.periods.findFirst({
+    where: and(
+      eq(schema.periods.financialYearId, financialYearId),
+      eq(schema.periods.month, `${date.slice(0, 7)}-01`),
+    ),
+  });
+  if (!period) throw new Error("The banking date falls outside this financial year.");
+  if (period.status === "closed")
+    throw new Error("The month you are banking into is closed. Reopen it, or bank on another date.");
+
+  return {
+    id: randomUUID(),
+    periodId: period.id,
+    date: contra.date,
+    kind: "contra" as const,
+    particulars: contra.particulars,
+    cash: contra.amount,
+    bank: contra.amount,
+    contraFrom: contra.from,
+    contraTo: contra.to,
+    bankedFrom: receiptId,
+    createdBy: userId,
+  };
 }
 
 /**
@@ -105,6 +149,8 @@ export async function updateTransaction(input: {
   txn: NewTxn;
   enrolment?: number;
   rates?: LineRates;
+  /** A date rebanks the amended receipt; null leaves the money in the cash box. */
+  banking?: { date: string } | null;
 }) {
   const existing = await db.query.transactions.findFirst({
     where: eq(schema.transactions.id, input.transactionId),
@@ -177,10 +223,32 @@ export async function updateTransaction(input: {
     after: JSON.stringify(candidate),
   };
 
+  // The banking follows the receipt: rewritten when the amount or the banking
+  // date moves, dropped when the money is no longer banked.
+  const banked = await db.query.transactions.findFirst({
+    where: eq(schema.transactions.bankedFrom, id),
+  });
+  const wants = t.kind === "receipt" ? input.banking ?? null : null;
+  const fresh = wants
+    ? await bankingRow(t as Extract<NewTxn, { kind: "receipt" }>, wants.date, id, from.financialYearId, input.userId)
+    : null;
+
+  const bankingWrites = [
+    ...(banked && (!fresh || banked.date !== fresh.date)
+      ? [db.delete(schema.transactions).where(eq(schema.transactions.id, banked.id))]
+      : []),
+    ...(fresh && banked && banked.date === fresh.date
+      ? [db.update(schema.transactions)
+          .set({ cash: fresh.cash, bank: fresh.bank, particulars: fresh.particulars })
+          .where(eq(schema.transactions.id, banked.id))]
+      : fresh ? [db.insert(schema.transactions).values(fresh)] : []),
+  ];
+
   const writes = [
     db.update(schema.transactions).set(row).where(eq(schema.transactions.id, id)),
     db.delete(schema.allocations).where(eq(schema.allocations.transactionId, id)),
     ...(allocationRows.length ? [db.insert(schema.allocations).values(allocationRows)] : []),
+    ...bankingWrites,
     db.insert(schema.auditLog).values(audit),
   ] as const;
   await db.batch(writes as unknown as Parameters<typeof db.batch>[0]);

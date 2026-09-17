@@ -1,0 +1,2 @@
+ALTER TABLE "transactions" ADD COLUMN "banked_from" uuid;--> statement-breakpoint
+ALTER TABLE "transactions" ADD CONSTRAINT "transactions_banked_from_transactions_id_fk" FOREIGN KEY ("banked_from") REFERENCES "public"."transactions"("id") ON DELETE cascade ON UPDATE no action;

@@ -5,6 +5,7 @@ import { before, getTxns, inMonth } from "@/server/queries";
 import { getReportPeriod, monthKey, monthName } from "@/server/periods";
 import { BookTabs } from "../book-tabs";
 import { MonthPicker } from "../month-picker";
+import { ReportShell } from "../report-shell";
 
 const Amount = ({ c }: { c: number }) =>
   c === 0 ? <span className="zero">&ndash;</span> : <>{formatKes(c)}</>;
@@ -102,17 +103,20 @@ export default async function Page({ params, searchParams }: {
   };
 
   return (
-    <>
-      <h1>Analysed cash book</h1>
-      <p className="sub">
-        {monthName(period.month)} — {school.name}, {account.name} account
-      </p>
+    <ReportShell
+      title="Analysed cash book"
+      sub={<>{monthName(period.month)} — {school.name}, {account.name} account</>}
+      school={school.name} account={account.name} fyLabel={fy.label}
+      period={monthName(period.month)}
+      csvHref={`/app/${accountId}/cash-book/export?month=${month}`}
+      landscape
+    >
       <BookTabs accountId={accountId} active="cash-book" />
       <MonthPicker accountId={accountId} report="cash-book" periods={periods} active={month} posted={posted} />
       {side("Receipts", cb.receipts, cb.receiptTotals,
         { label: "Balance brought down", balances: cb.opening }, true)}
       {side("Payments", cb.payments, cb.paymentTotals,
         { label: "Balance carried down", balances: cb.closing }, false)}
-    </>
+    </ReportShell>
   );
 }

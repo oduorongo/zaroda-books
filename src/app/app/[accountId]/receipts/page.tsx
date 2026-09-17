@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { buildLedger, formatKes, toKes } from "@/domain";
 import { loadBook } from "@/server/book-context";
-import { getTxns } from "@/server/queries";
+import { getTxns, getVoteHeadRates } from "@/server/queries";
 import { ReceiptForm } from "./form";
 import { OpeningBalances } from "./opening-balances";
+import { ReportShell } from "../report-shell";
 
 export default async function ReceiptsPage({
   params,
@@ -17,19 +18,33 @@ export default async function ReceiptsPage({
   const received = Object.fromEntries(
     buildLedger(txns, heads).map((l) => [l.code, l.cr]),
   );
+
+  // The form opens on the circular's figures for the year rather than a blank
+  // grid: the bursar checks them against the circular instead of retyping it.
+  const rates = await getVoteHeadRates(fy.id);
+  const figure = (cents?: number) => (cents ? String(toKes(cents)) : "");
+  const defaults = Object.fromEntries(
+    heads.map((h) => [h.code, {
+      rate: figure(rates[h.code]?.perLearner),
+      flat: figure(rates[h.code]?.flatAmount),
+    }]),
+  );
   const receipts = txns
     .filter((t) => t.kind === "receipt")
     .sort((a, b) => b.date.localeCompare(a.date));
   const totalReceived = receipts.reduce((a, r) => a + (r.kind === "receipt" ? r.cash + r.bank : 0), 0);
 
   return (
-    <>
-      <h1>Receipts</h1>
-      <p className="sub">
+    <ReportShell
+      title="Receipts"
+      sub={<>
         {school.name} — {account.name}, FY {fy.label}. Enter the amount received and the rates per
         learner in force. The system derives the enrolment from the amount and the vote heads used,
         then distributes the receipt so the split equals the amount received to the shilling.
-      </p>
+      </>}
+      school={school.name} account={account.name} fyLabel={fy.label}
+      csvHref={`/app/${accountId}/receipts/export`}
+    >
 
       <OpeningBalances
         accountId={accountId}
@@ -38,7 +53,7 @@ export default async function ReceiptsPage({
         openingBank={fy.openingBank ? String(toKes(fy.openingBank)) : ""}
       />
 
-      <ReceiptForm accountId={accountId} heads={heads} />
+      <ReceiptForm accountId={accountId} heads={heads} defaults={defaults} />
 
       <div className="grid-2" style={{ marginTop: "1.6rem", alignItems: "start" }}>
         <div className="card">
@@ -83,6 +98,6 @@ export default async function ReceiptsPage({
           ))}
         </div>
       </div>
-    </>
+    </ReportShell>
   );
 }

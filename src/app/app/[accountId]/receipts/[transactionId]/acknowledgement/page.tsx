@@ -5,6 +5,7 @@ import { loadBook } from "@/server/book-context";
 import { getTxns } from "@/server/queries";
 import { db, schema } from "@/db";
 import { eq } from "drizzle-orm";
+import { PrintButton } from "../../../print-button";
 
 export default async function AcknowledgementPage({
   params,
@@ -32,7 +33,7 @@ export default async function AcknowledgementPage({
         <Link href={`/app/${accountId}/receipts`}>← Back to receipts</Link>
         <span style={{ display: "flex", gap: "1.1rem", alignItems: "center" }}>
           <Link href={`/app/${accountId}/receipts/${transactionId}/edit`}>Amend this receipt</Link>
-          <span className="note">Print this page to return it to the Ministry.</span>
+          <PrintButton />
         </span>
       </div>
 

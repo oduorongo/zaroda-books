@@ -35,6 +35,12 @@ becomes the finance module of ZARODA SMS.
 9. Ledger convention, taken from the source workbooks: a receipt allocated to
    a vote head credits it, a payment debits it, so an unspent vote carries a
    credit balance.
+10. Money reaches the school in cash and is then banked. A receipt is entered
+   in the cash column and a banking contra carries it to bank, linked by
+   `transactions.banked_from` so the pair is amended and deleted together.
+   The vote heads are analysed once, on the receipt; the contra touches none
+   (rule 3). The bursar may untick "Banked" for a receipt that stays in the
+   cash box, and may bank it on a later date than the receipt.
 
 ## Where things live
 

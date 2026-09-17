@@ -215,12 +215,18 @@ export async function getReceiptForEdit(transactionId: string, accountId: string
       ),
     );
 
+  const [banking] = await db
+    .select({ date: schema.transactions.date })
+    .from(schema.transactions)
+    .where(eq(schema.transactions.bankedFrom, transactionId));
+
   return {
     id: txn.id,
     date: txn.date,
     receiptNo: txn.receiptNo ?? "",
     particulars: txn.particulars,
     amount: txn.cash + txn.bank,
+    bankedOn: banking?.date ?? null,
     rates: Object.fromEntries(
       lines.map((l) => [l.code, {
         perLearner: l.perLearner ?? 0,

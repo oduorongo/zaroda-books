@@ -41,6 +41,7 @@ export default async function AmendReceiptPage({
           receiptNo: receipt.receiptNo,
           particulars: receipt.particulars,
           amount: figure(receipt.amount),
+          bankedOn: receipt.bankedOn,
           entries: Object.fromEntries(
             heads.map((h) => [h.code, {
               rate: figure(receipt.rates[h.code]?.perLearner ?? 0),

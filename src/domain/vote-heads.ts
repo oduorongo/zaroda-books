@@ -1,6 +1,6 @@
-import type { Cents } from "./money";
-import { toCents } from "./money";
-import type { VoteHead } from "./types";
+import type { Cents } from "./money.ts";
+import { toCents } from "./money.ts";
+import type { VoteHead } from "./types.ts";
 
 export type SchoolLevel = "primary" | "junior" | "senior";
 
@@ -114,8 +114,11 @@ export const CHART_OF_ACCOUNTS: Record<SchoolLevel, Partial<Record<AccountType, 
   junior: {
     TUITION: {
       label: "Tuition",
-      source: "FDJSE circular MOE.HQs/3/7/33(15), 24 June 2024 — KSh 1,746.38 per learner banked",
+      source:
+        "FDJSE circular MOE.HQs/3/7/33(15), 24 June 2024 — KSh 1,746.38 per learner " +
+        "plus a flat KSh 696.97 per school (Table 1A)",
       heads: heads(
+        ["TGR", "Teachers guides and reference materials", undefined, 696.97],
         ["LAB", "Laboratory materials", 135.00],
         ["MFP", "Materials for practicals under CBC", 740.00],
         ["ASS", "Assessment", 209.38],
@@ -127,17 +130,17 @@ export const CHART_OF_ACCOUNTS: Record<SchoolLevel, Partial<Record<AccountType, 
       label: "Operations",
       source:
         "FDJSE circular MOE.HQs/3/7/33(15), 24 June 2024 — KSh 1,976.00 per learner " +
-        "plus a flat KSh 274,444.00 basic allocation per school",
+        "plus a flat KSh 37,520.00 basic allocation per school (Table 1A)",
       heads: heads(
         ["RMI", "Repairs, maintenance and improvement", 1000.00],
         ["ADM", "Administrative costs", 275.00],
         ["ACT", "Co-curricular activities", 240.00],
         ["LTT", "Local transport and travel", 400.00],
         ["MED", "Medical and insurance", 61.00],
-        ["TEL", "Rental, box and postage, telephone, BOM meetings and capacity building", undefined, 58416.37],
-        ["EWC", "Electricity, water and conservancy", undefined, 4647.49],
-        ["INT", "Internet connectivity", undefined, 11667.14],
-        ["PER", "Personal emoluments", undefined, 199713.00],
+        ["TEL", "Rental, box and postage, telephone, BOM meetings and capacity building", undefined, 3620.00],
+        ["EWC", "Electricity, water and conservancy", undefined, 2880.00],
+        ["INT", "Internet connectivity and ICT integration", undefined, 4500.00],
+        ["PER", "Personal emoluments", undefined, 26520.00],
         BANK_CHARGES,
       ),
     },

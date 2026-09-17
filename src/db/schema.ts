@@ -1,5 +1,6 @@
 import {
   pgTable, uuid, text, integer, bigint, date, timestamp, boolean, unique, index,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
 /** A firm or a school group. Freelance accountants get one org, many schools. */
@@ -100,6 +101,12 @@ export const transactions = pgTable("transactions", {
   enrolment: integer("enrolment"),
   contraFrom: text("contra_from", { enum: ["cash", "bank"] }),
   contraTo: text("contra_to", { enum: ["cash", "bank"] }),
+  // Set on the banking contra that carries a receipt from cash to bank. It
+  // cascades, so amending or removing the receipt takes its banking with it and
+  // the two can never drift apart.
+  bankedFrom: uuid("banked_from").references((): AnyPgColumn => transactions.id, {
+    onDelete: "cascade",
+  }),
   createdBy: uuid("created_by").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => [index("txn_period_idx").on(t.periodId, t.date)]);

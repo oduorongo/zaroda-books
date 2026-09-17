@@ -3,6 +3,7 @@ import { balancesAfter, buildLedger, formatKes } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getTxns } from "@/server/queries";
 import { PaymentForm } from "./form";
+import { ReportShell } from "../report-shell";
 
 export default async function PaymentsPage({
   params,
@@ -23,12 +24,16 @@ export default async function PaymentsPage({
   const totalBank = payments.reduce((a, p) => a + (p.kind === "payment" ? p.bank : 0), 0);
 
   return (
-    <>
-      <h1>Payments</h1>
-      <p className="sub">
+    <ReportShell
+      title="Payments"
+      sub={<>
         {school.name} — {account.name}, FY {fy.label}. Each payment is charged to one or more vote heads,
         each with its own amount, and to either cash or bank.
-      </p>
+      </>}
+      school={school.name} account={account.name} fyLabel={fy.label}
+      csvHref={`/app/${accountId}/payments/export`}
+      landscape
+    >
 
       <PaymentForm
         accountId={accountId}
@@ -77,6 +82,6 @@ export default async function PaymentsPage({
           </tbody>
         </table>
       </div>
-    </>
+    </ReportShell>
   );
 }

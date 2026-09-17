@@ -1,4 +1,4 @@
-import type { Cents } from "./money";
+import type { Cents } from "./money.ts";
 
 export interface Allocation {
   voteHeadCode: string;

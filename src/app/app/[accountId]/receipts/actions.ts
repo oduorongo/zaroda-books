@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { allocateCapitationFromAmount, toCents } from "@/domain";
+import { allocateCapitationFromAmount, residualHeadCode, toCents } from "@/domain";
 import type { Allocation, VoteHead } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getPeriodForDate } from "@/server/periods";
@@ -35,6 +35,8 @@ interface ReadResult {
   enrolment: number;
   allocations: Allocation[];
   rates: LineRates;
+  /** null when the money stays in the cash box rather than being banked. */
+  banking: { date: string } | null;
 }
 
 /**
@@ -45,6 +47,7 @@ function readReceiptForm(form: FormData, heads: VoteHead[]): ReadResult {
   const empty = {
     date: "", receiptNo: "", particulars: "", amount: 0,
     enrolment: 0, allocations: [] as Allocation[], rates: {} as LineRates,
+    banking: null,
   };
 
   const date = String(form.get("date") ?? "");
@@ -67,9 +70,10 @@ function readReceiptForm(form: FormData, heads: VoteHead[]): ReadResult {
     return { ...empty, error: "Enter at least one rate per learner, or a flat amount, from the circular." };
   }
 
-  // The last head in the chart is the basic/residual vote: the rounding residue
-  // falls there so the split equals the disbursement to the cent.
-  const basic = { voteHeadCode: heads[heads.length - 1].code };
+  // The rounding residue falls to the largest per-learner vote so the split
+  // equals the disbursement to the cent. Not the last head in the chart: a head
+  // added later would then quietly start collecting the residue.
+  const basic = { voteHeadCode: residualHeadCode(rateList, flatList, heads.map((h) => h.code)) };
   const { enrolment, allocations } = allocateCapitationFromAmount(amount, rateList, basic, flatList);
   if (rateList.length && enrolment <= 0) {
     return { ...empty, error: "Nothing is left for the per-learner rates once the flat amounts come off. Check the circular." };
@@ -82,7 +86,18 @@ function readReceiptForm(form: FormData, heads: VoteHead[]): ReadResult {
     if (perLearner || flatAmount) rates[h.code] = { perLearner, flatAmount };
   }
 
-  return { date, receiptNo, particulars, amount, enrolment, allocations, rates };
+  // The money is received in cash and banked; the tick comes off only for a
+  // receipt that stays in the cash box.
+  const banked = form.get("banked") !== null;
+  const bankedOn = String(form.get("bankedOn") ?? "").trim() || date;
+  if (banked && bankedOn < date) {
+    return { ...empty, error: "The banking cannot be dated before the receipt." };
+  }
+
+  return {
+    date, receiptNo, particulars, amount, enrolment, allocations, rates,
+    banking: banked ? { date: bankedOn } : null,
+  };
 }
 
 export async function postReceipt(
@@ -112,10 +127,11 @@ export async function postReceipt(
         kind: "receipt",
         particulars: r.particulars || `Receipt ${r.receiptNo}`,
         receiptNo: r.receiptNo || undefined,
-        cash: 0,
-        bank: r.amount,
+        cash: r.amount,
+        bank: 0,
         allocations: r.allocations,
       },
+      banking: r.banking ?? undefined,
     });
   } catch (e) {
     return e instanceof Error ? e.message : "The receipt could not be posted.";
@@ -149,10 +165,11 @@ export async function amendReceipt(
         kind: "receipt",
         particulars: r.particulars || `Receipt ${r.receiptNo}`,
         receiptNo: r.receiptNo || undefined,
-        cash: 0,
-        bank: r.amount,
+        cash: r.amount,
+        bank: 0,
         allocations: r.allocations,
       },
+      banking: r.banking,
     });
   } catch (e) {
     return e instanceof Error ? e.message : "The amendment could not be saved.";

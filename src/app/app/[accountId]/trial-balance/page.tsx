@@ -4,6 +4,7 @@ import { getTxns, upTo } from "@/server/queries";
 import { getReportPeriod, monthKey, monthName } from "@/server/periods";
 import { BookTabs } from "../book-tabs";
 import { MonthPicker } from "../month-picker";
+import { ReportShell } from "../report-shell";
 
 export default async function Page({ params, searchParams }: {
   params: Promise<{ accountId: string }>;
@@ -23,9 +24,13 @@ export default async function Page({ params, searchParams }: {
   );
 
   return (
-    <>
-      <h1>Trial balance as at {tb.asAt}</h1>
-      <p className="sub">{school.name} &mdash; {account.name} account</p>
+    <ReportShell
+      title={`Trial balance as at ${tb.asAt}`}
+      sub={<>{school.name} &mdash; {account.name} account</>}
+      school={school.name} account={account.name} fyLabel={fy.label}
+      period={`As at ${tb.asAt}`}
+      csvHref={`/app/${accountId}/trial-balance/export?month=${monthKey(period.month)}`}
+    >
       <BookTabs accountId={accountId} active="trial-balance" />
       <MonthPicker accountId={accountId} report="trial-balance" periods={periods} active={monthKey(period.month)} posted={posted} />
       <table>
@@ -56,6 +61,6 @@ export default async function Page({ params, searchParams }: {
           ? "The book balances. This month can be closed."
           : `Out by ${formatKes(tb.difference)}. Find the entry before closing.`}
       </p>
-    </>
+    </ReportShell>
   );
 }

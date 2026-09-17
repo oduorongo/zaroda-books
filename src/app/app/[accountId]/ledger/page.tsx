@@ -4,6 +4,7 @@ import { getTxns, upTo } from "@/server/queries";
 import { getReportPeriod, monthKey, monthName } from "@/server/periods";
 import { BookTabs } from "../book-tabs";
 import { MonthPicker } from "../month-picker";
+import { ReportShell } from "../report-shell";
 
 export default async function Page({ params, searchParams }: {
   params: Promise<{ accountId: string }>;
@@ -24,11 +25,14 @@ export default async function Page({ params, searchParams }: {
   );
 
   return (
-    <>
-      <h1>Ledger accounts</h1>
-      <p className="sub">
-        Year to date, {monthName(period.month)} — {school.name}, {account.name} account
-      </p>
+    <ReportShell
+      title="Ledger accounts"
+      sub={<>Year to date, {monthName(period.month)} — {school.name}, {account.name} account</>}
+      school={school.name} account={account.name} fyLabel={fy.label}
+      period={`Year to date, ${monthName(period.month)}`}
+      csvHref={`/app/${accountId}/ledger/export?month=${month}`}
+      landscape
+    >
       <BookTabs accountId={accountId} active="ledger" />
       <MonthPicker accountId={accountId} report="ledger" periods={periods} active={month} posted={posted} />
       <table>
@@ -62,6 +66,6 @@ export default async function Page({ params, searchParams }: {
           </tr>
         </tbody>
       </table>
-    </>
+    </ReportShell>
   );
 }

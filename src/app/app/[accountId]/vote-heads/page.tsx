@@ -2,6 +2,7 @@ import { formatKes } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getVoteHeadRates } from "@/server/queries";
 import { AddVoteHeadForm } from "./form";
+import { ReportShell } from "../report-shell";
 
 export default async function VoteHeadsPage({
   params,
@@ -13,13 +14,16 @@ export default async function VoteHeadsPage({
   const rates = await getVoteHeadRates(fy.id);
 
   return (
-    <>
-      <h1>Vote heads</h1>
-      <p className="sub">
+    <ReportShell
+      title="Vote heads"
+      sub={<>
         {school.name} — {account.name}, FY {fy.label}. The chart opened with the account holds only
         what the Ministry banks for the school; centrally procured items are left out. Add heads of
         your own below — existing ones are never renumbered.
-      </p>
+      </>}
+      school={school.name} account={account.name} fyLabel={fy.label}
+      csvHref={`/app/${accountId}/vote-heads/export`}
+    >
 
       <div className="card" style={{ maxWidth: 820 }}>
         <table>
@@ -49,8 +53,8 @@ export default async function VoteHeadsPage({
         </table>
       </div>
 
-      <h2>Add a vote head</h2>
+      <h2 className="no-print">Add a vote head</h2>
       <AddVoteHeadForm accountId={accountId} />
-    </>
+    </ReportShell>
   );
 }

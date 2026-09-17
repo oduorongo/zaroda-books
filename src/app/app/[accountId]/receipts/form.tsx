@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { allocateCapitationFromAmount, formatKes, toCents, type VoteHead } from "@/domain";
+import { allocateCapitationFromAmount, enrolmentFit, formatKes, residualHeadCode, toCents, type VoteHead } from "@/domain";
 import { amendReceipt, postReceipt } from "./actions";
 
 interface HeadEntry { rate: string; flat: string }
@@ -14,6 +14,8 @@ export interface ReceiptDraft {
   particulars: string;
   amount: string;
   entries: Record<string, HeadEntry>;
+  /** The date this receipt was banked, or null if it stayed in the cash box. */
+  bankedOn: string | null;
 }
 
 const num = (v: string) => {
@@ -22,15 +24,24 @@ const num = (v: string) => {
 };
 
 export function ReceiptForm({
-  accountId, heads, receipt,
+  accountId, heads, receipt, defaults,
 }: {
   accountId: string;
   heads: VoteHead[];
   receipt?: ReceiptDraft;
+  /** The rates in force for the year, so the circular is already on the form. */
+  defaults?: Record<string, HeadEntry>;
 }) {
   const [error, action, pending] = useActionState(receipt ? amendReceipt : postReceipt, null);
   const [amount, setAmount] = useState(receipt?.amount ?? "");
-  const [entries, setEntries] = useState<Record<string, HeadEntry>>(receipt?.entries ?? {});
+  const today = new Date().toISOString().slice(0, 10);
+  const [date, setDate] = useState(receipt?.date ?? today);
+  // Every shilling arrives as cash and is banked, so the tick starts on.
+  const [banked, setBanked] = useState(receipt ? receipt.bankedOn !== null : true);
+  const [bankedOn, setBankedOn] = useState(receipt?.bankedOn ?? receipt?.date ?? today);
+  const [entries, setEntries] = useState<Record<string, HeadEntry>>(
+    receipt?.entries ?? defaults ?? {},
+  );
 
   const entry = (code: string) => entries[code] ?? { rate: "", flat: "" };
   const set = (code: string, field: keyof HeadEntry, value: string) =>
@@ -45,7 +56,7 @@ export function ReceiptForm({
   const flatList = heads
     .map((h) => ({ voteHeadCode: h.code, amount: toCents(num(entry(h.code).flat)) }))
     .filter((f) => f.amount > 0);
-  const basic = { voteHeadCode: heads[heads.length - 1]?.code ?? "" };
+  const basic = { voteHeadCode: residualHeadCode(rateList, flatList, heads.map((h) => h.code)) };
 
   const { enrolment, allocations } = disbursed > 0 && (rateList.length || flatList.length)
     ? allocateCapitationFromAmount(disbursed, rateList, basic, flatList)
@@ -53,6 +64,14 @@ export function ReceiptForm({
   const byCode = Object.fromEntries(allocations.map((a) => [a.voteHeadCode, a.amount]));
   const distributed = allocations.reduce((a, x) => a + x.amount, 0);
   const flatTotal = flatList.reduce((a, f) => a + f.amount, 0);
+
+  // Whole cents times whole learners is exact, so any difference at all means
+  // the amount, a rate or a flat disagrees with the others. Say so before it is
+  // posted rather than rounding it into the residual vote unnoticed.
+  const fit = disbursed > 0 && (rateList.length || flatList.length)
+    ? enrolmentFit(disbursed, rateList, flatList)
+    : null;
+  const mismatch = fit && fit.difference !== 0 ? fit : null;
 
   const note = !disbursed
     ? "Enter the amount received, then the rates and any flat amounts from the circular."
@@ -71,7 +90,12 @@ export function ReceiptForm({
 
       <div className="grid-4">
         <label className="field">Date
-          <input name="date" type="date" defaultValue={receipt?.date ?? new Date().toISOString().slice(0, 10)} required />
+          <input name="date" type="date" value={date} required
+            onChange={(e) => {
+              setDate(e.target.value);
+              // The banking follows the receipt unless it has been moved on purpose.
+              if (bankedOn < e.target.value) setBankedOn(e.target.value);
+            }} />
         </label>
         <label className="field">Receipt no.
           <input name="receiptNo" placeholder="RV/014" defaultValue={receipt?.receiptNo} />
@@ -91,6 +115,23 @@ export function ReceiptForm({
       <label className="field" style={{ marginTop: "1.25rem" }}>Particulars
         <input name="particulars" placeholder="Capitation disbursement, Term 1" defaultValue={receipt?.particulars} />
       </label>
+
+      <div style={{ display: "flex", alignItems: "center", gap: "1.25rem", marginTop: "1.25rem", flexWrap: "wrap" }}>
+        <label style={{ display: "flex", alignItems: "center", gap: ".5rem" }}>
+          <input type="checkbox" name="banked" checked={banked}
+            onChange={(e) => setBanked(e.target.checked)} />
+          Banked
+        </label>
+        <label className="field" style={{ margin: 0 }}>Banked on
+          <input name="bankedOn" type="date" value={bankedOn} min={date} disabled={!banked}
+            onChange={(e) => setBankedOn(e.target.value)} />
+        </label>
+        <p className="note" style={{ flex: "1 1 18rem", margin: 0 }}>
+          {banked
+            ? "The receipt is entered in cash and a contra banks it on the date shown. Untick it only if the money stayed in the cash box."
+            : "The money stays in cash. Bank it later from Cash and bank."}
+        </p>
+      </div>
 
       <div className="eyebrow" style={{ margin: "1.75rem 0 .6rem" }}>Vote distribution per circular</div>
       <div style={{ overflowX: "auto" }}>
@@ -139,6 +180,21 @@ export function ReceiptForm({
           </tbody>
         </table>
       </div>
+
+      {mismatch && (
+        <div style={{ marginTop: "1.25rem", padding: "1rem 1.1rem", borderRadius: 3, border: "1px solid var(--alarm)", background: "#fdf6f4" }}>
+          <div style={{ fontWeight: 600, color: "var(--alarm)" }}>
+            {mismatch.difference < 0
+              ? `${formatKes(-mismatch.difference)} short of the rates at ${mismatch.learners.toLocaleString("en-KE")} learners`
+              : `${formatKes(mismatch.difference)} more than the rates account for at ${mismatch.learners.toLocaleString("en-KE")} learners`}
+          </div>
+          <p className="note" style={{ marginTop: ".4rem" }}>
+            The amount divides to {mismatch.exact.toFixed(2)} learners, not a whole number. Check the
+            amount received, each rate against the circular, and whether the bank deducted charges
+            from the credit. You can still post: the difference falls on {basic.voteHeadCode}.
+          </p>
+        </div>
+      )}
 
       <div style={{ display: "flex", alignItems: "center", gap: "1.1rem", marginTop: "1.25rem", flexWrap: "wrap" }}>
         <button type="submit" className="btn btn-primary" disabled={pending || !distributed}>

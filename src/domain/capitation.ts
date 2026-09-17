@@ -68,6 +68,59 @@ export function deriveEnrolment(
   return Math.round(perLearnerPart / rateSum);
 }
 
+/**
+ * The head the rounding residue falls to. It is the largest per-learner vote,
+ * so a few cents disappear into the biggest figure on the receipt rather than
+ * into a head the circular funds at zero. It is never a flat grant: a flat is
+ * a stated amount and must post at that amount. Chart position is deliberately
+ * not used — adding a head must not move the residue.
+ */
+export function residualHeadCode(
+  rates: CapitationRate[],
+  flats: FlatAllocation[],
+  codes: string[],
+): string {
+  const biggest = <T>(xs: T[], by: (x: T) => number) =>
+    xs.reduce<T | undefined>((a, x) => (a === undefined || by(x) > by(a) ? x : a), undefined);
+
+  const rated = biggest(rates.filter((r) => r.perLearner > 0), (r) => r.perLearner);
+  if (rated) return rated.voteHeadCode;
+
+  const flat = biggest(flats.filter((f) => f.amount > 0), (f) => f.amount);
+  if (flat) return flat.voteHeadCode;
+
+  return codes[codes.length - 1] ?? "";
+}
+
+export interface EnrolmentFit {
+  /** Learners the money implies before rounding — 125.88, not 126. */
+  exact: number;
+  /** The whole learners the split is worked on. */
+  learners: number;
+  /**
+   * What the disbursement has over or under what the rates need at that whole
+   * number of learners. Negative is short. Rates are whole cents and learners
+   * are whole numbers, so this is 0 whenever the three figures agree — any
+   * other value means the amount, a rate or a flat is wrong.
+   */
+  difference: Cents;
+}
+
+export function enrolmentFit(
+  disbursed: Cents,
+  rates: CapitationRate[],
+  flats: FlatAllocation[] = [],
+): EnrolmentFit {
+  const rateSum = rates.reduce((a, r) => a + r.perLearner, 0);
+  const perLearnerPart = disbursed - sumFlats(flats);
+  const exact = rateSum > 0 ? perLearnerPart / rateSum : 0;
+  const learners = rateSum > 0 && perLearnerPart > 0 ? Math.round(exact) : 0;
+  const required = sumFlats(flats) + rates.reduce(
+    (a, r) => a + Math.round(r.perLearner * learners), 0,
+  );
+  return { exact, learners, difference: disbursed - required };
+}
+
 export function allocateCapitationFromAmount(
   disbursed: Cents,
   rates: CapitationRate[],

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { deriveEnrolment, allocateCapitationFromAmount } from "../capitation";
 import { toCents } from "../money";
+import { chartFor } from "../vote-heads";
 
 describe("deriveEnrolment", () => {
   it("divides the disbursement by the sum of the rates", () => {
@@ -68,12 +69,12 @@ describe("flat basic allocations", () => {
     { voteHeadCode: "MED", perLearner: toCents(61) },
   ];
   const flats = [
-    { voteHeadCode: "TEL", amount: toCents(58416.37) },
-    { voteHeadCode: "EWC", amount: toCents(4647.49) },
-    { voteHeadCode: "INT", amount: toCents(11667.14) },
-    { voteHeadCode: "PER", amount: toCents(199713) },
+    { voteHeadCode: "TEL", amount: toCents(3620) },
+    { voteHeadCode: "EWC", amount: toCents(2880) },
+    { voteHeadCode: "INT", amount: toCents(4500) },
+    { voteHeadCode: "PER", amount: toCents(26520) },
   ];
-  const flatTotal = toCents(274444);
+  const flatTotal = toCents(37520);
   const perLearner = toCents(1976);
 
   it("subtracts the flat grant before deriving enrolment", () => {
@@ -92,8 +93,8 @@ describe("flat basic allocations", () => {
       disbursed, rates, { voteHeadCode: "BCH" }, flats,
     );
     expect(enrolment).toBe(412);
-    expect(allocations.find((a) => a.voteHeadCode === "PER")?.amount).toBe(toCents(199713));
-    expect(allocations.find((a) => a.voteHeadCode === "EWC")?.amount).toBe(toCents(4647.49));
+    expect(allocations.find((a) => a.voteHeadCode === "PER")?.amount).toBe(toCents(26520));
+    expect(allocations.find((a) => a.voteHeadCode === "EWC")?.amount).toBe(toCents(2880));
     expect(allocations.reduce((a, x) => a + x.amount, 0)).toBe(disbursed);
   });
 
@@ -112,4 +113,44 @@ describe("flat basic allocations", () => {
   it("derives 0 when the flat grant exceeds the amount received", () => {
     expect(deriveEnrolment(toCents(1000), rates, flats)).toBe(0);
   });
+});
+
+// FDJSE Table 1A "Breakdown per School" puts teachers' guides and reference
+// materials in the basic per-school allocation, not on a per-learner rate.
+// It is tuition money, so it must ride in the tuition account's chart.
+describe("junior tuition flat", () => {
+  const tuition = chartFor("junior", "TUITION")!;
+  const rates = tuition.heads
+    .filter((h) => h.perLearner)
+    .map((h) => ({ voteHeadCode: h.code, perLearner: h.perLearner! }));
+  const flats = tuition.heads
+    .filter((h) => h.flat)
+    .map((h) => ({ voteHeadCode: h.code, amount: h.flat! }));
+
+  it("carries the teachers' guides grant as a flat, not a rate", () => {
+    const tgr = tuition.heads.find((h) => h.code === "TGR");
+    expect(tgr?.flat).toBe(toCents(696.97));
+    expect(tgr?.perLearner).toBeUndefined();
+  });
+
+  it("derives enrolment only after the flat comes off", () => {
+    const disbursed = toCents(1746.38) * 412 + toCents(696.97);
+    expect(deriveEnrolment(disbursed, rates, flats)).toBe(412);
+  });
+
+  it("posts the flat to TGR and reconciles to the disbursement", () => {
+    const disbursed = toCents(1746.38) * 412 + toCents(696.97);
+    const { allocations } = allocateCapitationFromAmount(
+      disbursed, rates, { voteHeadCode: "BCH" }, flats,
+    );
+    expect(allocations.find((a) => a.voteHeadCode === "TGR")?.amount).toBe(toCents(696.97));
+    expect(allocations.reduce((a, x) => a + x.amount, 0)).toBe(disbursed);
+  });
+});
+
+it("the junior charts carry Table 1A's KSh 38,216.97 per school", () => {
+  const flats = (["TUITION", "OPERATIONS"] as const)
+    .flatMap((t) => chartFor("junior", t)!.heads)
+    .reduce((a, h) => a + (h.flat ?? 0), 0);
+  expect(flats).toBe(toCents(38216.97));
 });
