@@ -5,6 +5,7 @@ import { loadBook } from "@/server/book-context";
 import { getTxns } from "@/server/queries";
 import { db, schema } from "@/db";
 import { eq } from "drizzle-orm";
+import { PdfButton } from "../../../pdf-button";
 import { PrintButton } from "../../../print-button";
 
 export default async function AcknowledgementPage({
@@ -26,6 +27,7 @@ export default async function AcknowledgementPage({
 
   const nameOf = (code: string) => heads.find((h) => h.code === code)?.name ?? code;
   const total = txn.cash + txn.bank;
+  const ackExport = `/app/${accountId}/receipts/${transactionId}/acknowledgement/export`;
 
   return (
     <div style={{ maxWidth: 720 }}>
@@ -34,10 +36,8 @@ export default async function AcknowledgementPage({
         <span style={{ display: "flex", gap: "1.1rem", alignItems: "center" }}>
           <Link href={`/app/${accountId}/receipts/${transactionId}/edit`}>Amend this receipt</Link>
           <span className="report-actions">
-            <a className="btn btn-quiet"
-              href={`/app/${accountId}/receipts/${transactionId}/acknowledgement/export`} download>
-              Download CSV
-            </a>
+            <PdfButton href={ackExport} />
+            <a className="btn btn-quiet" href={ackExport} download>Download CSV</a>
             <PrintButton />
           </span>
         </span>

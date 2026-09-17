@@ -1,9 +1,11 @@
-import { acknowledgementCsv, csvResponse } from "@/server/reports";
+import { acknowledgementDoc, csvResponse, docToCsv } from "@/server/reports";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ accountId: string; transactionId: string }> },
 ) {
   const { accountId, transactionId } = await params;
-  return csvResponse(await acknowledgementCsv(accountId, transactionId));
+  const doc = await acknowledgementDoc(accountId, transactionId);
+  if (new URL(request.url).searchParams.get("format") === "json") return Response.json(doc);
+  return csvResponse(docToCsv(doc));
 }

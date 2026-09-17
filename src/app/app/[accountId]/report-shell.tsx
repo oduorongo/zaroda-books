@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { PdfButton } from "./pdf-button";
 import { PrintButton } from "./print-button";
 
 /**
@@ -38,6 +39,7 @@ export function ReportShell({
           <p className="sub">{sub}</p>
         </div>
         <div className="report-actions">
+          {csvHref && <PdfButton href={csvHref} landscape={landscape} />}
           {csvHref && <a className="btn btn-quiet" href={csvHref} download>Download CSV</a>}
           <PrintButton />
         </div>
