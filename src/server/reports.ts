@@ -4,7 +4,9 @@ import {
   csvAmount, toCsv,
 } from "@/domain";
 import { loadBook } from "@/server/book-context";
-import { before, getReceiptEnrolment, getTxns, getVoteHeadRates, inMonth, upTo } from "@/server/queries";
+import {
+  before, getEnrolmentInForce, getReceiptEnrolment, getTxns, getVoteHeadRates, inMonth, upTo,
+} from "@/server/queries";
 import { getReportPeriod, monthKey, monthName } from "@/server/periods";
 
 export type ReportName =
@@ -37,7 +39,7 @@ export interface ReportDoc {
   sections: Section[];
 }
 
-const WIDE: ReportName[] = ["cash-book", "ledger", "payments"];
+const WIDE: ReportName[] = ["cash-book", "ledger", "payments", "vote-heads"];
 
 export async function reportDoc(
   accountId: string,
@@ -212,15 +214,36 @@ export async function reportDoc(
 
   if (report === "vote-heads") {
     title = "Vote heads";
-    periodLabel = `FY ${fy.label}`;
     const rates = await getVoteHeadRates(fy.id);
+    const enrolment = await getEnrolmentInForce(fy.id);
+    const learners = enrolment?.learners ?? 0;
+
+    // What the circular entitles the school to at the enrolment in force. It is
+    // not what was received — a disbursement can fall short — but it is the
+    // figure the bursar checks the disbursement against.
+    const due = (code: string) =>
+      (rates[code]?.perLearner ?? 0) * learners + (rates[code]?.flatAmount ?? 0);
+
+    periodLabel = enrolment
+      ? `FY ${fy.label} · ${learners.toLocaleString("en-KE")} learners`
+      : `FY ${fy.label}`;
+
     sections = [{
-      columns: ["#", "Code", "Name", "Rate per learner", "Flat amount"],
+      columns: ["#", "Code", "Name", "Rate per learner", "Flat amount", "Learners", "Due per disbursement"],
       rows: heads.map((h) => [
         h.order, h.code, h.name,
         rates[h.code]?.perLearner ? csvAmount(rates[h.code].perLearner!) : "",
         rates[h.code]?.flatAmount ? csvAmount(rates[h.code].flatAmount!) : "",
+        rates[h.code]?.perLearner && learners ? learners : "",
+        due(h.code) ? csvAmount(due(h.code)) : "",
       ]),
+      total: ["", "", "Total", "", "", "",
+        csvAmount(heads.reduce((a, h) => a + due(h.code), 0))],
+      note: enrolment
+        ? `${learners.toLocaleString("en-KE")} learners, derived from the disbursement receipted `
+          + `on ${enrolment.date}${enrolment.receiptNo ? ` (${enrolment.receiptNo})` : ""}. `
+          + "The amounts due are what the rates come to at that enrolment, not what was received."
+        : "No capitation receipt has been posted yet, so there is no enrolment to work from.",
     }];
   }
 

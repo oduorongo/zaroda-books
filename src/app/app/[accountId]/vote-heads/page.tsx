@@ -1,6 +1,6 @@
 import { formatKes } from "@/domain";
 import { loadBook } from "@/server/book-context";
-import { getVoteHeadRates } from "@/server/queries";
+import { getEnrolmentInForce, getVoteHeadRates } from "@/server/queries";
 import { AddVoteHeadForm } from "./form";
 import { ReportShell } from "../report-shell";
 
@@ -12,6 +12,13 @@ export default async function VoteHeadsPage({
   const { accountId } = await params;
   const { heads, fy, school, account } = await loadBook(accountId);
   const rates = await getVoteHeadRates(fy.id);
+  const enrolment = await getEnrolmentInForce(fy.id);
+  const learners = enrolment?.learners ?? 0;
+
+  /** What the circular comes to per head at the enrolment in force. */
+  const due = (code: string) =>
+    (rates[code]?.perLearner ?? 0) * learners + (rates[code]?.flatAmount ?? 0);
+  const totalDue = heads.reduce((a, h) => a + due(h.code), 0);
 
   return (
     <ReportShell
@@ -22,10 +29,19 @@ export default async function VoteHeadsPage({
         your own below — existing ones are never renumbered.
       </>}
       school={school.name} account={account.name} fyLabel={fy.label}
+      period={enrolment ? `${learners.toLocaleString("en-KE")} learners` : undefined}
       csvHref={`/app/${accountId}/vote-heads/export`}
+      landscape
     >
+      <p className="note" style={{ marginTop: "-1rem", marginBottom: "1.5rem" }}>
+        {enrolment
+          ? `${learners.toLocaleString("en-KE")} learners, derived from the disbursement receipted on `
+            + `${enrolment.date}${enrolment.receiptNo ? ` (${enrolment.receiptNo})` : ""}. `
+            + "The amounts due are what the rates come to at that enrolment, not what was received."
+          : "No capitation receipt has been posted yet, so there is no enrolment to work from."}
+      </p>
 
-      <div className="card" style={{ maxWidth: 820 }}>
+      <div className="card">
         <table>
           <thead>
             <tr>
@@ -34,6 +50,8 @@ export default async function VoteHeadsPage({
               <th>Name</th>
               <th className="n">Rate per learner</th>
               <th className="n">Flat amount</th>
+              <th className="n">Learners</th>
+              <th className="n">Due per disbursement</th>
             </tr>
           </thead>
           <tbody>
@@ -46,9 +64,17 @@ export default async function VoteHeadsPage({
                   <td>{h.name}</td>
                   <td className="n">{r?.perLearner ? formatKes(r.perLearner) : "—"}</td>
                   <td className="n">{r?.flatAmount ? formatKes(r.flatAmount) : "—"}</td>
+                  <td className="n" style={{ color: "var(--muted)" }}>
+                    {r?.perLearner && learners ? learners.toLocaleString("en-KE") : "—"}
+                  </td>
+                  <td className="n">{due(h.code) ? formatKes(due(h.code)) : "—"}</td>
                 </tr>
               );
             })}
+            <tr className="total">
+              <td colSpan={6}>Total due at {learners.toLocaleString("en-KE")} learners</td>
+              <td className="n">{formatKes(totalDue)}</td>
+            </tr>
           </tbody>
         </table>
       </div>

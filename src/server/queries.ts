@@ -1,6 +1,6 @@
 import "server-only";
 import { db, schema } from "@/db";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import type { Txn, VoteHead } from "@/domain";
 
 export async function getAccountAndSchool(accountId: string) {
@@ -273,4 +273,36 @@ export async function getReceiptEnrolment(transactionId: string): Promise<number
     .from(schema.transactions)
     .where(eq(schema.transactions.id, transactionId));
   return row?.enrolment ?? null;
+}
+
+/**
+ * The enrolment in force: the figure frozen on the most recent capitation
+ * receipt of the year. Rule 7 — it is derived once, per disbursement, and the
+ * latest disbursement is the one the school is working to.
+ */
+export async function getEnrolmentInForce(financialYearId: string) {
+  const periods = await db
+    .select({ id: schema.periods.id })
+    .from(schema.periods)
+    .where(eq(schema.periods.financialYearId, financialYearId));
+  if (!periods.length) return null;
+
+  const [row] = await db
+    .select({
+      enrolment: schema.transactions.enrolment,
+      date: schema.transactions.date,
+      receiptNo: schema.transactions.receiptNo,
+    })
+    .from(schema.transactions)
+    .where(
+      and(
+        inArray(schema.transactions.periodId, periods.map((p) => p.id)),
+        eq(schema.transactions.kind, "receipt"),
+        isNotNull(schema.transactions.enrolment),
+      ),
+    )
+    .orderBy(desc(schema.transactions.date))
+    .limit(1);
+
+  return row?.enrolment ? { learners: row.enrolment, date: row.date, receiptNo: row.receiptNo } : null;
 }
