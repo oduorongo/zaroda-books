@@ -265,3 +265,12 @@ export async function getPaymentForEdit(transactionId: string, accountId: string
     amounts: Object.fromEntries(lines.map((l) => [l.code, l.amount])),
   };
 }
+
+/** The enrolment frozen on a capitation receipt when it was posted. */
+export async function getReceiptEnrolment(transactionId: string): Promise<number | null> {
+  const [row] = await db
+    .select({ enrolment: schema.transactions.enrolment })
+    .from(schema.transactions)
+    .where(eq(schema.transactions.id, transactionId));
+  return row?.enrolment ?? null;
+}

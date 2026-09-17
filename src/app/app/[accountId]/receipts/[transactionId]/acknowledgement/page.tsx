@@ -33,7 +33,13 @@ export default async function AcknowledgementPage({
         <Link href={`/app/${accountId}/receipts`}>← Back to receipts</Link>
         <span style={{ display: "flex", gap: "1.1rem", alignItems: "center" }}>
           <Link href={`/app/${accountId}/receipts/${transactionId}/edit`}>Amend this receipt</Link>
-          <PrintButton />
+          <span className="report-actions">
+            <a className="btn btn-quiet"
+              href={`/app/${accountId}/receipts/${transactionId}/acknowledgement/export`} download>
+              Download CSV
+            </a>
+            <PrintButton />
+          </span>
         </span>
       </div>
 

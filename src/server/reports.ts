@@ -4,7 +4,7 @@ import {
   csvAmount, toCsv,
 } from "@/domain";
 import { loadBook } from "@/server/book-context";
-import { before, getTxns, getVoteHeadRates, inMonth, upTo } from "@/server/queries";
+import { before, getReceiptEnrolment, getTxns, getVoteHeadRates, inMonth, upTo } from "@/server/queries";
 import { getReportPeriod, monthKey, monthName } from "@/server/periods";
 
 export type ReportName =
@@ -192,6 +192,41 @@ export async function reportCsv(
   }
 
   const slug = `${school.name} ${account.name} ${title} ${month}`
+    .replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase();
+
+  return { filename: `${slug}.csv`, csv: toCsv(rows) };
+}
+
+/**
+ * The acknowledgement of one capitation receipt: the enrolment used and the
+ * per-head split, the figures the Ministry asks back for.
+ */
+export async function acknowledgementCsv(accountId: string, transactionId: string) {
+  const { heads, fy, school, account } = await loadBook(accountId);
+  const txns = await getTxns(fy.id);
+  const txn = txns.find((t) => t.id === transactionId);
+  if (!txn || txn.kind !== "receipt") throw new Error("Receipt not found.");
+
+  const enrolment = await getReceiptEnrolment(transactionId);
+  const nameOf = (code: string) => heads.find((h) => h.code === code)?.name ?? code;
+  const total = txn.cash + txn.bank;
+
+  const rows: Rows = [
+    [school.name],
+    [`Acknowledgement of receipt — ${account.name} account, FY ${fy.label}`],
+    [],
+    ["Date received", txn.date],
+    ["Receipt no.", txn.receiptNo ?? ""],
+    ["Particulars", txn.particulars],
+    ["Amount received", csvAmount(total)],
+    ["Enrolment used", enrolment ?? ""],
+    [],
+    ["Code", "Vote head", "Amount"],
+    ...txn.allocations.map((a) => [a.voteHeadCode, nameOf(a.voteHeadCode), csvAmount(a.amount)]),
+    ["", "Total", csvAmount(total)],
+  ];
+
+  const slug = `${school.name} acknowledgement ${txn.receiptNo || txn.date}`
     .replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase();
 
   return { filename: `${slug}.csv`, csv: toCsv(rows) };
