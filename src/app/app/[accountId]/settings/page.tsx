@@ -4,6 +4,7 @@ import { getTxns } from "@/server/queries";
 import { FinancialYearForm } from "./form";
 import { ArchiveForm } from "./archive-form";
 import { SchoolForm } from "./school-form";
+import { BackLink } from "../../back-link";
 
 export default async function SettingsPage({
   params,
@@ -23,6 +24,9 @@ export default async function SettingsPage({
 
   return (
     <>
+      <div className="no-print" style={{ marginBottom: ".75rem" }}>
+        <BackLink />
+      </div>
       <h1>Book settings</h1>
       <p className="sub">
         {school.name} — {account.name}, FY {fy.label}.

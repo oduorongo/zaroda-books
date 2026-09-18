@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { BackLink } from "../back-link";
 import { PdfButton } from "./pdf-button";
 import { PrintButton } from "./print-button";
 
@@ -32,6 +33,10 @@ export function ReportShell({
           {account} account · FY {fyLabel}{period ? ` · ${period}` : ""}
         </div>
       </header>
+
+      <div className="no-print" style={{ marginBottom: ".75rem" }}>
+        <BackLink />
+      </div>
 
       <div className="report-bar no-print">
         <div>

@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/server/auth";
 import { NewBookForm } from "./form";
 import { ArchivedBooks } from "./archived";
+import { BackLink } from "../back-link";
 
 const LEVELS: { id: SchoolLevel; label: string }[] = [
   { id: "primary", label: "Primary" },
@@ -36,6 +37,9 @@ export default async function NewBookPage() {
 
   return (
     <div style={{ maxWidth: 760 }}>
+      <div style={{ marginBottom: ".75rem" }}>
+        <BackLink />
+      </div>
       <h1>Create the book</h1>
       <p className="sub">
         The school, the level, the account and the financial year fix the chart of accounts and the
