@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { buildLedger, formatKes, toKes } from "@/domain";
 import { loadBook } from "@/server/book-context";
-import { getTxns, getVoteHeadRates } from "@/server/queries";
+import { getTxns } from "@/server/queries";
 import { ReceiptForm } from "./form";
 import { OpeningBalances } from "./opening-balances";
 import { ReportShell } from "../report-shell";
@@ -19,16 +19,6 @@ export default async function ReceiptsPage({
     buildLedger(txns, heads).map((l) => [l.code, l.cr]),
   );
 
-  // The form opens on the circular's figures for the year rather than a blank
-  // grid: the bursar checks them against the circular instead of retyping it.
-  const rates = await getVoteHeadRates(fy.id);
-  const figure = (cents?: number) => (cents ? String(toKes(cents)) : "");
-  const defaults = Object.fromEntries(
-    heads.map((h) => [h.code, {
-      rate: figure(rates[h.code]?.perLearner),
-      flat: figure(rates[h.code]?.flatAmount),
-    }]),
-  );
   const receipts = txns
     .filter((t) => t.kind === "receipt")
     .sort((a, b) => b.date.localeCompare(a.date));
@@ -53,7 +43,7 @@ export default async function ReceiptsPage({
         openingBank={fy.openingBank ? String(toKes(fy.openingBank)) : ""}
       />
 
-      <ReceiptForm accountId={accountId} heads={heads} defaults={defaults} />
+      <ReceiptForm accountId={accountId} heads={heads} />
 
       <div className="grid-2" style={{ marginTop: "1.6rem", alignItems: "start" }}>
         <div className="card">

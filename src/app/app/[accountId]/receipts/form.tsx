@@ -24,13 +24,11 @@ const num = (v: string) => {
 };
 
 export function ReceiptForm({
-  accountId, heads, receipt, defaults,
+  accountId, heads, receipt,
 }: {
   accountId: string;
   heads: VoteHead[];
   receipt?: ReceiptDraft;
-  /** The rates in force for the year, so the circular is already on the form. */
-  defaults?: Record<string, HeadEntry>;
 }) {
   const [error, action, pending] = useActionState(receipt ? amendReceipt : postReceipt, null);
   const [amount, setAmount] = useState(receipt?.amount ?? "");
@@ -39,9 +37,9 @@ export function ReceiptForm({
   // Every shilling arrives as cash and is banked, so the tick starts on.
   const [banked, setBanked] = useState(receipt ? receipt.bankedOn !== null : true);
   const [bankedOn, setBankedOn] = useState(receipt?.bankedOn ?? receipt?.date ?? today);
-  const [entries, setEntries] = useState<Record<string, HeadEntry>>(
-    receipt?.entries ?? defaults ?? {},
-  );
+  // A new receipt starts blank. Only an amendment opens on figures, and they
+  // are the ones that receipt was actually posted from.
+  const [entries, setEntries] = useState<Record<string, HeadEntry>>(receipt?.entries ?? {});
 
   const entry = (code: string) => entries[code] ?? { rate: "", flat: "" };
   const set = (code: string, field: keyof HeadEntry, value: string) =>
