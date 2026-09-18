@@ -69,7 +69,7 @@ export default async function PaymentsPage({
                 <td className="n">{p.kind === "payment" && p.cash ? formatKes(p.cash) : "—"}</td>
                 <td className="n">{p.kind === "payment" && p.bank ? formatKes(p.bank) : "—"}</td>
                 <td className="n">
-                  <Link className="note" href={`/app/${accountId}/payments/${p.id}/edit`}>Amend</Link>
+                  <Link className="note" href={`/app/${accountId}/payments/${p.id}/voucher`}>View</Link>
                 </td>
               </tr>
             ))}

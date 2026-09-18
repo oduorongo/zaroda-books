@@ -355,6 +355,51 @@ export async function acknowledgementDoc(
   };
 }
 
+/** One payment voucher: what was paid, out of which column, against which votes. */
+export async function paymentVoucherDoc(
+  accountId: string,
+  transactionId: string,
+): Promise<ReportDoc> {
+  const { heads, fy, school, account } = await loadBook(accountId);
+  const txns = await getTxns(fy.id);
+  const txn = txns.find((t) => t.id === transactionId);
+  if (!txn || txn.kind !== "payment") throw new Error("Payment not found.");
+
+  const nameOf = (code: string) => heads.find((h) => h.code === code)?.name ?? code;
+  const total = txn.cash + txn.bank;
+
+  return {
+    title: "Payment voucher",
+    school: school.name,
+    account: account.name,
+    fyLabel: fy.label,
+    period: txn.date,
+    landscape: false,
+    filename: slug(`${school.name} payment voucher ${txn.vrNo || txn.date}`),
+    sections: [
+      {
+        columns: ["Details", ""],
+        rows: [
+          ["Date paid", txn.date],
+          ["Voucher no.", txn.vrNo ?? "—"],
+          ["Cheque no.", txn.chequeNo ?? "—"],
+          ["Particulars", txn.particulars],
+          ["Paid from", txn.cash > 0 ? "Cash" : "Bank"],
+          ["Amount paid", csvAmount(total)],
+        ],
+      },
+      {
+        heading: "Charged to",
+        columns: ["Code", "Vote head", "Amount"],
+        rows: txn.allocations.map((a) => [a.voteHeadCode, nameOf(a.voteHeadCode), csvAmount(a.amount)]),
+        total: ["", "Total", csvAmount(total)],
+        note: "Certified that the goods or services were received and the expenditure is a proper "
+          + "charge against the votes shown. Signed ______________________ on ______________.",
+      },
+    ],
+  };
+}
+
 const slug = (s: string) =>
   s.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase();
 
