@@ -182,3 +182,18 @@ export const chartFor = (level: SchoolLevel, accountType: AccountType): Chart | 
 export const accountTypesFor = (level: SchoolLevel) =>
   (Object.keys(CHART_OF_ACCOUNTS[level] ?? {}) as AccountType[])
     .map((id) => ({ id, ...CHART_OF_ACCOUNTS[level]![id]! }));
+
+/**
+ * Heads the circular funds as a flat grant per school, with no rate per
+ * learner. The rate box for these is closed on a receipt: a per-learner
+ * figure on them is not a small error, it would inflate the derived enrolment.
+ *
+ * Taken from the chart rather than from the rates a book happens to hold, so
+ * a stale figure can never close a box that should be open. The same code can
+ * be rated in one chart and flat in another — TGR is 31.28 a learner at
+ * primary and a 696.97 flat at junior.
+ */
+export const flatOnlyHeadCodes = (level: SchoolLevel, accountType: AccountType): string[] =>
+  (chartFor(level, accountType)?.heads ?? [])
+    .filter((h) => h.flat && !h.perLearner)
+    .map((h) => h.code);

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { buildLedger, formatKes, toKes } from "@/domain";
+import { buildLedger, flatOnlyHeadCodes, formatKes, toKes } from "@/domain";
+import type { AccountType } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getTxns } from "@/server/queries";
 import { ReceiptForm } from "./form";
@@ -14,6 +15,9 @@ export default async function ReceiptsPage({
   const { accountId } = await params;
   const { heads, fy, school, account } = await loadBook(accountId);
   const txns = await getTxns(fy.id);
+
+  // Heads the circular funds per school: their rate box is closed.
+  const flatOnly = flatOnlyHeadCodes(school.level, account.type as AccountType);
 
   const received = Object.fromEntries(
     buildLedger(txns, heads).map((l) => [l.code, l.cr]),
@@ -43,7 +47,7 @@ export default async function ReceiptsPage({
         openingBank={fy.openingBank ? String(toKes(fy.openingBank)) : ""}
       />
 
-      <ReceiptForm accountId={accountId} heads={heads} />
+      <ReceiptForm accountId={accountId} heads={heads} flatOnly={flatOnly} />
 
       <div className="grid-2" style={{ marginTop: "1.6rem", alignItems: "start" }}>
         <div className="card">

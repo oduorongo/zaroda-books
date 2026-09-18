@@ -2,7 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { allocateCapitationFromAmount, residualHeadCode, toCents } from "@/domain";
+import { allocateCapitationFromAmount, flatOnlyHeadCodes, residualHeadCode, toCents } from "@/domain";
+import type { AccountType } from "@/domain";
 import type { Allocation, VoteHead } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getPeriodForDate } from "@/server/periods";
@@ -43,7 +44,7 @@ interface ReadResult {
  * Posting and amending read the same form and split it the same way, so a
  * receipt cannot mean one thing when posted and another when corrected.
  */
-function readReceiptForm(form: FormData, heads: VoteHead[]): ReadResult {
+function readReceiptForm(form: FormData, heads: VoteHead[], flatOnly: string[]): ReadResult {
   const empty = {
     date: "", receiptNo: "", particulars: "", amount: 0,
     enrolment: 0, allocations: [] as Allocation[], rates: {} as LineRates,
@@ -60,7 +61,10 @@ function readReceiptForm(form: FormData, heads: VoteHead[]): ReadResult {
     return { ...empty, error: "Enter the amount received." };
   }
 
+  // A flat-funded head takes no rate per learner. The box is shut on the form;
+  // this is the same rule on the server, where it cannot be bypassed.
   const rateList = heads
+    .filter((h) => !flatOnly.includes(h.code))
     .map((h) => ({ voteHeadCode: h.code, perLearner: toCents(Number(form.get(`rate_${h.code}`) || 0)) }))
     .filter((r) => r.perLearner > 0);
   const flatList = heads
@@ -105,9 +109,9 @@ export async function postReceipt(
   form: FormData,
 ): Promise<string | null> {
   const accountId = String(form.get("accountId") ?? "");
-  const { user, heads, fy } = await loadBook(accountId);
+  const { user, heads, fy, school, account } = await loadBook(accountId);
 
-  const r = readReceiptForm(form, heads);
+  const r = readReceiptForm(form, heads, flatOnlyHeadCodes(school.level, account.type as AccountType));
   if (r.error) return r.error;
 
   let transactionId: string;
@@ -147,9 +151,9 @@ export async function amendReceipt(
 ): Promise<string | null> {
   const accountId = String(form.get("accountId") ?? "");
   const transactionId = String(form.get("transactionId") ?? "");
-  const { user, heads } = await loadBook(accountId);
+  const { user, heads, school, account } = await loadBook(accountId);
 
-  const r = readReceiptForm(form, heads);
+  const r = readReceiptForm(form, heads, flatOnlyHeadCodes(school.level, account.type as AccountType));
   if (r.error) return r.error;
 
   try {

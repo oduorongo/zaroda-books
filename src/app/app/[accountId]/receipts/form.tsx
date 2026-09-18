@@ -24,11 +24,13 @@ const num = (v: string) => {
 };
 
 export function ReceiptForm({
-  accountId, heads, receipt,
+  accountId, heads, receipt, flatOnly = [],
 }: {
   accountId: string;
   heads: VoteHead[];
   receipt?: ReceiptDraft;
+  /** Codes the circular funds per school: their rate box stays shut. */
+  flatOnly?: string[];
 }) {
   const [error, action, pending] = useActionState(receipt ? amendReceipt : postReceipt, null);
   const [amount, setAmount] = useState(receipt?.amount ?? "");
@@ -152,9 +154,15 @@ export function ReceiptForm({
                   <td><span className="code" style={{ marginRight: ".6rem" }}>{h.code}</span>{h.name}</td>
                   <td className="n">
                     <input
-                      name={`rate_${h.code}`} className="mono" inputMode="decimal" placeholder="—"
+                      name={`rate_${h.code}`} className="mono" inputMode="decimal"
+                      placeholder={flatOnly.includes(h.code) ? "per school" : "—"}
+                      disabled={flatOnly.includes(h.code)}
+                      title={flatOnly.includes(h.code)
+                        ? "The circular funds this head per school, not per learner."
+                        : undefined}
                       style={{ width: 104, textAlign: "right", padding: ".5rem .6rem" }}
-                      value={e.rate} onChange={(ev) => set(h.code, "rate", ev.target.value)}
+                      value={flatOnly.includes(h.code) ? "" : e.rate}
+                      onChange={(ev) => set(h.code, "rate", ev.target.value)}
                     />
                   </td>
                   <td className="n">
