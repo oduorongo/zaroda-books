@@ -4,6 +4,7 @@ import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { db } from "../db/index.ts";
 import * as schema from "../db/schema.ts";
 import { chartFor } from "../domain/vote-heads.ts";
+import { schoolNameKey, subscriptionDecision } from "../domain/subscription.ts";
 import type { AccountType, SchoolLevel } from "../domain/vote-heads.ts";
 
 export type { SchoolLevel };
@@ -43,11 +44,34 @@ export async function createBook(input: {
     throw new Error(`A ${input.level} school has no ${input.accountType} account.`);
   }
 
-  const [school] = await db.insert(schema.schools).values({
+  // A school is its name, compared with case, spacing and punctuation taken
+  // out. Opening a second book for the same school — operations alongside
+  // tuition — reuses it rather than creating another.
+  const nameKey = schoolNameKey(input.schoolName);
+  if (!nameKey) throw new Error("Enter the name of the school.");
+
+  const [existing] = await db
+    .select()
+    .from(schema.schools)
+    .where(and(
+      eq(schema.schools.orgId, input.orgId),
+      eq(schema.schools.level, input.level),
+      eq(schema.schools.nameKey, nameKey),
+    ));
+
+  const school = existing ?? (await db.insert(schema.schools).values({
     orgId: input.orgId,
-    name: input.schoolName,
+    name: input.schoolName.trim(),
     level: input.level,
-  }).returning();
+    nameKey,
+  }).returning())[0];
+
+  await consumeSubscription({
+    orgId: input.orgId,
+    level: input.level,
+    fyLabel: input.fyLabel,
+    schoolId: school.id,
+  });
 
   const [account] = await db.insert(schema.accounts).values({
     schoolId: school.id,
@@ -234,4 +258,89 @@ export async function getArchivedBooks(orgId: string) {
     .innerJoin(schema.schools, eq(schema.accounts.schoolId, schema.schools.id))
     .where(and(eq(schema.schools.orgId, orgId), isNotNull(schema.accounts.archivedAt)))
     .orderBy(schema.schools.name);
+}
+
+/**
+ * Finds this level and year's subscription, or opens one, and binds it to the
+ * school. A bound subscription is refused to any other school, and the binding
+ * outlives the books: archiving or emptying them does not release it.
+ */
+async function consumeSubscription(input: {
+  orgId: string;
+  level: SchoolLevel;
+  fyLabel: string;
+  schoolId: string;
+}) {
+  const [existing] = await db
+    .select()
+    .from(schema.subscriptions)
+    .where(and(
+      eq(schema.subscriptions.orgId, input.orgId),
+      eq(schema.subscriptions.level, input.level),
+      eq(schema.subscriptions.fyLabel, input.fyLabel),
+    ));
+
+  const decision = subscriptionDecision(existing, input.schoolId);
+  if (!decision.allowed) throw new Error(decision.reason);
+  if (decision.bindTo === null) return;
+
+  if (existing) {
+    await db
+      .update(schema.subscriptions)
+      .set({ schoolId: decision.bindTo, boundAt: new Date() })
+      .where(eq(schema.subscriptions.id, existing.id));
+    return;
+  }
+
+  await db.insert(schema.subscriptions).values({
+    orgId: input.orgId,
+    level: input.level,
+    fyLabel: input.fyLabel,
+    schoolId: decision.bindTo,
+    boundAt: new Date(),
+  });
+}
+
+/**
+ * Renames the school behind a book. Since the name is the school's identity,
+ * this is refused once anything has been posted: renaming a school whose
+ * subscription is bound would otherwise carry that subscription to a different
+ * school, which is the hole a name-based identity opens. Correcting a typo
+ * before the first entry is free.
+ */
+export async function saveSchool(schoolId: string, name: string) {
+  const nameKey = schoolNameKey(name);
+  if (!nameKey) throw new Error("Enter the name of the school.");
+
+  const [current] = await db
+    .select()
+    .from(schema.schools)
+    .where(eq(schema.schools.id, schoolId));
+  if (!current) throw new Error("School not found.");
+  if (current.nameKey === nameKey) {
+    // Only the spelling shown has changed, not which school this is.
+    await db.update(schema.schools).set({ name: name.trim() })
+      .where(eq(schema.schools.id, schoolId));
+    return;
+  }
+
+  const [{ count } = { count: 0 }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(schema.transactions)
+    .innerJoin(schema.periods, eq(schema.transactions.periodId, schema.periods.id))
+    .innerJoin(schema.financialYears, eq(schema.periods.financialYearId, schema.financialYears.id))
+    .innerJoin(schema.accounts, eq(schema.financialYears.accountId, schema.accounts.id))
+    .where(eq(schema.accounts.schoolId, schoolId));
+
+  if (count > 0)
+    throw new Error(
+      `This school's books already hold ${count} entr${count === 1 ? "y" : "ies"}, so its name is `
+      + "fixed. The name is how the school is recognised and how its subscription is held, so it "
+      + "cannot move to a different school once the books are in use.",
+    );
+
+  await db
+    .update(schema.schools)
+    .set({ name: name.trim(), nameKey })
+    .where(eq(schema.schools.id, schoolId));
 }

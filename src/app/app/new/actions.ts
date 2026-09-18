@@ -24,9 +24,14 @@ export async function createBookAction(
   if (!chartFor(level, accountType)) return "Choose an account kept at that school level.";
   if (!/^\d{4}\/\d{2}$/.test(fyLabel)) return "Choose the financial year.";
 
-  const { account } = await createBook({
-    orgId: user.orgId, schoolName, level, accountType, fyLabel,
-  });
+  let account;
+  try {
+    ({ account } = await createBook({
+      orgId: user.orgId, schoolName, level, accountType, fyLabel,
+    }));
+  } catch (e) {
+    return e instanceof Error ? e.message : "The book could not be created.";
+  }
 
   redirect(`/app/${account.id}/receipts`);
 }

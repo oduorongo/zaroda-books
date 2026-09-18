@@ -13,6 +13,9 @@ export const orgs = pgTable("orgs", {
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").notNull().unique(),
+  // The subscriber's own number: who pays, and how they are reached. Not part
+  // of a school's identity, since one freelancer keeps many schools on one number.
+  phone: text("phone"),
   name: text("name").notNull(),
   passwordHash: text("password_hash").notNull(),
 });
@@ -31,8 +34,33 @@ export const schools = pgTable("schools", {
   level: text("level", { enum: ["primary", "junior", "senior"] }).notNull(),
   county: text("county"),
   subCounty: text("sub_county"),
+  // NEMIS has been withdrawn and KEMIS issues no school code, so the name is
+  // the identity. nameKey is that name with case, spacing and punctuation taken
+  // out, and it is what decides whether two books are the same school.
   nemisCode: text("nemis_code"),
-}, (t) => [index("schools_org_idx").on(t.orgId)]);
+  nameKey: text("name_key"),
+}, (t) => [
+  index("schools_org_idx").on(t.orgId),
+  unique("schools_org_name").on(t.orgId, t.level, t.nameKey),
+]);
+
+/**
+ * One payment per financial year per school level, covering every book that
+ * level needs. The first school it is used for binds it, and the binding is
+ * never released — that is what stops one subscription serving a second school
+ * once the first one's figures have been copied out and the data removed.
+ */
+export const subscriptions = pgTable("subscriptions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").references(() => orgs.id).notNull(),
+  level: text("level", { enum: ["primary", "junior", "senior"] }).notNull(),
+  fyLabel: text("fy_label").notNull(),
+  /** Written once, on the first book opened against it. Never cleared. */
+  schoolId: uuid("school_id").references(() => schools.id),
+  boundAt: timestamp("bound_at"),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [unique("subscriptions_org_level_fy").on(t.orgId, t.level, t.fyLabel)]);
 
 /** One row per bank account / vote book: SIMBA, GPA, Operations, Boarding... */
 export const accounts = pgTable("accounts", {

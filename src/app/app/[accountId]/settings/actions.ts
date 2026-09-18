@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { loadBook } from "@/server/book-context";
-import { archiveBook, changeFinancialYear } from "@/server/books";
+import { archiveBook, changeFinancialYear, saveSchool } from "@/server/books";
 
 export async function changeFinancialYearAction(
   _prev: string | null,
@@ -49,4 +49,27 @@ export async function archiveBookAction(
 
   revalidatePath("/app", "layout");
   redirect("/app/new");
+}
+
+export async function saveSchoolAction(
+  _prev: string | null,
+  form: FormData,
+): Promise<string | null> {
+  const accountId = String(form.get("accountId") ?? "");
+  const { school } = await loadBook(accountId);
+
+  const name = String(form.get("schoolName") ?? "").trim();
+  if (!name) return "Enter the name of the school.";
+
+  try {
+    await saveSchool(school.id, name);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "";
+    return message.includes("schools_org_name")
+      ? "Another school of this level in your books already has that name."
+      : message || "The school could not be saved.";
+  }
+
+  revalidatePath("/app", "layout");
+  return "Saved.";
 }

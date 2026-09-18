@@ -3,6 +3,7 @@ import { loadBook } from "@/server/book-context";
 import { getTxns } from "@/server/queries";
 import { FinancialYearForm } from "./form";
 import { ArchiveForm } from "./archive-form";
+import { SchoolForm } from "./school-form";
 
 export default async function SettingsPage({
   params,
@@ -26,6 +27,9 @@ export default async function SettingsPage({
       <p className="sub">
         {school.name} — {account.name}, FY {fy.label}.
       </p>
+
+      <h2>School</h2>
+      <SchoolForm accountId={accountId} name={school.name} locked={entries > 0} />
 
       <h2>Financial year</h2>
       <FinancialYearForm

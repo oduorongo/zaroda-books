@@ -38,6 +38,11 @@ export function NewBookForm({
     <form action={action} className="card stack">
       <label className="field">Name of school
         <input name="schoolName" placeholder="e.g. Ng'iya Girls High School" required />
+        <span className="note">
+          Spell it the same way for every book of this school. Open operations alongside tuition
+          under the same name and they share one school, and one subscription for that level and
+          year. Once entries are posted the name is fixed.
+        </span>
       </label>
 
       <div className="grid-2">
