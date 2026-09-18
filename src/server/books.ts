@@ -1,5 +1,6 @@
 // No "server-only" here: the seed script imports this too, so the books are
 // opened the same way whether they come from the UI or from a seed.
+import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "../db/index.ts";
 import * as schema from "../db/schema.ts";
 import { chartFor } from "../domain/vote-heads.ts";
@@ -14,7 +15,7 @@ export function financialYearDates(label: string) {
   return { startsOn: `${startYear}-07-01`, endsOn: `${startYear + 1}-06-30` };
 }
 
-const monthsOf = (startsOn: string) => {
+export const monthsOf = (startsOn: string) => {
   const startYear = Number(startsOn.slice(0, 4));
   return Array.from({ length: 12 }, (_, i) => {
     const month = 7 + i;
@@ -92,4 +93,69 @@ export async function createBook(input: {
   if (rates.length) await db.insert(schema.voteHeadRates).values(rates);
 
   return { school, account, voteHeads, financialYear, periods, chart };
+}
+
+/**
+ * Corrects the financial year a book was opened with. The twelve months are
+ * rebuilt, so this is only allowed while the book is empty: moving the year
+ * under posted entries would leave them filed in months that no longer exist.
+ */
+export async function changeFinancialYear(input: {
+  accountId: string;
+  userId: string;
+  orgId: string;
+  fyLabel: string;
+}) {
+  const [fy] = await db
+    .select()
+    .from(schema.financialYears)
+    .where(eq(schema.financialYears.accountId, input.accountId));
+  if (!fy) throw new Error("This book has no financial year.");
+  if (fy.label === input.fyLabel) return;
+
+  const periods = await db
+    .select()
+    .from(schema.periods)
+    .where(eq(schema.periods.financialYearId, fy.id));
+
+  if (periods.some((p) => p.status === "closed"))
+    throw new Error("A month of this book is closed. Reopen it before changing the year.");
+
+  const [{ count } = { count: 0 }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(schema.transactions)
+    .where(inArray(schema.transactions.periodId, periods.map((p) => p.id)));
+
+  if (count > 0)
+    throw new Error(
+      `This book already has ${count} entr${count === 1 ? "y" : "ies"} posted. `
+      + "The financial year sets which months exist, so it can only be corrected "
+      + "while the book is empty. Delete the entries first, or open a new book.",
+    );
+
+  const { startsOn, endsOn } = financialYearDates(input.fyLabel);
+
+  const writes = [
+    db.update(schema.financialYears)
+      .set({ label: input.fyLabel, startsOn, endsOn })
+      .where(eq(schema.financialYears.id, fy.id)),
+    db.delete(schema.periods).where(eq(schema.periods.financialYearId, fy.id)),
+    db.insert(schema.periods).values(
+      monthsOf(startsOn).map((month) => ({
+        financialYearId: fy.id,
+        month,
+        status: "open" as const,
+      })),
+    ),
+    db.insert(schema.auditLog).values({
+      orgId: input.orgId,
+      userId: input.userId,
+      action: "update",
+      entity: "financial_year",
+      entityId: fy.id,
+      before: JSON.stringify({ label: fy.label, startsOn: fy.startsOn, endsOn: fy.endsOn }),
+      after: JSON.stringify({ label: input.fyLabel, startsOn, endsOn }),
+    }),
+  ] as const;
+  await db.batch(writes as unknown as Parameters<typeof db.batch>[0]);
 }

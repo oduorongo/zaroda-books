@@ -17,6 +17,7 @@ export function SideNav() {
         { no: "04", label: "Cash and bank", href: `/app/${accountId}/cash-and-bank` },
         { no: "05", label: "Final books", href: `/app/${accountId}/cash-book` },
         { no: "06", label: "Vote heads", href: `/app/${accountId}/vote-heads` },
+        { no: "07", label: "Book settings", href: `/app/${accountId}/settings` },
       ]
     : [{ no: "01", label: "Create the book", href: "/app/new" }];
 
