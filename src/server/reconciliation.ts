@@ -1,7 +1,9 @@
 import "server-only";
 import { db, schema } from "@/db";
-import { and, eq, inArray, lte } from "drizzle-orm";
-import { balancesAfter, buildReconciliation, type Reconciliation } from "@/domain";
+import { and, eq, inArray, lt } from "drizzle-orm";
+import {
+  balancesAfter, buildReconciliation, monthEndExclusive, type Reconciliation,
+} from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getTxns, upTo } from "@/server/queries";
 import { getReportPeriod, monthKey } from "@/server/periods";
@@ -30,7 +32,7 @@ export async function getReconciliation(accountId: string, asked?: string) {
     .where(
       and(
         inArray(schema.transactions.id, toDate.map((t) => t.id)),
-        lte(schema.transactions.clearedOn, `${month}-31`),
+        lt(schema.transactions.clearedOn, monthEndExclusive(month)),
       ),
     );
 

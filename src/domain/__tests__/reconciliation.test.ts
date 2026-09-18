@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bankEffect, buildReconciliation } from "../reconciliation";
+import { bankEffect, buildReconciliation, monthEndExclusive } from "../reconciliation";
 import { toCents } from "../money";
 import type { Txn } from "../types";
 
@@ -131,5 +131,29 @@ describe("buildReconciliation", () => {
     // 1000 book, less 500 not yet credited, add back 300 not yet presented.
     expect(r.expectedStatement).toBe(toCents(800));
     expect(r.reconciled).toBe(true);
+  });
+});
+
+// A month end cannot be fabricated by appending "-31": Postgres parses a date
+// column and rejects 30-day months, which is how this reached production.
+describe("monthEndExclusive", () => {
+  it("is the first day of the month that follows", () => {
+    expect(monthEndExclusive("2026-07")).toBe("2026-08-01");
+  });
+
+  it("handles a 30-day month", () => {
+    expect(monthEndExclusive("2026-09")).toBe("2026-10-01");
+  });
+
+  it("handles February in a leap year", () => {
+    expect(monthEndExclusive("2028-02")).toBe("2028-03-01");
+  });
+
+  it("rolls over the year in December", () => {
+    expect(monthEndExclusive("2026-12")).toBe("2027-01-01");
+  });
+
+  it("pads a single-digit month", () => {
+    expect(monthEndExclusive("2026-08")).toBe("2026-09-01");
   });
 });

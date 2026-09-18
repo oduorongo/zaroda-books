@@ -1,6 +1,18 @@
 import type { Cents } from "./money";
 import type { Txn } from "./types";
 
+/**
+ * The day after the last day of a month, for `< nextMonth` comparisons.
+ * A month end must never be written as "-31": a date column parses it, and
+ * September has thirty days.
+ */
+export function monthEndExclusive(month: string): string {
+  const [year, m] = month.split("-").map(Number);
+  return m === 12
+    ? `${year + 1}-01-01`
+    : `${year}-${String(m + 1).padStart(2, "0")}-01`;
+}
+
 /** What an entry does to the bank column. Positive puts money in. */
 export function bankEffect(t: Txn): Cents {
   if (t.kind === "contra") return t.to === "bank" ? t.amount : -t.amount;
