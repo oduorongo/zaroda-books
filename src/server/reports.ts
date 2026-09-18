@@ -267,17 +267,26 @@ export async function reportDoc(
       ? `FY ${fy.label} · ${learners.toLocaleString("en-KE")} learners`
       : `FY ${fy.label}`;
 
+    const received = Object.fromEntries(
+      buildLedger(txns, heads).map((l) => [l.code, l.cr]),
+    );
+
     sections = [{
-      columns: ["#", "Code", "Name", "Rate per learner", "Flat amount", "Learners", "Due per disbursement"],
+      columns: [
+        "#", "Code", "Name", "Rate per learner", "Flat amount", "Learners",
+        "Due per disbursement", "Received to date",
+      ],
       rows: heads.map((h) => [
         h.order, h.code, h.name,
         rates[h.code]?.perLearner ? csvAmount(rates[h.code].perLearner!) : "",
         rates[h.code]?.flatAmount ? csvAmount(rates[h.code].flatAmount!) : "",
         rates[h.code]?.perLearner && learners ? learners : "",
         due(h.code) ? csvAmount(due(h.code)) : "",
+        received[h.code] ? csvAmount(received[h.code]) : "",
       ]),
       total: ["", "", "Total", "", "", "",
-        csvAmount(heads.reduce((a, h) => a + due(h.code), 0))],
+        csvAmount(heads.reduce((a, h) => a + due(h.code), 0)),
+        csvAmount(heads.reduce((a, h) => a + (received[h.code] ?? 0), 0))],
       note: enrolment
         ? `${learners.toLocaleString("en-KE")} learners, derived from the disbursement receipted `
           + `on ${enrolment.date}${enrolment.receiptNo ? ` (${enrolment.receiptNo})` : ""}. `

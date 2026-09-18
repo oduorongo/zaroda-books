@@ -1,6 +1,6 @@
-import { formatKes } from "@/domain";
+import { buildLedger, formatKes } from "@/domain";
 import { loadBook } from "@/server/book-context";
-import { getEnrolmentInForce, getVoteHeadRates } from "@/server/queries";
+import { getEnrolmentInForce, getTxns, getVoteHeadRates } from "@/server/queries";
 import { AddVoteHeadForm } from "./form";
 import { ReportShell } from "../report-shell";
 
@@ -19,6 +19,13 @@ export default async function VoteHeadsPage({
   const due = (code: string) =>
     (rates[code]?.perLearner ?? 0) * learners + (rates[code]?.flatAmount ?? 0);
   const totalDue = heads.reduce((a, h) => a + due(h.code), 0);
+
+  // Everything credited to each head so far, across every receipt in the year —
+  // the same figure the ledger carries, beside the rate it came from.
+  const received = Object.fromEntries(
+    buildLedger(await getTxns(fy.id), heads).map((l) => [l.code, l.cr]),
+  );
+  const totalReceived = heads.reduce((a, h) => a + (received[h.code] ?? 0), 0);
 
   return (
     <ReportShell
@@ -52,6 +59,7 @@ export default async function VoteHeadsPage({
               <th className="n">Flat amount</th>
               <th className="n">Learners</th>
               <th className="n">Due per disbursement</th>
+              <th className="n">Received to date</th>
             </tr>
           </thead>
           <tbody>
@@ -68,12 +76,14 @@ export default async function VoteHeadsPage({
                     {r?.perLearner && learners ? learners.toLocaleString("en-KE") : "—"}
                   </td>
                   <td className="n">{due(h.code) ? formatKes(due(h.code)) : "—"}</td>
+                  <td className="n">{received[h.code] ? formatKes(received[h.code]) : "—"}</td>
                 </tr>
               );
             })}
             <tr className="total">
               <td colSpan={6}>Total due at {learners.toLocaleString("en-KE")} learners</td>
               <td className="n">{formatKes(totalDue)}</td>
+              <td className="n">{formatKes(totalReceived)}</td>
             </tr>
           </tbody>
         </table>
