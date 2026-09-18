@@ -2,6 +2,7 @@ import { financialYearInProgress, financialYearLabels } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getTxns } from "@/server/queries";
 import { FinancialYearForm } from "./form";
+import { ArchiveForm } from "./archive-form";
 
 export default async function SettingsPage({
   params,
@@ -33,6 +34,9 @@ export default async function SettingsPage({
         years={years}
         entries={entries}
       />
+
+      <h2>Archive this book</h2>
+      <ArchiveForm accountId={accountId} schoolName={school.name} entries={entries} />
     </>
   );
 }

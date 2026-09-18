@@ -1,6 +1,6 @@
 // No "server-only" here: the seed script imports this too, so the books are
 // opened the same way whether they come from the UI or from a seed.
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { db } from "../db/index.ts";
 import * as schema from "../db/schema.ts";
 import { chartFor } from "../domain/vote-heads.ts";
@@ -158,4 +158,80 @@ export async function changeFinancialYear(input: {
     }),
   ] as const;
   await db.batch(writes as unknown as Parameters<typeof db.batch>[0]);
+}
+
+/**
+ * Hides a book without destroying it. Every entry, period and vote head stays
+ * exactly where it is, so a year an auditor asks for later can still be
+ * produced, and a book that has been opened stays on the record however the
+ * subscription is billed. Archiving is not a way to un-open a book.
+ */
+export async function archiveBook(input: {
+  accountId: string;
+  orgId: string;
+  userId: string;
+}) {
+  const [row] = await db
+    .select({ account: schema.accounts, school: schema.schools })
+    .from(schema.accounts)
+    .innerJoin(schema.schools, eq(schema.accounts.schoolId, schema.schools.id))
+    .where(and(
+      eq(schema.accounts.id, input.accountId),
+      eq(schema.schools.orgId, input.orgId),
+    ));
+  if (!row) throw new Error("Book not found.");
+  if (row.account.archivedAt) return;
+
+  await db.batch([
+    db.update(schema.accounts)
+      .set({ archivedAt: new Date(), archivedBy: input.userId })
+      .where(eq(schema.accounts.id, input.accountId)),
+    db.insert(schema.auditLog).values({
+      orgId: input.orgId,
+      userId: input.userId,
+      action: "archive",
+      entity: "account",
+      entityId: input.accountId,
+      before: JSON.stringify({ school: row.school.name, account: row.account.name }),
+    }),
+  ] as unknown as Parameters<typeof db.batch>[0]);
+}
+
+export async function restoreBook(input: {
+  accountId: string;
+  orgId: string;
+  userId: string;
+}) {
+  const [row] = await db
+    .select({ id: schema.accounts.id })
+    .from(schema.accounts)
+    .innerJoin(schema.schools, eq(schema.accounts.schoolId, schema.schools.id))
+    .where(and(
+      eq(schema.accounts.id, input.accountId),
+      eq(schema.schools.orgId, input.orgId),
+    ));
+  if (!row) throw new Error("Book not found.");
+
+  await db.batch([
+    db.update(schema.accounts)
+      .set({ archivedAt: null, archivedBy: null })
+      .where(eq(schema.accounts.id, input.accountId)),
+    db.insert(schema.auditLog).values({
+      orgId: input.orgId,
+      userId: input.userId,
+      action: "restore",
+      entity: "account",
+      entityId: input.accountId,
+    }),
+  ] as unknown as Parameters<typeof db.batch>[0]);
+}
+
+/** Archived books, for the list that offers them back. */
+export async function getArchivedBooks(orgId: string) {
+  return db
+    .select({ account: schema.accounts, school: schema.schools })
+    .from(schema.accounts)
+    .innerJoin(schema.schools, eq(schema.accounts.schoolId, schema.schools.id))
+    .where(and(eq(schema.schools.orgId, orgId), isNotNull(schema.accounts.archivedAt)))
+    .orderBy(schema.schools.name);
 }

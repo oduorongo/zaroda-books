@@ -2,7 +2,10 @@ import {
   CHART_OF_ACCOUNTS, accountTypesFor, financialYearInProgress, financialYearLabels,
 } from "@/domain";
 import type { SchoolLevel } from "@/domain";
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/server/auth";
 import { NewBookForm } from "./form";
+import { ArchivedBooks } from "./archived";
 
 const LEVELS: { id: SchoolLevel; label: string }[] = [
   { id: "primary", label: "Primary" },
@@ -10,7 +13,10 @@ const LEVELS: { id: SchoolLevel; label: string }[] = [
   { id: "senior", label: "Secondary" },
 ];
 
-export default function NewBookPage() {
+export default async function NewBookPage() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
   // Books are opened for years already gone as often as for the current one:
   // a freelance accountant taking on a school writes up its back years first.
   const years = financialYearLabels(financialYearInProgress(), 2022);
@@ -36,6 +42,7 @@ export default function NewBookPage() {
         twelve monthly periods. These cannot be renumbered afterwards.
       </p>
       <NewBookForm years={years} levels={LEVELS} charts={charts} />
+      <ArchivedBooks orgId={user.orgId} />
     </div>
   );
 }

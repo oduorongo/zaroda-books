@@ -42,6 +42,11 @@ export const accounts = pgTable("accounts", {
   name: text("name").notNull(),
   bankName: text("bank_name"),
   bankAccountNo: text("bank_account_no"),
+  // An archived book is hidden from the app but keeps every entry, so a year
+  // an auditor asks for later still exists, and so a book that has been opened
+  // stays counted however the subscription is billed.
+  archivedAt: timestamp("archived_at"),
+  archivedBy: uuid("archived_by").references(() => users.id),
 });
 
 export const voteHeads = pgTable("vote_heads", {

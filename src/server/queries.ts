@@ -1,6 +1,6 @@
 import "server-only";
 import { db, schema } from "@/db";
-import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type { Txn, VoteHead } from "@/domain";
 
 export async function getAccountAndSchool(accountId: string) {
@@ -30,7 +30,7 @@ export async function getOrgBooks(orgId: string) {
     .select({ account: schema.accounts, school: schema.schools })
     .from(schema.accounts)
     .innerJoin(schema.schools, eq(schema.accounts.schoolId, schema.schools.id))
-    .where(eq(schema.schools.orgId, orgId))
+    .where(and(eq(schema.schools.orgId, orgId), isNull(schema.accounts.archivedAt)))
     .orderBy(schema.schools.name);
 }
 
@@ -40,7 +40,12 @@ export async function getBookForOrg(accountId: string, orgId: string) {
     .select({ account: schema.accounts, school: schema.schools })
     .from(schema.accounts)
     .innerJoin(schema.schools, eq(schema.accounts.schoolId, schema.schools.id))
-    .where(and(eq(schema.accounts.id, accountId), eq(schema.schools.orgId, orgId)));
+    .where(and(
+      eq(schema.accounts.id, accountId),
+      eq(schema.schools.orgId, orgId),
+      isNull(schema.accounts.archivedAt),
+    ));
+  // An archived book is unreachable even by its own link, not merely unlisted.
   if (!row) throw new Error("Account not found.");
   return row;
 }
