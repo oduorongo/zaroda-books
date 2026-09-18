@@ -86,7 +86,7 @@ export default async function ReceiptsPage({
                 <div className="mono" style={{ fontSize: ".9rem" }}>
                   {formatKes(r.kind === "receipt" ? r.cash + r.bank : 0)}
                 </div>
-                <Link className="note" href={`/app/${accountId}/receipts/${r.id}/edit`}>Amend</Link>
+                <Link className="note" href={`/app/${accountId}/receipts/${r.id}/acknowledgement`}>View</Link>
               </div>
             </div>
           ))}
