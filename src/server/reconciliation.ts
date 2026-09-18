@@ -29,7 +29,7 @@ export async function getReconciliation(accountId: string, asked?: string) {
     .from(schema.transactions)
     .where(
       and(
-        inArray(schema.transactions.id, toDate.length ? toDate.map((t) => t.id) : [""]),
+        inArray(schema.transactions.id, toDate.map((t) => t.id)),
         lte(schema.transactions.clearedOn, `${month}-31`),
       ),
     );
