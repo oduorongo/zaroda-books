@@ -1,4 +1,6 @@
-import { CHART_OF_ACCOUNTS, accountTypesFor } from "@/domain";
+import {
+  CHART_OF_ACCOUNTS, accountTypesFor, financialYearInProgress, financialYearLabels,
+} from "@/domain";
 import type { SchoolLevel } from "@/domain";
 import { NewBookForm } from "./form";
 
@@ -9,11 +11,9 @@ const LEVELS: { id: SchoolLevel; label: string }[] = [
 ];
 
 export default function NewBookPage() {
-  const thisYear = new Date().getFullYear();
-  const years = [0, -1, -2].map((d) => {
-    const y = thisYear + d;
-    return `${y}/${String((y + 1) % 100).padStart(2, "0")}`;
-  });
+  // Books are opened for years already gone as often as for the current one:
+  // a freelance accountant taking on a school writes up its back years first.
+  const years = financialYearLabels(financialYearInProgress(), 2022);
 
   // The chart differs by level, so the form needs all of them up front.
   const charts = Object.fromEntries(
