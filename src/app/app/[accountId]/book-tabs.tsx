@@ -5,6 +5,7 @@ const TABS = [
   ["ledger", "Ledger"],
   ["trial-balance", "Trial balance"],
   ["cash-flow", "Cash flow"],
+  ["bank-reconciliation", "Bank reconciliation"],
 ];
 
 export function BookTabs({ accountId, active }: { accountId: string; active: string }) {

@@ -2,7 +2,7 @@ import "server-only";
 import { db, schema } from "@/db";
 import { and, eq } from "drizzle-orm";
 import { buildTrialBalance } from "@/domain";
-import type { Balances, Txn, VoteHead } from "@/domain";
+import type { Balances, Reconciliation, Txn, VoteHead } from "@/domain";
 
 /** "2026-05-01" -> "2026-05", the prefix the report filters match on. */
 export const monthKey = (month: string) => month.slice(0, 7);
@@ -21,6 +21,7 @@ export function assertClosable(
   yearOpening: Balances,
   txnsToDate: Txn[],
   heads: VoteHead[],
+  reconciliation?: Reconciliation | null,
 ) {
   const tb = buildTrialBalance(asAt, yearOpening, txnsToDate, heads);
   if (!tb.balanced)
@@ -28,6 +29,19 @@ export function assertClosable(
       `Trial balance is out by ${tb.difference / 100}. Find the entry before closing.`,
     );
   if (tb.closingCash < 0) throw new Error("Cash in hand cannot be negative.");
+
+  // The bank column is only proven by the statement. A month that has not been
+  // reconciled has not been checked against anything outside the book.
+  if (!reconciliation)
+    throw new Error(
+      "Enter the closing balance from the bank statement and reconcile the month before closing.",
+    );
+  if (!reconciliation.reconciled)
+    throw new Error(
+      `The bank reconciliation is out by ${reconciliation.difference / 100}. `
+      + "Post what the statement shows and the book does not before closing.",
+    );
+
   return tb;
 }
 

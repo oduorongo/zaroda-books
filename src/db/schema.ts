@@ -82,6 +82,11 @@ export const periods = pgTable("periods", {
   closingBank: bigint("closing_bank", { mode: "number" }),
   closedBy: uuid("closed_by").references(() => users.id),
   closedAt: timestamp("closed_at"),
+  // The closing balance on the bank statement for this month, as the bank
+  // states it. Entered by the bursar from the statement — never derived, or
+  // the reconciliation would be proving the book against itself.
+  statementBank: bigint("statement_bank", { mode: "number" }),
+  statementDate: date("statement_date"),
 }, (t) => [unique().on(t.financialYearId, t.month)]);
 
 /** Stored fact. Everything reported is derived from this table and allocations. */
@@ -107,6 +112,9 @@ export const transactions = pgTable("transactions", {
   bankedFrom: uuid("banked_from").references((): AnyPgColumn => transactions.id, {
     onDelete: "cascade",
   }),
+  // The date this entry appeared on the bank statement. Null means it has not
+  // been ticked off, which is what makes it a reconciling item.
+  clearedOn: date("cleared_on"),
   createdBy: uuid("created_by").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => [index("txn_period_idx").on(t.periodId, t.date)]);

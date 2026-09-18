@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 
-const BOOKS = ["cash-book", "ledger", "trial-balance", "cash-flow"];
+const BOOKS = ["cash-book", "ledger", "trial-balance", "cash-flow", "bank-reconciliation"];
 
 export function SideNav() {
   const pathname = usePathname();

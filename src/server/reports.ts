@@ -8,10 +8,11 @@ import {
   before, getEnrolmentInForce, getReceiptEnrolment, getTxns, getVoteHeadRates, inMonth, upTo,
 } from "@/server/queries";
 import { getReportPeriod, monthKey, monthName } from "@/server/periods";
+import { getReconciliation } from "@/server/reconciliation";
 
 export type ReportName =
   | "cash-book" | "ledger" | "trial-balance" | "cash-flow"
-  | "receipts" | "payments" | "vote-heads";
+  | "receipts" | "payments" | "vote-heads" | "bank-reconciliation";
 
 export type Cell = string | number;
 
@@ -210,6 +211,44 @@ export async function reportDoc(
         csvAmount(payments.reduce((a, p) => a + (p.kind === "payment" ? p.cash : 0), 0)),
         csvAmount(payments.reduce((a, p) => a + (p.kind === "payment" ? p.bank : 0), 0))],
     }];
+  }
+
+  if (report === "bank-reconciliation") {
+    title = "Bank reconciliation statement";
+    const { reconciliation: r } = await getReconciliation(accountId, asked);
+    sections = [
+      {
+        columns: ["Details", "Amount"],
+        rows: [
+          ["Balance per cash book — bank column", csvAmount(r.perCashBook)],
+          ...(r.uncreditedTotal
+            ? [["Less deposits not yet credited", csvAmount(-r.uncreditedTotal)] as Cell[]]
+            : []),
+          ...(r.unpresentedTotal
+            ? [["Add cheques not yet presented", csvAmount(r.unpresentedTotal)] as Cell[]]
+            : []),
+          ["Balance the statement should show", csvAmount(r.expectedStatement)],
+          ["Balance per bank statement", csvAmount(r.statementBalance)],
+        ],
+        total: ["Difference", csvAmount(r.difference)],
+        note: r.reconciled
+          ? "The book agrees with the statement."
+          : "The book and the statement disagree. The entries behind the difference must be read "
+            + "off the statement and posted; they are not worked out from the book.",
+      },
+      ...(r.uncredited.length ? [{
+        heading: "Deposits not yet credited by the bank",
+        columns: ["Date", "Particulars", "Ref", "Amount"],
+        rows: r.uncredited.map((i) => [i.date, i.particulars, i.ref ?? "", csvAmount(i.amount)]),
+        total: ["", "", "Total", csvAmount(r.uncreditedTotal)],
+      }] : []),
+      ...(r.unpresented.length ? [{
+        heading: "Cheques not yet presented",
+        columns: ["Date", "Particulars", "Cheque no.", "Amount"],
+        rows: r.unpresented.map((i) => [i.date, i.particulars, i.ref ?? "", csvAmount(i.amount)]),
+        total: ["", "", "Total", csvAmount(r.unpresentedTotal)],
+      }] : []),
+    ];
   }
 
   if (report === "vote-heads") {
