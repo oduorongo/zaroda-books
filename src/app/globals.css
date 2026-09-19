@@ -139,14 +139,36 @@ a:hover { color: var(--gold); }
 .auth { min-height: 100vh; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .auth aside {
   background: var(--ink); color: var(--on-dark);
-  padding: 3rem 3.5rem; display: flex; flex-direction: column; justify-content: space-between;
+  padding: 3rem 3.5rem; display: flex; flex-direction: column; justify-content: flex-end;
+  position: relative; overflow: hidden;
 }
+/* The photograph's own branding sits top left, so the crop favours that corner
+   and the scrim only darkens the foot, where the caption goes. */
+.auth aside img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: 28% 45%;
+}
+.auth aside::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(16, 34, 63, 0) 40%,
+    rgba(16, 34, 63, .72) 72%,
+    rgba(16, 34, 63, .95) 100%
+  );
+}
+.auth-aside-copy { position: relative; z-index: 1; }
 .auth .form-side { padding: 4rem 4.5rem; display: flex; flex-direction: column; justify-content: center; max-width: 620px; }
 
 @media (max-width: 900px) {
   .shell, .auth, .grid-2, .grid-3, .grid-4 { grid-template-columns: minmax(0, 1fr); }
   .workspace { padding: 1.75rem 1.25rem 3rem; }
   .wrap, .auth .form-side, .auth aside { padding: 1.5rem 1.25rem; }
+  /* Stacked above the form, the aside has only its caption to give it height,
+     and the photograph is absolute — so it needs one of its own. */
+  .auth aside { min-height: 15rem; }
+  .auth aside .auth-aside-copy div { font-size: 1.5rem; }
 }
 
 .back-link {
