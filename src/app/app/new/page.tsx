@@ -21,8 +21,22 @@ const LEVELS: { id: SchoolLevel; label: string }[] = [
  * out the rule.
  */
 function Entitlement({
-  freeUsed, covered,
+  freeUsed, covered, approved,
 }: Awaited<ReturnType<typeof orgEntitlements>>) {
+  if (!approved && covered.length === 0) {
+    return (
+      <div className="card" style={{ marginBottom: "1.35rem", borderLeft: "3px solid var(--gold)" }}>
+        <div className="eyebrow" style={{ color: "var(--gold)" }}>We are reviewing your account</div>
+        <p style={{ margin: ".5rem 0 0", fontSize: ".9rem", lineHeight: 1.6, color: "var(--muted)" }}>
+          Your free school opens as soon as that is done, usually the same working day. Nothing is
+          lost in the meantime. If it is urgent, reach us on{" "}
+          <a href="https://wa.me/254781230805">WhatsApp 0781 230 805</a> or{" "}
+          <a href="mailto:info@zarodasolutions.com">info@zarodasolutions.com</a>.
+        </p>
+      </div>
+    );
+  }
+
   if (!freeUsed && covered.length === 0) {
     return (
       <div className="card" style={{ marginBottom: "1.35rem" }}>

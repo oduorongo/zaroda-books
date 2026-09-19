@@ -4,6 +4,7 @@ import { bookEntitlement } from "../subscription";
 const args = (over: Partial<Parameters<typeof bookEntitlement>[0]> = {}) => ({
   subscription: undefined,
   freeAllowanceUsed: false,
+  orgApproved: true,
   level: "primary" as const,
   fyLabel: "2025/26",
   schoolId: "school-a",

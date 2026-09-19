@@ -8,6 +8,11 @@ export const orgs = pgTable("orgs", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  // Reviewed by Zaroda. Null means the free school is still held back; a
+  // subscription entered by hand opens books either way, since payment was
+  // review enough. Set from /admin, never by anything the tenant can reach.
+  approvedAt: timestamp("approved_at"),
+  approvedBy: uuid("approved_by"),
 });
 
 export const users = pgTable("users", {

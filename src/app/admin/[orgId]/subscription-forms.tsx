@@ -1,7 +1,9 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { createSubscriptionAction, setPaidAction, unbindAction } from "./actions";
+import {
+  createSubscriptionAction, setApprovedAction, setPaidAction, unbindAction,
+} from "./actions";
 
 export function PaidToggle({ orgId, subscriptionId, paid }: {
   orgId: string; subscriptionId: string; paid: boolean;
@@ -83,6 +85,20 @@ export function NewSubscriptionForm({ orgId, years }: { orgId: string; years: st
         {pending ? "Adding…" : "Add subscription"}
       </button>
       {error && <p className="error" style={{ width: "100%" }}>{error}</p>}
+    </form>
+  );
+}
+
+export function ApproveButton({ orgId, approved }: { orgId: string; approved: boolean }) {
+  const [error, action, pending] = useActionState(setApprovedAction, null);
+  return (
+    <form action={action}>
+      <input type="hidden" name="orgId" value={orgId} />
+      <input type="hidden" name="approved" value={approved ? "no" : "yes"} />
+      <button type="submit" className={approved ? "btn btn-quiet" : "btn btn-gold"} disabled={pending}>
+        {approved ? "Hold this account" : "Approve, release the free school"}
+      </button>
+      {error && <p className="error">{error}</p>}
     </form>
   );
 }

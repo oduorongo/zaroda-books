@@ -30,6 +30,7 @@ export interface TenantRow {
   users: number;
   schools: number;
   books: number;
+  approvedAt: Date | null;
   subscriptions: { level: SchoolLevel; fyLabel: string; paidAt: Date | null; isFree: boolean }[];
   lastPostedAt: Date | null;
 }
@@ -38,7 +39,10 @@ export async function listTenants(): Promise<TenantRow[]> {
   await requirePlatformAdmin();
 
   const [orgs, owners, userCounts, schoolCounts, bookCounts, subs, activity] = await Promise.all([
-    db.select().from(schema.orgs).orderBy(desc(schema.orgs.createdAt)),
+    // Pending first: an org waiting on review is the one thing here that needs
+    // acting on today.
+    db.select().from(schema.orgs)
+      .orderBy(sql`${schema.orgs.approvedAt} is not null`, desc(schema.orgs.createdAt)),
 
     db
       .select({
@@ -101,6 +105,7 @@ export async function listTenants(): Promise<TenantRow[]> {
       users: usersBy.get(org.id)?.n ?? 0,
       schools: schoolsBy.get(org.id)?.n ?? 0,
       books: booksBy.get(org.id)?.n ?? 0,
+      approvedAt: org.approvedAt,
       subscriptions: subs
         .filter((s) => s.orgId === org.id)
         .map((s) => ({ level: s.level, fyLabel: s.fyLabel, paidAt: s.paidAt, isFree: s.isFree })),
@@ -241,4 +246,30 @@ export async function unbindSubscription(subscriptionId: string, reason: string)
   await record(before.orgId, admin.id, "subscription.unbound", subscriptionId,
     { schoolId: before.schoolId, boundAt: before.boundAt },
     { schoolId: null, reason: reason.trim() });
+}
+
+/**
+ * Releases a tenant's free school, or holds it back again. Approval is how a
+ * second free account is caught, so both directions are written to the log.
+ */
+export async function setOrgApproved(orgId: string, approved: boolean) {
+  const admin = await requirePlatformAdmin();
+
+  const [before] = await db.select().from(schema.orgs).where(eq(schema.orgs.id, orgId));
+  if (!before) notFound();
+
+  const approvedAt = approved ? new Date() : null;
+  await db.update(schema.orgs)
+    .set({ approvedAt, approvedBy: approved ? admin.id : null })
+    .where(eq(schema.orgs.id, orgId));
+
+  await db.insert(schema.auditLog).values({
+    orgId,
+    userId: admin.id,
+    action: approved ? "org.approved" : "org.unapproved",
+    entity: "org",
+    entityId: orgId,
+    before: JSON.stringify({ approvedAt: before.approvedAt }),
+    after: JSON.stringify({ approvedAt }),
+  });
 }

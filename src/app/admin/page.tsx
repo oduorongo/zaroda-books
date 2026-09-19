@@ -20,6 +20,7 @@ function Figure({ label, value, note }: { label: string; value: string; note?: s
 export default async function AdminPage() {
   const tenants = await listTenants();
   const t = platformTotals(tenants);
+  const pending = tenants.filter((x) => !x.approvedAt).length;
 
   return (
     <>
@@ -30,7 +31,11 @@ export default async function AdminPage() {
       </p>
 
       <div className="grid-4" style={{ marginBottom: "1.25rem" }}>
-        <Figure label="Orgs" value={String(t.orgs)} note={`${t.users} users`} />
+        <Figure
+          label="Orgs"
+          value={String(t.orgs)}
+          note={pending === 0 ? `${t.users} users` : `${pending} awaiting review`}
+        />
         <Figure label="Schools" value={String(t.schools)} note={`${t.books} books opened`} />
         <Figure
           label="Collected"
@@ -62,6 +67,11 @@ export default async function AdminPage() {
               <tr key={row.orgId}>
                 <td>
                   <Link href={`/admin/${row.orgId}`}>{row.orgName}</Link>
+                  {!row.approvedAt && (
+                    <div className="mono" style={{ fontSize: ".68rem", letterSpacing: ".12em", textTransform: "uppercase", color: "var(--alarm)" }}>
+                      Awaiting review
+                    </div>
+                  )}
                 </td>
                 <td>
                   {row.ownerName ?? "—"}

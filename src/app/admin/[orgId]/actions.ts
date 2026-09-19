@@ -7,6 +7,7 @@ import { startViewAs } from "@/server/auth";
 import {
   createSubscription,
   requirePlatformAdmin,
+  setOrgApproved,
   setSubscriptionPaid,
   unbindSubscription,
 } from "@/server/platform";
@@ -64,4 +65,16 @@ export async function viewAsAction(form: FormData) {
   const orgId = String(form.get("orgId") ?? "");
   await startViewAs(orgId);
   redirect("/app");
+}
+
+export async function setApprovedAction(_prev: string | null, form: FormData): Promise<string | null> {
+  const orgId = String(form.get("orgId") ?? "");
+  try {
+    await setOrgApproved(orgId, form.get("approved") === "yes");
+  } catch (e) {
+    return message(e);
+  }
+  revalidatePath(`/admin/${orgId}`);
+  revalidatePath("/admin");
+  return null;
 }

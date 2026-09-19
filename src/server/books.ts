@@ -284,7 +284,7 @@ async function claimEntitlement(input: {
   fyLabel: string;
   schoolId: string;
 }) {
-  const [[existing], used] = await Promise.all([
+  const [[existing], used, [org]] = await Promise.all([
     db
       .select()
       .from(schema.subscriptions)
@@ -294,11 +294,16 @@ async function claimEntitlement(input: {
         eq(schema.subscriptions.fyLabel, input.fyLabel),
       )),
     freeAllowanceUsed(input.orgId),
+    db
+      .select({ approvedAt: schema.orgs.approvedAt })
+      .from(schema.orgs)
+      .where(eq(schema.orgs.id, input.orgId)),
   ]);
 
   const decision = bookEntitlement({
     subscription: existing,
     freeAllowanceUsed: used,
+    orgApproved: Boolean(org?.approvedAt),
     level: input.level,
     fyLabel: input.fyLabel,
     schoolId: input.schoolId,
@@ -380,5 +385,14 @@ export async function orgEntitlements(orgId: string) {
     .from(schema.subscriptions)
     .where(eq(schema.subscriptions.orgId, orgId));
 
-  return { freeUsed: subs.some((s) => s.isFree), covered: subs };
+  const [org] = await db
+    .select({ approvedAt: schema.orgs.approvedAt })
+    .from(schema.orgs)
+    .where(eq(schema.orgs.id, orgId));
+
+  return {
+    freeUsed: subs.some((s) => s.isFree),
+    covered: subs,
+    approved: Boolean(org?.approvedAt),
+  };
 }

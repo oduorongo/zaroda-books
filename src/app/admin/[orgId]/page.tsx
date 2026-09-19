@@ -4,7 +4,9 @@ import {
 } from "@/domain";
 import { getTenant } from "@/server/platform";
 import { viewAsAction } from "./actions";
-import { NewSubscriptionForm, PaidToggle, UnbindForm } from "./subscription-forms";
+import {
+  ApproveButton, NewSubscriptionForm, PaidToggle, UnbindForm,
+} from "./subscription-forms";
 
 const stamp = (d: Date | null) =>
   d ? new Date(d).toLocaleString("en-KE", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
@@ -27,8 +29,15 @@ export default async function TenantPage({ params }: { params: Promise<{ orgId: 
             Joined {stamp(org.createdAt)} · KSh {formatKes(money.collected)} collected,
             KSh {formatKes(money.outstanding)} outstanding
           </p>
+          {!org.approvedAt && (
+            <p style={{ color: "var(--alarm)", fontSize: ".9rem", margin: "-1.25rem 0 0", maxWidth: "58ch" }}>
+              Awaiting review. Their free school is held back until you approve. Check first
+              whether this is the same person as an org already on the list.
+            </p>
+          )}
         </div>
         <div className="report-actions">
+          <ApproveButton orgId={org.id} approved={Boolean(org.approvedAt)} />
           <form action={viewAsAction}>
             <input type="hidden" name="orgId" value={org.id} />
             <button type="submit" className="btn btn-quiet">Open their books, read only</button>

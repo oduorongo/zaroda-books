@@ -68,6 +68,8 @@ export type Entitlement =
 export function bookEntitlement(input: {
   subscription: { schoolId: string | null } | undefined;
   freeAllowanceUsed: boolean;
+  /** Whether Zaroda has reviewed this org. Gates the free school, nothing else. */
+  orgApproved: boolean;
   level: SchoolLevel;
   fyLabel: string;
   schoolId: string;
@@ -80,6 +82,17 @@ export function bookEntitlement(input: {
   }
 
   if (!input.freeAllowanceUsed) {
+    // Only the free school waits on approval. A subscription, handled above,
+    // was entered after payment and is not held a second time.
+    if (!input.orgApproved) {
+      return {
+        allowed: false,
+        reason:
+          "Your account is with us for review, and your free school opens as soon as "
+          + "that is done — usually the same working day. Nothing you have entered is "
+          + "lost. Reach us on WhatsApp 0781 230 805 or info@zarodasolutions.com.",
+      };
+    }
     return { allowed: true, bindTo: input.schoolId, grantFree: true };
   }
 
