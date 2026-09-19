@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Logo } from "./logo";
 
@@ -44,39 +45,38 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="wrap" style={{ padding: "4.5rem 2.5rem 6rem", display: "grid", gridTemplateColumns: "minmax(0,1.15fr) minmax(0,.85fr)", gap: "4rem", alignItems: "center" }}>
-          <div>
-            <div className="mono" style={{ fontSize: ".75rem", letterSpacing: ".2em", textTransform: "uppercase", color: "var(--gold)", marginBottom: "1.4rem" }}>
-              For book keepers of Kenyan public schools
-            </div>
-            <h1 style={{ fontSize: "3.25rem", lineHeight: 1.04, fontWeight: 700, margin: "0 0 1.5rem", textWrap: "pretty" }}>
-              The books of accounts, prepared by the system.
-            </h1>
-            <p style={{ fontSize: "1.15rem", lineHeight: 1.6, color: "var(--on-dark)", margin: "0 0 2rem", maxWidth: "52ch", textWrap: "pretty" }}>
-              Zaroda Books is built for the people who keep the books for primary, junior and
-              secondary schools. Enter the receipts and the payments once. The cash book, ledger,
-              trial balance and cash flow statement are prepared automatically, per vote head, to
-              the last shilling.
-            </p>
-            <div style={{ display: "flex", gap: ".9rem", flexWrap: "wrap" }}>
-              <Link href="/signup" className="btn btn-gold" style={{ color: "#fff", textDecoration: "none" }}>
-                Start a set of books
-              </Link>
-              <Link href="/login" className="btn" style={{ background: "none", border: "1px solid rgba(251,250,247,.35)", color: "var(--paper)", textDecoration: "none", fontWeight: 400 }}>
-                Log in
-              </Link>
-            </div>
-          </div>
-          <div style={{ background: "var(--ink-deep)", border: "1px solid rgba(251,250,247,.14)", borderRadius: 6, padding: "1.6rem 1.75rem" }}>
-            <div className="mono" style={{ fontSize: ".69rem", letterSpacing: ".16em", textTransform: "uppercase", color: "var(--on-dark-dim)", marginBottom: "1.1rem" }}>
-              Every book, from one set of entries
-            </div>
-            {outputs.map((o) => (
-              <div key={o.name} style={{ display: "flex", justifyContent: "space-between", gap: "1rem", padding: ".6rem 0", borderBottom: "1px solid rgba(251,250,247,.08)", fontSize: ".85rem" }}>
-                <span style={{ color: "var(--on-dark)" }}>{o.name}</span>
-                <span className="mono" style={{ color: "var(--gold)", fontSize: ".7rem", letterSpacing: ".1em", textTransform: "uppercase", whiteSpace: "nowrap" }}>{o.tag}</span>
+        <div className="hero">
+          <Image
+            src="/books-ui.png"
+            alt="A school bursar's desk: ledgers for school accounts, government grants and school finance, a cash book open beside a calculator, and receipts, payments and reports files."
+            width={1866}
+            height={843}
+            priority
+            sizes="100vw"
+          />
+          <div className="wrap">
+            <div className="hero-copy">
+              <div className="mono" style={{ fontSize: ".75rem", letterSpacing: ".2em", textTransform: "uppercase", color: "var(--gold)", marginBottom: "1.4rem" }}>
+                For book keepers of Kenyan public schools
               </div>
-            ))}
+              <h1 style={{ textWrap: "pretty" }}>
+                The books of accounts, prepared by the system.
+              </h1>
+              <p style={{ textWrap: "pretty" }}>
+                Zaroda Books is built for the people who keep the books for primary, junior and
+                secondary schools. Enter the receipts and the payments once. The cash book, ledger,
+                trial balance and cash flow statement are prepared automatically, per vote head, to
+                the last shilling.
+              </p>
+              <div className="hero-actions">
+                <Link href="/signup" className="btn btn-gold" style={{ color: "#fff", textDecoration: "none" }}>
+                  Start a set of books
+                </Link>
+                <Link href="/login" className="btn" style={{ background: "none", border: "1px solid rgba(251,250,247,.35)", color: "var(--paper)", textDecoration: "none", fontWeight: 400 }}>
+                  Log in
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </div>
