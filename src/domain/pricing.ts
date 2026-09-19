@@ -13,6 +13,8 @@ export interface RevenueTotals {
   outstanding: Cents;
   paidCount: number;
   unpaidCount: number;
+  /** Granted, not sold: the tenant's one free school. */
+  freeCount: number;
 }
 
 /**
@@ -21,12 +23,16 @@ export interface RevenueTotals {
  * collected — the two are never added together.
  */
 export function revenue(
-  subs: { level: SchoolLevel; paidAt: Date | null }[],
+  subs: { level: SchoolLevel; paidAt: Date | null; isFree?: boolean }[],
 ): RevenueTotals {
-  const totals: RevenueTotals = { collected: 0, outstanding: 0, paidCount: 0, unpaidCount: 0 };
+  const totals: RevenueTotals = {
+    collected: 0, outstanding: 0, paidCount: 0, unpaidCount: 0, freeCount: 0,
+  };
   for (const s of subs) {
     const price = LEVEL_PRICE[s.level];
-    if (s.paidAt) {
+    if (s.isFree) {
+      totals.freeCount += 1;
+    } else if (s.paidAt) {
       totals.collected += price;
       totals.paidCount += 1;
     } else {

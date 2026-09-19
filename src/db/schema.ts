@@ -59,6 +59,12 @@ export const subscriptions = pgTable("subscriptions", {
   schoolId: uuid("school_id").references(() => schools.id),
   boundAt: timestamp("bound_at"),
   paidAt: timestamp("paid_at"),
+  /**
+   * The tenant's one free school. Granted once per org and never again, so the
+   * presence of any such row is what says the allowance is spent. It is owed
+   * nothing, so it is counted apart from both paid and unpaid.
+   */
+  isFree: boolean("is_free").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => [unique("subscriptions_org_level_fy").on(t.orgId, t.level, t.fyLabel)]);
 

@@ -1,9 +1,10 @@
 import {
-  CHART_OF_ACCOUNTS, accountTypesFor, financialYearInProgress, financialYearLabels,
+  CHART_OF_ACCOUNTS, accountTypesFor, financialYearInProgress, financialYearLabels, priceLabel,
 } from "@/domain";
 import type { SchoolLevel } from "@/domain";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/server/auth";
+import { orgEntitlements } from "@/server/books";
 import { NewBookForm } from "./form";
 import { ArchivedBooks } from "./archived";
 import { BackLink } from "../back-link";
@@ -13,6 +14,53 @@ const LEVELS: { id: SchoolLevel; label: string }[] = [
   { id: "junior", label: "Junior School" },
   { id: "senior", label: "Secondary" },
 ];
+
+/**
+ * Where the tenant stands before they fill anything in. A refusal arrived at
+ * after typing the school's name and choosing the year is a bad way to find
+ * out the rule.
+ */
+function Entitlement({
+  freeUsed, covered,
+}: Awaited<ReturnType<typeof orgEntitlements>>) {
+  if (!freeUsed && covered.length === 0) {
+    return (
+      <div className="card" style={{ marginBottom: "1.35rem" }}>
+        <div className="eyebrow" style={{ color: "var(--gold)" }}>Your first school is free</div>
+        <p style={{ margin: ".5rem 0 0", fontSize: ".9rem", lineHeight: 1.6, color: "var(--muted)" }}>
+          One school, at one level, for one financial year — with every account it keeps at that
+          level: tuition, operations, infrastructure, boarding, lunch. Open them as you need them.
+          A second school, a second level, or a later year is subscribed for.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card" style={{ marginBottom: "1.35rem" }}>
+      <div className="eyebrow" style={{ color: "var(--gold)" }}>What you may open</div>
+      <table style={{ marginTop: ".6rem" }}>
+        <thead><tr><th>Year</th><th>Level</th><th>How</th></tr></thead>
+        <tbody>
+          {covered.map((c) => (
+            <tr key={`${c.level}-${c.fyLabel}`}>
+              <td>{c.fyLabel}</td>
+              <td style={{ textTransform: "capitalize" }}>{c.level}</td>
+              <td>{c.isFree ? "Your free school" : c.paidAt ? "Subscribed" : "Subscribed, payment pending"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p style={{ margin: ".85rem 0 0", fontSize: ".9rem", lineHeight: 1.6, color: "var(--muted)" }}>
+        Any account at a level and year listed above opens straight away. Anything else needs a
+        subscription — {LEVEL_LINE} Talk to us and we will open it.
+      </p>
+    </div>
+  );
+}
+
+const LEVEL_LINE = `KSh ${priceLabel("primary")} primary, KSh ${priceLabel("junior")} junior, `
+  + `KSh ${priceLabel("senior")} senior, per year.`;
 
 export default async function NewBookPage() {
   const user = await getCurrentUser();
@@ -45,6 +93,7 @@ export default async function NewBookPage() {
         The school, the level, the account and the financial year fix the chart of accounts and the
         twelve monthly periods. These cannot be renumbered afterwards.
       </p>
+      <Entitlement {...await orgEntitlements(user.orgId)} />
       <NewBookForm years={years} levels={LEVELS} charts={charts} />
       <ArchivedBooks orgId={user.orgId} />
     </div>

@@ -12,7 +12,9 @@ const stamp = (d: Date | null) =>
 export default async function TenantPage({ params }: { params: Promise<{ orgId: string }> }) {
   const { orgId } = await params;
   const { org, members, schools, books, subs, audit } = await getTenant(orgId);
-  const money = revenue(subs.map((s) => ({ level: s.subscription.level, paidAt: s.subscription.paidAt })));
+  const money = revenue(subs.map((s) => ({
+    level: s.subscription.level, paidAt: s.subscription.paidAt, isFree: s.subscription.isFree,
+  })));
   const years = financialYearLabels(financialYearInProgress() + 1, financialYearInProgress() - 2);
 
   return (
@@ -65,16 +67,20 @@ export default async function TenantPage({ params }: { params: Promise<{ orgId: 
               <tr key={s.id}>
                 <td>{s.fyLabel}</td>
                 <td>{s.level}</td>
-                <td className="n">{formatKes(LEVEL_PRICE[s.level])}</td>
+                <td className="n">{s.isFree ? <span className="zero">free</span> : formatKes(LEVEL_PRICE[s.level])}</td>
                 <td>
                   {school ? school.name : <span className="zero">not yet bound</span>}
                   {s.boundAt && <div className="note">{stamp(s.boundAt)}</div>}
                 </td>
-                <td style={{ color: s.paidAt ? "var(--gold)" : "var(--alarm)" }}>
-                  {s.paidAt ? stamp(s.paidAt) : "unpaid"}
+                <td style={{ color: s.isFree ? "var(--muted)" : s.paidAt ? "var(--gold)" : "var(--alarm)" }}>
+                  {s.isFree ? "the free school" : s.paidAt ? stamp(s.paidAt) : "unpaid"}
                 </td>
                 <td>
-                  <PaidToggle orgId={org.id} subscriptionId={s.id} paid={Boolean(s.paidAt)} />
+                  {/* Marking the free school paid would be recording money that was
+                      never owed, so the toggle is not offered on it. */}
+                  {!s.isFree && (
+                    <PaidToggle orgId={org.id} subscriptionId={s.id} paid={Boolean(s.paidAt)} />
+                  )}
                   {school && (
                     <UnbindForm orgId={org.id} subscriptionId={s.id} schoolName={school.name} />
                   )}

@@ -40,7 +40,7 @@ export default async function AdminPage() {
         <Figure
           label="Outstanding"
           value={`KSh ${formatKes(t.outstanding)}`}
-          note={`${t.unpaidCount} awaiting payment`}
+          note={`${t.unpaidCount} awaiting payment · ${t.freeCount} free`}
         />
       </div>
 
@@ -76,8 +76,8 @@ export default async function AdminPage() {
                     row.subscriptions.map((s) => (
                       <div key={`${s.level}-${s.fyLabel}`} style={{ fontSize: ".84rem" }}>
                         {s.fyLabel} {s.level}{" "}
-                        <span style={{ color: s.paidAt ? "var(--gold)" : "var(--alarm)" }}>
-                          {s.paidAt ? "paid" : "unpaid"}
+                        <span style={{ color: s.isFree ? "var(--muted)" : s.paidAt ? "var(--gold)" : "var(--alarm)" }}>
+                          {s.isFree ? "free" : s.paidAt ? "paid" : "unpaid"}
                         </span>
                       </div>
                     ))

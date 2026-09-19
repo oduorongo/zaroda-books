@@ -1,0 +1,1 @@
+ALTER TABLE "subscriptions" ADD COLUMN "is_free" boolean DEFAULT false NOT NULL;

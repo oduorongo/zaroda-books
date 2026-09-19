@@ -30,7 +30,7 @@ export interface TenantRow {
   users: number;
   schools: number;
   books: number;
-  subscriptions: { level: SchoolLevel; fyLabel: string; paidAt: Date | null }[];
+  subscriptions: { level: SchoolLevel; fyLabel: string; paidAt: Date | null; isFree: boolean }[];
   lastPostedAt: Date | null;
 }
 
@@ -103,7 +103,7 @@ export async function listTenants(): Promise<TenantRow[]> {
       books: booksBy.get(org.id)?.n ?? 0,
       subscriptions: subs
         .filter((s) => s.orgId === org.id)
-        .map((s) => ({ level: s.level, fyLabel: s.fyLabel, paidAt: s.paidAt })),
+        .map((s) => ({ level: s.level, fyLabel: s.fyLabel, paidAt: s.paidAt, isFree: s.isFree })),
       lastPostedAt: at ? new Date(at) : null,
     };
   });

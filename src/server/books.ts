@@ -4,7 +4,7 @@ import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { db } from "../db/index.ts";
 import * as schema from "../db/schema.ts";
 import { chartFor } from "../domain/vote-heads.ts";
-import { schoolNameKey, subscriptionDecision } from "../domain/subscription.ts";
+import { bookEntitlement, schoolNameKey } from "../domain/subscription.ts";
 import type { AccountType, SchoolLevel } from "../domain/vote-heads.ts";
 
 export type { SchoolLevel };
@@ -66,7 +66,7 @@ export async function createBook(input: {
     nameKey,
   }).returning())[0];
 
-  await consumeSubscription({
+  await claimEntitlement({
     orgId: input.orgId,
     level: input.level,
     fyLabel: input.fyLabel,
@@ -260,27 +260,49 @@ export async function getArchivedBooks(orgId: string) {
     .orderBy(schema.schools.name);
 }
 
+/** Whether this org has already been given its one free school. */
+async function freeAllowanceUsed(orgId: string) {
+  const [row] = await db
+    .select({ id: schema.subscriptions.id })
+    .from(schema.subscriptions)
+    .where(and(
+      eq(schema.subscriptions.orgId, orgId),
+      eq(schema.subscriptions.isFree, true),
+    ));
+  return Boolean(row);
+}
+
 /**
- * Finds this level and year's subscription, or opens one, and binds it to the
- * school. A bound subscription is refused to any other school, and the binding
- * outlives the books: archiving or emptying them does not release it.
+ * The gate in front of every book: the free allowance, then the subscription.
+ * Finds this level and year's subscription, or grants the free one, and binds
+ * it to the school. A bound subscription is refused to any other school, and
+ * the binding outlives the books: archiving or emptying does not release it.
  */
-async function consumeSubscription(input: {
+async function claimEntitlement(input: {
   orgId: string;
   level: SchoolLevel;
   fyLabel: string;
   schoolId: string;
 }) {
-  const [existing] = await db
-    .select()
-    .from(schema.subscriptions)
-    .where(and(
-      eq(schema.subscriptions.orgId, input.orgId),
-      eq(schema.subscriptions.level, input.level),
-      eq(schema.subscriptions.fyLabel, input.fyLabel),
-    ));
+  const [[existing], used] = await Promise.all([
+    db
+      .select()
+      .from(schema.subscriptions)
+      .where(and(
+        eq(schema.subscriptions.orgId, input.orgId),
+        eq(schema.subscriptions.level, input.level),
+        eq(schema.subscriptions.fyLabel, input.fyLabel),
+      )),
+    freeAllowanceUsed(input.orgId),
+  ]);
 
-  const decision = subscriptionDecision(existing, input.schoolId);
+  const decision = bookEntitlement({
+    subscription: existing,
+    freeAllowanceUsed: used,
+    level: input.level,
+    fyLabel: input.fyLabel,
+    schoolId: input.schoolId,
+  });
   if (!decision.allowed) throw new Error(decision.reason);
   if (decision.bindTo === null) return;
 
@@ -298,6 +320,7 @@ async function consumeSubscription(input: {
     fyLabel: input.fyLabel,
     schoolId: decision.bindTo,
     boundAt: new Date(),
+    isFree: decision.grantFree,
   });
 }
 
@@ -343,4 +366,19 @@ export async function saveSchool(schoolId: string, name: string) {
     .update(schema.schools)
     .set({ name: name.trim(), nameKey })
     .where(eq(schema.schools.id, schoolId));
+}
+
+/** What an org may already open, for the notice above the new-book form. */
+export async function orgEntitlements(orgId: string) {
+  const subs = await db
+    .select({
+      level: schema.subscriptions.level,
+      fyLabel: schema.subscriptions.fyLabel,
+      isFree: schema.subscriptions.isFree,
+      paidAt: schema.subscriptions.paidAt,
+    })
+    .from(schema.subscriptions)
+    .where(eq(schema.subscriptions.orgId, orgId));
+
+  return { freeUsed: subs.some((s) => s.isFree), covered: subs };
 }
