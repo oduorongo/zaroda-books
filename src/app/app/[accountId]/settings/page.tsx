@@ -33,7 +33,13 @@ export default async function SettingsPage({
       </p>
 
       <h2>School</h2>
-      <SchoolForm accountId={accountId} name={school.name} locked={entries > 0} />
+      <SchoolForm
+        accountId={accountId}
+        name={school.name}
+        county={school.county}
+        subCounty={school.subCounty}
+        locked={entries > 0}
+      />
 
       <h2>Financial year</h2>
       <FinancialYearForm

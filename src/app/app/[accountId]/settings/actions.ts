@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { loadBook } from "@/server/book-context";
-import { archiveBook, changeFinancialYear, saveSchool } from "@/server/books";
+import { isSubCountyOf } from "@/domain";
+import { archiveBook, changeFinancialYear, saveSchool, saveSchoolLocation } from "@/server/books";
 
 export async function changeFinancialYearAction(
   _prev: string | null,
@@ -58,11 +59,20 @@ export async function saveSchoolAction(
   const accountId = String(form.get("accountId") ?? "");
   const { school } = await loadBook(accountId, { write: true });
 
+  const county = String(form.get("county") ?? "").trim();
+  const subCounty = String(form.get("subCounty") ?? "").trim();
+  const placed = Boolean(county || subCounty);
+  if (placed && !isSubCountyOf(county, subCounty)) {
+    return "Choose the county and the sub-county together, or leave both blank.";
+  }
+
+  // The name input is disabled once entries are posted, so it does not post at
+  // all. Its absence means leave the name alone, not clear it.
   const name = String(form.get("schoolName") ?? "").trim();
-  if (!name) return "Enter the name of the school.";
 
   try {
-    await saveSchool(school.id, name);
+    await saveSchoolLocation(school.id, placed ? county : null, placed ? subCounty : null);
+    if (name) await saveSchool(school.id, name);
   } catch (e) {
     const message = e instanceof Error ? e.message : "";
     return message.includes("schools_org_name")

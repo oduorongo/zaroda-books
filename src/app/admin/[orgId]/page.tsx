@@ -114,7 +114,7 @@ export default async function TenantPage({ params }: { params: Promise<{ orgId: 
                 <tr key={s.id}>
                   <td>{s.name}<div className="note mono">{s.nameKey}</div></td>
                   <td>{s.level}</td>
-                  <td>{s.county ?? "—"}</td>
+                  <td>{s.county ? `${s.county}${s.subCounty ? ` · ${s.subCounty}` : ""}` : <span className="zero">not set</span>}</td>
                 </tr>
               ))}
             </tbody>

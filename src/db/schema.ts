@@ -13,6 +13,11 @@ export const orgs = pgTable("orgs", {
   // review enough. Set from /admin, never by anything the tenant can reach.
   approvedAt: timestamp("approved_at"),
   approvedBy: uuid("approved_by"),
+  // Where the subscriber is, taken at signup. Not where their schools are —
+  // a freelancer in Nairobi keeps books for schools anywhere, so coverage of
+  // the books is read from schools.county, not from here.
+  county: text("county"),
+  subCounty: text("sub_county"),
 });
 
 export const users = pgTable("users", {

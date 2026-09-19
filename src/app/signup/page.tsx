@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { AuthLayout } from "../auth-layout";
+import { CountyPicker } from "../county-picker";
 import { signup } from "./actions";
 
 export default function SignupPage() {
@@ -23,6 +24,7 @@ export default function SignupPage() {
             <input name="practice" placeholder="Ochieng &amp; Associates" />
           </label>
         </div>
+        <CountyPicker required />
         <label className="field">Email address
           <input name="email" type="email" placeholder="you@school.ac.ke" autoComplete="email" required />
         </label>

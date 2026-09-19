@@ -1,13 +1,16 @@
 "use client";
 
 import { useActionState } from "react";
+import { CountyPicker } from "@/app/county-picker";
 import { saveSchoolAction } from "./actions";
 
 export function SchoolForm({
-  accountId, name, locked,
+  accountId, name, county, subCounty, locked,
 }: {
   accountId: string;
   name: string;
+  county: string | null;
+  subCounty: string | null;
   /** Entries have been posted, so the name is the school's settled identity. */
   locked: boolean;
 }) {
@@ -21,7 +24,12 @@ export function SchoolForm({
         <input name="schoolName" defaultValue={name} required disabled={locked} />
       </label>
 
-      <button type="submit" className="btn btn-primary" disabled={pending || locked}>
+      {/* Where the school is, not where the book keeper is. This is what the
+          coverage figures are read from. Editable after entries are posted:
+          unlike the name, it carries no subscription. */}
+      <CountyPicker county={county} subCounty={subCounty} />
+
+      <button type="submit" className="btn btn-primary" disabled={pending}>
         {pending ? "Saving…" : "Save"}
       </button>
 

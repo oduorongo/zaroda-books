@@ -279,3 +279,20 @@ a:hover { color: var(--gold); }
   .hero-copy { padding: 3.5rem 0 4rem; }
   .hero-copy h1 { font-size: 2.25rem; }
 }
+
+/* The voucher book: one voucher to a page, so the year prints as a set that
+   can go straight into the file. On screen they simply stack. */
+.voucher-sheet { margin-bottom: 1.5rem; }
+
+@media print {
+  .voucher-sheet {
+    break-after: page;
+    page-break-after: always;
+    border: none;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+  }
+  /* No trailing blank sheet at the end of the run. */
+  .voucher-sheet:last-child { break-after: auto; page-break-after: auto; }
+}

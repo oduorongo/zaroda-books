@@ -62,7 +62,9 @@ export function PaymentForm({
           <input name="date" type="date" defaultValue={payment?.date ?? new Date().toISOString().slice(0, 10)} required />
         </label>
         <label className="field">Voucher no.
-          <input name="vrNo" placeholder="VR/207" defaultValue={payment?.vrNo} />
+          {/* Derived from the date across the whole year, so it is shown, not
+              typed. Saving a payment dated earlier renumbers the ones after it. */}
+          <input value={payment?.vrNo ?? "assigned on save"} readOnly disabled />
         </label>
         <label className="field">Cheque no.
           <input name="chequeNo" placeholder="001432" defaultValue={payment?.chequeNo} />
@@ -76,7 +78,7 @@ export function PaymentForm({
       </div>
 
       <label className="field" style={{ marginTop: "1.25rem" }}>Paid to / particulars
-        <input name="particulars" placeholder="Text Book Centre — exercise books" defaultValue={payment?.particulars} />
+        <input name="particulars" placeholder="Text Book Centre — exercise books" defaultValue={payment?.particulars} required />
       </label>
 
       <div className="eyebrow" style={{ margin: "1.75rem 0 .6rem" }}>Charged to</div>

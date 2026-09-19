@@ -7,6 +7,7 @@ import type { Allocation, VoteHead } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getPeriodForDate } from "@/server/periods";
 import { createTransaction, deleteTransaction, updateTransaction } from "@/server/transactions";
+import { resequenceVouchers } from "@/server/voucher-numbers";
 
 interface ReadResult {
   error?: string;
@@ -31,12 +32,16 @@ function readPaymentForm(form: FormData, heads: VoteHead[]): ReadResult {
   };
 
   const date = String(form.get("date") ?? "");
-  const vrNo = String(form.get("vrNo") ?? "").trim();
+  // The voucher number is derived from the date, not posted by the form.
+  const vrNo = "";
   const chequeNo = String(form.get("chequeNo") ?? "").trim();
   const particulars = String(form.get("particulars") ?? "").trim();
   const method = String(form.get("method") ?? "bank");
 
   if (!date) return { ...empty, error: "Enter the date of the payment." };
+  // Required now that the voucher number is derived: it used to stand in as the
+  // particulars, and a voucher with no description of the spend is not a voucher.
+  if (!particulars) return { ...empty, error: "Say what the payment was for." };
 
   const allocations: Allocation[] = [];
   for (const h of heads) {
@@ -75,14 +80,16 @@ export async function postPayment(
       txn: {
         date: p.date,
         kind: "payment",
-        particulars: p.particulars || `Payment ${p.vrNo}`,
-        vrNo: p.vrNo || undefined,
+        particulars: p.particulars,
+        // Assigned by the sequence below, never typed.
+        vrNo: undefined,
         chequeNo: p.chequeNo || undefined,
         cash: p.method === "cash" ? p.total : 0,
         bank: p.method === "bank" ? p.total : 0,
         allocations: p.allocations,
       },
     });
+    await resequenceVouchers({ financialYearId: fy.id, orgId: user.orgId, userId: user.id });
   } catch (e) {
     return e instanceof Error ? e.message : "The payment could not be posted.";
   }
@@ -97,7 +104,7 @@ export async function amendPayment(
 ): Promise<string | null> {
   const accountId = String(form.get("accountId") ?? "");
   const transactionId = String(form.get("transactionId") ?? "");
-  const { user, heads } = await loadBook(accountId, { write: true });
+  const { user, heads, fy } = await loadBook(accountId, { write: true });
 
   const p = readPaymentForm(form, heads);
   if (p.error) return p.error;
@@ -111,14 +118,16 @@ export async function amendPayment(
       txn: {
         date: p.date,
         kind: "payment",
-        particulars: p.particulars || `Payment ${p.vrNo}`,
-        vrNo: p.vrNo || undefined,
+        particulars: p.particulars,
+        // Assigned by the sequence below, never typed.
+        vrNo: undefined,
         chequeNo: p.chequeNo || undefined,
         cash: p.method === "cash" ? p.total : 0,
         bank: p.method === "bank" ? p.total : 0,
         allocations: p.allocations,
       },
     });
+    await resequenceVouchers({ financialYearId: fy.id, orgId: user.orgId, userId: user.id });
   } catch (e) {
     return e instanceof Error ? e.message : "The amendment could not be saved.";
   }
@@ -133,10 +142,11 @@ export async function deletePayment(
 ): Promise<string | null> {
   const accountId = String(form.get("accountId") ?? "");
   const transactionId = String(form.get("transactionId") ?? "");
-  const { user } = await loadBook(accountId, { write: true });
+  const { user, fy } = await loadBook(accountId, { write: true });
 
   try {
     await deleteTransaction({ transactionId, accountId, userId: user.id, orgId: user.orgId });
+    await resequenceVouchers({ financialYearId: fy.id, orgId: user.orgId, userId: user.id });
   } catch (e) {
     return e instanceof Error ? e.message : "The payment could not be deleted.";
   }

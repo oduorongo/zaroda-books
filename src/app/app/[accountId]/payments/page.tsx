@@ -35,6 +35,16 @@ export default async function PaymentsPage({
       landscape
     >
 
+      <p className="no-print" style={{ margin: "0 0 1.4rem" }}>
+        <Link href={`/app/${accountId}/payments/vouchers`}>
+          Print the year's voucher book →
+        </Link>{" "}
+        <span className="note">
+          All {payments.length} voucher{payments.length === 1 ? "" : "s"}, one to a page, numbered
+          1 to {payments.length} in date order.
+        </span>
+      </p>
+
       <PaymentForm
         accountId={accountId}
         heads={heads}

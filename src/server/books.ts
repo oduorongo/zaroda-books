@@ -396,3 +396,20 @@ export async function orgEntitlements(orgId: string) {
     approved: Boolean(org?.approvedAt),
   };
 }
+
+/**
+ * Where the school is. Kept apart from saveSchool because the name carries the
+ * subscription and freezes once entries are posted, while the location carries
+ * nothing and stays correctable — a school that was filed under the wrong
+ * sub-county should not need an empty book to fix it.
+ */
+export async function saveSchoolLocation(
+  schoolId: string,
+  county: string | null,
+  subCounty: string | null,
+) {
+  await db
+    .update(schema.schools)
+    .set({ county, subCounty })
+    .where(eq(schema.schools.id, schoolId));
+}

@@ -273,3 +273,59 @@ export async function setOrgApproved(orgId: string, approved: boolean) {
     after: JSON.stringify({ approvedAt }),
   });
 }
+
+export interface CoverageRow {
+  county: string;
+  orgs: number;
+  schools: number;
+  subCounties: string[];
+}
+
+/**
+ * Where Zaroda Books is actually being used. Counted from the schools, not
+ * from the subscribers: a book keeper in Nairobi with thirty schools in Kisii
+ * is coverage of Kisii, and counting their own county would say otherwise.
+ */
+export async function coverage(): Promise<{
+  rows: CoverageRow[];
+  schoolsPlaced: number;
+  schoolsUnplaced: number;
+  countiesReached: number;
+}> {
+  await requirePlatformAdmin();
+
+  const [schools, orgs] = await Promise.all([
+    db
+      .select({ county: schema.schools.county, subCounty: schema.schools.subCounty })
+      .from(schema.schools),
+    db.select({ county: schema.orgs.county }).from(schema.orgs),
+  ]);
+
+  const byCounty = new Map<string, CoverageRow>();
+  const row = (county: string) => {
+    const found = byCounty.get(county)
+      ?? { county, orgs: 0, schools: 0, subCounties: [] as string[] };
+    byCounty.set(county, found);
+    return found;
+  };
+
+  for (const s of schools) {
+    if (!s.county) continue;
+    const r = row(s.county);
+    r.schools += 1;
+    if (s.subCounty && !r.subCounties.includes(s.subCounty)) r.subCounties.push(s.subCounty);
+  }
+  for (const o of orgs) {
+    if (o.county) row(o.county).orgs += 1;
+  }
+
+  const rows = [...byCounty.values()].sort((a, b) => b.schools - a.schools || a.county.localeCompare(b.county));
+  const schoolsPlaced = schools.filter((s) => s.county).length;
+
+  return {
+    rows,
+    schoolsPlaced,
+    schoolsUnplaced: schools.length - schoolsPlaced,
+    countiesReached: rows.filter((r) => r.schools > 0).length,
+  };
+}
