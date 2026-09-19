@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LEVEL_PRICE, revenue } from "../pricing";
+import { LEVEL_PRICE, priceLabel, revenue } from "../pricing";
 
 describe("LEVEL_PRICE", () => {
   it("is the published price per level, in cents", () => {
@@ -36,5 +36,21 @@ describe("revenue", () => {
     expect(r.outstanding).toBe(106_000);
     expect(r.paidCount).toBe(2);
     expect(r.unpaidCount).toBe(1);
+  });
+});
+
+describe("priceLabel", () => {
+  it("is whole shillings, because every price is a whole number of them", () => {
+    expect(priceLabel("primary")).toBe("480");
+  });
+
+  it("groups thousands, so a four figure price is not misread", () => {
+    expect(priceLabel("senior")).toBe("1,060");
+  });
+
+  it("agrees with the cents the console bills from", () => {
+    // The guard on the two ever drifting apart: the label is derived, not typed.
+    expect(priceLabel("junior")).toBe("580");
+    expect(LEVEL_PRICE.junior).toBe(58_000);
   });
 });

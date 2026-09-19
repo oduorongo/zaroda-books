@@ -36,3 +36,11 @@ export function revenue(
   }
   return totals;
 }
+
+/**
+ * The price as the marketing page shows it: whole shillings, thousands grouped,
+ * no decimals. Derived from LEVEL_PRICE so the page and the invoice cannot
+ * disagree — raising a price is one edit, above, and nowhere else.
+ */
+export const priceLabel = (level: SchoolLevel): string =>
+  Math.round(LEVEL_PRICE[level] / 100).toLocaleString("en-KE");

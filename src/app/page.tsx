@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { priceLabel } from "@/domain";
 import { Logo } from "./logo";
 
 const steps = [
@@ -9,11 +10,13 @@ const steps = [
   { no: "04", title: "Post the books", body: "Cash book, ledger, trial balance, income and expenditure, bank reconciliation and cash flow, all from the same entries." },
 ];
 
+// The price itself comes from LEVEL_PRICE, the same figure the console bills
+// from, so raising one is a single edit in src/domain/pricing.ts.
 const levels = [
-  { name: "Primary school", price: "480", note: "Every account kept at primary level, for one financial year." },
-  { name: "Junior school", price: "580", note: "Every account kept at junior level, for one financial year." },
-  { name: "Senior school", price: "1,060", note: "Every account kept at senior level, for one financial year." },
-];
+  { name: "Primary school", level: "primary" },
+  { name: "Junior school", level: "junior" },
+  { name: "Senior school", level: "senior" },
+] as const;
 
 const outputs = [
   { name: "Analysed cash book", note: "Both sides, cash and bank columns, monthly totals", tag: "Monthly" },
@@ -141,11 +144,13 @@ export default function Home() {
                 <div className="eyebrow" style={{ color: "var(--gold)" }}>{l.name}</div>
                 <div style={{ display: "flex", alignItems: "flex-end", gap: ".5rem", margin: ".9rem 0 .3rem" }}>
                   <div style={{ fontFamily: "var(--font-heading)", fontSize: "2.75rem", fontWeight: 700, lineHeight: 1 }}>
-                    KSh&nbsp;{l.price}
+                    KSh&nbsp;{priceLabel(l.level)}
                   </div>
                   <div style={{ color: "var(--muted)", fontSize: ".9rem", paddingBottom: ".45rem" }}>per year</div>
                 </div>
-                <div style={{ color: "var(--muted)", fontSize: ".88rem", lineHeight: 1.55 }}>{l.note}</div>
+                <div style={{ color: "var(--muted)", fontSize: ".88rem", lineHeight: 1.55 }}>
+                  Every account kept at {l.level} level, for one financial year.
+                </div>
                 <Link href="/signup" className="btn btn-gold" style={{ display: "block", textAlign: "center", marginTop: "1.5rem", color: "#fff", textDecoration: "none" }}>
                   Subscribe
                 </Link>
