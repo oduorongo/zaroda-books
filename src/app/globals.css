@@ -119,13 +119,13 @@ a:hover { color: var(--gold); }
   display: block; color: var(--paper);
   font-family: var(--font-heading), Georgia, serif; font-size: .95rem; line-height: 1.3;
 }
-/* The lockup centred over a gold rule, as in the sidebar mockup. The product
-   name stays "Zaroda Books": the lockup is the firm, this is the one product. */
-.sidebar-head { text-align: center; padding-bottom: 1.25rem; position: relative; }
+/* The Z alone, not the lockup: the lockup carries "Zaroda Solutions" and the
+   firm's tagline, which stacked three lines of type above the product name. */
+.sidebar-head { text-align: center; padding-bottom: 1.1rem; position: relative; }
 .sidebar-head img { margin: 0 auto; }
 .sidebar-head .mono {
-  letter-spacing: .18em; font-size: .7rem; text-transform: uppercase;
-  color: var(--paper); margin-top: .5rem;
+  letter-spacing: .18em; font-size: .72rem; text-transform: uppercase;
+  color: var(--paper); margin-top: .7rem;
 }
 .sidebar-head::after {
   content: ""; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);

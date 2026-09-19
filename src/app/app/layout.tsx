@@ -32,7 +32,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="shell">
       <nav className="sidebar">
         <div className="sidebar-head">
-          <Logo height={78} variant="lockup" priority />
+          <Logo height={52} priority />
           <div className="mono">Zaroda&nbsp;Books</div>
         </div>
 
