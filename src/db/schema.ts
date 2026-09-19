@@ -181,3 +181,15 @@ export const auditLog = pgTable("audit_log", {
   after: text("after"),
   at: timestamp("at").defaultNow().notNull(),
 }, (t) => [index("audit_org_idx").on(t.orgId, t.at)]);
+
+/**
+ * Zaroda Solutions itself. A system owner sits outside every org, so this is a
+ * table of its own rather than a role on `memberships` — an org-scoped role that
+ * could see across orgs would be a hole in the tenancy boundary. Rows are
+ * granted by `scripts/grant-platform-admin.mjs`, never by anything in the app.
+ */
+export const platformAdmins = pgTable("platform_admins", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id).notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});

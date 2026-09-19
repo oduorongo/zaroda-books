@@ -10,7 +10,7 @@ export async function changeFinancialYearAction(
   form: FormData,
 ): Promise<string | null> {
   const accountId = String(form.get("accountId") ?? "");
-  const { user } = await loadBook(accountId);
+  const { user } = await loadBook(accountId, { write: true });
 
   const fyLabel = String(form.get("fyLabel") ?? "").trim();
   if (!/^\d{4}\/\d{2}$/.test(fyLabel)) return "Choose the financial year.";
@@ -32,7 +32,7 @@ export async function archiveBookAction(
   form: FormData,
 ): Promise<string | null> {
   const accountId = String(form.get("accountId") ?? "");
-  const { user, school } = await loadBook(accountId);
+  const { user, school } = await loadBook(accountId, { write: true });
 
   // Typing the school's name is the confirmation: a book holds a year of work,
   // and a stray click should not be able to take it out of the list.
@@ -56,7 +56,7 @@ export async function saveSchoolAction(
   form: FormData,
 ): Promise<string | null> {
   const accountId = String(form.get("accountId") ?? "");
-  const { school } = await loadBook(accountId);
+  const { school } = await loadBook(accountId, { write: true });
 
   const name = String(form.get("schoolName") ?? "").trim();
   if (!name) return "Enter the name of the school.";

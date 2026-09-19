@@ -13,6 +13,7 @@ export async function createBookAction(
 ): Promise<string | null> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  if (user.readOnly) return "You are viewing these books as the system owner. Nothing can be created from here.";
 
   const schoolName = String(form.get("schoolName") ?? "").trim();
   const level = String(form.get("level") ?? "") as SchoolLevel;

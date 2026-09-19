@@ -1,18 +1,25 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/server/auth";
+import Link from "next/link";
+import { getCurrentUser, isPlatformAdmin } from "@/server/auth";
 import { getOrgBooks } from "@/server/queries";
 import { logout } from "../login/actions";
 import { Logo } from "../logo";
 import { BookSwitcher } from "./book-switcher";
 import { SideNav } from "./side-nav";
+import { ViewAsBanner } from "./view-as-banner";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const books = await getOrgBooks(user.orgId);
+  const [books, admin] = await Promise.all([
+    getOrgBooks(user.orgId),
+    isPlatformAdmin(user.id),
+  ]);
 
   return (
+    <>
+      {user.viewingAs && <ViewAsBanner orgName={user.viewingAs.orgName} />}
     <div className="shell">
       <nav className="sidebar">
         <div style={{ display: "flex", alignItems: "center", gap: ".7rem" }}>
@@ -39,6 +46,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
         <div style={{ marginTop: "auto", fontSize: ".78rem", lineHeight: 1.6, color: "var(--on-dark-dim)" }}>
           <div>{user.name} · {user.role}</div>
+          {admin && !user.viewingAs && (
+            <Link href="/admin" style={{ display: "block", paddingTop: ".25rem", textDecoration: "underline" }}>
+              System owner
+            </Link>
+          )}
           <form action={logout}>
             <button type="submit" className="btn-link" style={{ color: "var(--on-dark)", fontSize: ".78rem", paddingTop: ".25rem" }}>
               Sign out
@@ -49,5 +61,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
       <main className="workspace">{children}</main>
     </div>
+    </>
   );
 }
