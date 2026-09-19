@@ -209,3 +209,36 @@ export const platformAdmins = pgTable("platform_admins", {
   userId: uuid("user_id").references(() => users.id).notNull().unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+/**
+ * One row per attempt to pay, created before the STK push goes out and updated
+ * by whichever of the callback or the status poll gets there first.
+ *
+ * `rawResponse` and `callbackRaw` keep Tuma's bodies verbatim. Tuma publish no
+ * API reference, so the field names we read are inference — keeping the
+ * originals is what lets a payment be settled by hand if the inference is
+ * wrong, and what lets the parsing be tightened once real traffic is seen.
+ */
+export const subscriptionPayments = pgTable("subscription_payments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").references(() => orgs.id).notNull(),
+  /** What this buys, so the callback knows which subscription to open. */
+  level: text("level", { enum: ["primary", "junior", "senior"] }).notNull(),
+  fyLabel: text("fy_label").notNull(),
+  amount: bigint("amount", { mode: "number" }).notNull(),
+  phone: text("phone").notNull(),
+  status: text("status", { enum: ["pending", "success", "failed"] }).default("pending").notNull(),
+  merchantRequestId: text("merchant_request_id"),
+  mpesaReceipt: text("mpesa_receipt"),
+  description: text("description"),
+  rawResponse: text("raw_response"),
+  callbackRaw: text("callback_raw"),
+  initiatedBy: uuid("initiated_by").references(() => users.id),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => [
+  index("sub_payments_org_idx").on(t.orgId, t.createdAt),
+  // The callback finds its payment by this, so it must be quick and unique.
+  unique("sub_payments_merchant_request").on(t.merchantRequestId),
+]);

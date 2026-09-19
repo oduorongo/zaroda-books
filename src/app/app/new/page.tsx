@@ -2,6 +2,7 @@ import {
   CHART_OF_ACCOUNTS, accountTypesFor, financialYearInProgress, financialYearLabels, priceLabel,
 } from "@/domain";
 import type { SchoolLevel } from "@/domain";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/server/auth";
 import { orgEntitlements } from "@/server/books";
@@ -67,7 +68,9 @@ function Entitlement({
       </table>
       <p style={{ margin: ".85rem 0 0", fontSize: ".9rem", lineHeight: 1.6, color: "var(--muted)" }}>
         Any account at a level and year listed above opens straight away. Anything else needs a
-        subscription — {LEVEL_LINE} Talk to us and we will open it.
+        subscription — {LEVEL_LINE}{" "}
+        <Link href="/app/subscribe">Pay by M-Pesa</Link> and the books open as soon as the
+        payment goes through.
       </p>
     </div>
   );

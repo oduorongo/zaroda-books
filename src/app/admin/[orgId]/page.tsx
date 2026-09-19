@@ -13,7 +13,7 @@ const stamp = (d: Date | null) =>
 
 export default async function TenantPage({ params }: { params: Promise<{ orgId: string }> }) {
   const { orgId } = await params;
-  const { org, members, schools, books, subs, audit } = await getTenant(orgId);
+  const { org, members, schools, books, subs, audit, payments } = await getTenant(orgId);
   const money = revenue(subs.map((s) => ({
     level: s.subscription.level, paidAt: s.subscription.paidAt, isFree: s.subscription.isFree,
   })));
@@ -136,6 +136,35 @@ export default async function TenantPage({ params }: { params: Promise<{ orgId: 
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: "1.35rem" }}>
+        <div className="eyebrow" style={{ color: "var(--gold)", marginBottom: ".75rem" }}>
+          M-Pesa payments
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>When</th><th>For</th><th className="n">Amount</th>
+              <th>Phone</th><th>M-Pesa receipt</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {payments.map((p) => (
+              <tr key={p.id}>
+                <td>{stamp(p.createdAt)}</td>
+                <td style={{ textTransform: "capitalize" }}>{p.level} {p.fyLabel}</td>
+                <td className="n">{formatKes(p.amount)}</td>
+                <td className="mono">{p.phone}</td>
+                <td className="mono">{p.mpesaReceipt ?? "—"}</td>
+                <td style={{ color: p.status === "success" ? "var(--gold)" : p.status === "failed" ? "var(--alarm)" : "var(--muted)" }}>
+                  {p.status}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {payments.length === 0 && <p className="note">No M-Pesa payment has been attempted.</p>}
       </div>
 
       <div className="card">

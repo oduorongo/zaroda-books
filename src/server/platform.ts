@@ -130,7 +130,7 @@ export async function getTenant(orgId: string) {
   const [org] = await db.select().from(schema.orgs).where(eq(schema.orgs.id, orgId));
   if (!org) notFound();
 
-  const [members, schools, books, subs, audit] = await Promise.all([
+  const [members, schools, books, subs, audit, payments] = await Promise.all([
     db
       .select({ user: schema.users, role: schema.memberships.role })
       .from(schema.memberships)
@@ -162,9 +162,16 @@ export async function getTenant(orgId: string) {
       .where(eq(schema.auditLog.orgId, orgId))
       .orderBy(desc(schema.auditLog.at))
       .limit(50),
+
+    db
+      .select()
+      .from(schema.subscriptionPayments)
+      .where(eq(schema.subscriptionPayments.orgId, orgId))
+      .orderBy(desc(schema.subscriptionPayments.createdAt))
+      .limit(50),
   ]);
 
-  return { org, members, schools, books, subs, audit };
+  return { org, members, schools, books, subs, audit, payments };
 }
 
 /** Every write the console makes goes through here, so none of them is unlogged. */

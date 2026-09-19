@@ -18,8 +18,12 @@ export function SideNav() {
         { no: "05", label: "Final books", href: `/app/${accountId}/cash-book` },
         { no: "06", label: "Vote heads", href: `/app/${accountId}/vote-heads` },
         { no: "07", label: "Book settings", href: `/app/${accountId}/settings` },
+        { no: "08", label: "Subscription", href: "/app/subscribe" },
       ]
-    : [{ no: "01", label: "Create the book", href: "/app/new" }];
+    : [
+        { no: "01", label: "Create the book", href: "/app/new" },
+        { no: "02", label: "Subscription", href: "/app/subscribe" },
+      ];
 
   const current = (href: string) => {
     if (href.endsWith("/cash-book")) return BOOKS.some((b) => pathname.endsWith(`/${b}`));
