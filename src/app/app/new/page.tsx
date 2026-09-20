@@ -132,6 +132,7 @@ export default async function NewBookPage() {
         levels={LEVEL_OPTIONS}
         charts={charts}
         covered={entitlements.covered}
+        freeUsed={entitlements.freeUsed}
         isOwner={owner}
         defaultPhone={account?.phone ?? ""}
         testAmountCents={chargeAmount(0, process.env.TUMA_TEST_AMOUNT_KES).isTest

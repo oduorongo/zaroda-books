@@ -31,10 +31,14 @@ export async function createBookAction(
   // Paying happens here rather than on a page of its own, so the level and the
   // year that get paid for are the ones just typed. Choosing them twice is how
   // a bursar buys a primary subscription for a junior book.
-  const { covered } = await orgEntitlements(user.orgId);
+  const { covered, freeUsed } = await orgEntitlements(user.orgId);
   const alreadyCovered = covered.some((c) => c.level === level && c.fyLabel === fyLabel);
 
-  if (!isOwner && !alreadyCovered) {
+  // freeUsed matters as much as covered: a tenant who still has their free
+  // school owes nothing, and asking them to pay would quietly sell them what
+  // they were promised for nothing. createBook grants it, and refuses if the
+  // account has not been approved yet.
+  if (!isOwner && !alreadyCovered && freeUsed) {
     const phone = String(form.get("phone") ?? "").trim();
     if (!phone) return "NEEDS_PAYMENT";
 

@@ -12,13 +12,15 @@ interface ChartOption {
 }
 
 export function NewBookForm({
-  years, levels, charts, covered, isOwner, defaultPhone, testAmountCents,
+  years, levels, charts, covered, freeUsed, isOwner, defaultPhone, testAmountCents,
 }: {
   years: string[];
   levels: { id: SchoolLevel; label: string }[];
   charts: Record<string, ChartOption[]>;
   /** Level-and-year pairs the org may already open. */
   covered: { level: string; fyLabel: string }[];
+  /** Whether the one free school has already been given. */
+  freeUsed: boolean;
   isOwner: boolean;
   defaultPhone: string;
   /** Set while Tuma is in sandbox: what will really be charged. */
@@ -38,7 +40,7 @@ export function NewBookForm({
 
   // Shown the moment level and year are both known, so the price is seen
   // before the form is finished rather than after it is refused.
-  const needsPayment = !isOwner && level !== "" && fyLabel !== ""
+  const needsPayment = !isOwner && freeUsed && level !== "" && fyLabel !== ""
     && !covered.some((c) => c.level === level && c.fyLabel === fyLabel);
 
   const onLevel = (next: SchoolLevel | "") => {
