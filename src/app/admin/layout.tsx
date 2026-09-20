@@ -22,7 +22,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               System&nbsp;owner
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "1.5rem", fontSize: ".88rem" }}>
+          <div className="admin-nav">
             <Link href="/admin" style={{ color: "var(--paper)" }}>Tenants</Link>
             <Link href="/admin/coverage" style={{ color: "var(--on-dark)" }}>Coverage</Link>
             <Link href="/app" style={{ color: "var(--on-dark)" }}>My own books</Link>

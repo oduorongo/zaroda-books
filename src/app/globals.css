@@ -310,9 +310,11 @@ a:hover { color: var(--gold); }
   table { display: block; overflow-x: auto; white-space: nowrap; }
   th, td { padding: .4rem .5rem; }
 
-  /* Except the prose-ish cells, which should wrap rather than stretch. */
-  td .note, td:first-child { white-space: normal; }
-  td, th { overflow-wrap: anywhere; }
+  /* Deliberately no wrapping inside cells. Letting the first column wrap
+     while the table is in block layout collapses it to one character wide
+     and prints the label down the page a letter at a time. The table scrolls
+     instead — that is what the scrollbar above is for. */
+  td .note { white-space: normal; }
 
   /* Rows of buttons and links. */
   .report-actions { flex-wrap: wrap; }
@@ -331,5 +333,21 @@ a:hover { color: var(--gold); }
   .hero-copy h1 { font-size: 1.9rem; }
 
   /* Long, unbreakable strings — emails, name keys, M-Pesa references. */
-  .mono { overflow-wrap: anywhere; }
+  /* Only outside a table: inside one, nowrap already holds it on a line and
+     this would break a reference a character at a time. */
+  .mono:not(td):not(td *) { overflow-wrap: anywhere; }
+}
+
+/* The system owner's header. It had no wrap, so on a phone "My own books"
+   was squeezed into a three-line column against the email beside it. */
+.admin-nav {
+  display: flex; align-items: center; gap: 1.5rem;
+  font-size: .88rem; flex-wrap: wrap;
+}
+.admin-nav a, .admin-nav span, .admin-nav button { white-space: nowrap; }
+
+@media (max-width: 720px) {
+  .admin-nav { gap: .5rem 1rem; width: 100%; }
+  /* The address is the longest thing here and the least needed at a glance. */
+  .admin-nav span { font-size: .78rem; overflow-wrap: anywhere; white-space: normal; }
 }
