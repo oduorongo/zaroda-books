@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { LEVEL_OPTIONS } from "@/domain";
 import {
   createSubscriptionAction, setApprovedAction, setPaidAction, unbindAction,
 } from "./actions";
@@ -67,9 +68,7 @@ export function NewSubscriptionForm({ orgId, years }: { orgId: string; years: st
       <input type="hidden" name="orgId" value={orgId} />
       <label className="field">Level
         <select name="level" defaultValue="primary">
-          <option value="primary">Primary</option>
-          <option value="junior">Junior</option>
-          <option value="senior">Senior</option>
+          {LEVEL_OPTIONS.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
         </select>
       </label>
       <label className="field">Financial year

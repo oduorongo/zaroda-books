@@ -4,6 +4,23 @@ import type { VoteHead } from "./types.ts";
 
 export type SchoolLevel = "primary" | "junior" | "senior";
 
+export const SCHOOL_LEVELS: SchoolLevel[] = ["primary", "junior", "senior"];
+
+/**
+ * What each level is called, everywhere it is shown. One place, because the
+ * first drafts said "Secondary" in one form and "Senior school" in another,
+ * and a bursar seeing both wonders whether they are the same thing.
+ */
+export const LEVEL_LABEL: Record<SchoolLevel, string> = {
+  primary: "Primary school",
+  junior: "Junior school",
+  senior: "Senior school",
+};
+
+/** Ready for a dropdown, in the order a school grows. */
+export const LEVEL_OPTIONS: { id: SchoolLevel; label: string }[] =
+  SCHOOL_LEVELS.map((id) => ({ id, label: LEVEL_LABEL[id] }));
+
 export type AccountType =
   | "TUITION" | "OPERATIONS" | "INFRASTRUCTURE" | "BOARDING" | "LUNCH";
 

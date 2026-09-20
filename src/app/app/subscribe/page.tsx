@@ -25,7 +25,9 @@ export default async function SubscribePage() {
   ]);
 
   // A year ahead is offered: schools subscribe before 1 July as often as after.
-  const years = financialYearLabels(financialYearInProgress() + 1, financialYearInProgress() - 2);
+  // Back to 2023/24: a book keeper taking on a school writes up its back
+  // years, and those years still need subscribing to.
+  const years = financialYearLabels(financialYearInProgress() + 1, 2023);
 
   return (
     <div style={{ maxWidth: 820 }}>

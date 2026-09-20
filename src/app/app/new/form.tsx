@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { priceLabel, type SchoolLevel } from "@/domain";
+import { LEVEL_LABEL, priceLabel, type SchoolLevel } from "@/domain";
 import { createBookAction } from "./actions";
 
 interface ChartOption {
@@ -23,25 +23,28 @@ export function NewBookForm({
   defaultPhone: string;
 }) {
   const [error, action, pending] = useActionState(createBookAction, null);
-  const [level, setLevel] = useState<SchoolLevel>(levels[0].id);
-  const [accountType, setAccountType] = useState(charts[levels[0].id][0].id);
-  const [fyLabel, setFyLabel] = useState(years[0]);
+  // Nothing preselected. The level, the year and the account fix the chart and
+  // the twelve periods for good, so each one is chosen deliberately rather
+  // than left at whatever happened to be first in the list.
+  const [level, setLevel] = useState<SchoolLevel | "">("");
+  const [accountType, setAccountType] = useState("");
+  const [fyLabel, setFyLabel] = useState("");
 
-  // Shown the moment the pair is uncovered, so the price is known before the
-  // form is filled in rather than after it is refused.
-  const needsPayment = !isOwner
+  const options = level === "" ? [] : charts[level] ?? [];
+  const chosen = options.find((o) => o.id === accountType);
+  const ready = level !== "" && fyLabel !== "" && chosen !== undefined;
+
+  // Shown the moment level and year are both known, so the price is seen
+  // before the form is finished rather than after it is refused.
+  const needsPayment = !isOwner && level !== "" && fyLabel !== ""
     && !covered.some((c) => c.level === level && c.fyLabel === fyLabel);
 
-  const options = charts[level] ?? [];
-  const chosen = options.find((o) => o.id === accountType) ?? options[0];
-
-  const onLevel = (next: SchoolLevel) => {
+  const onLevel = (next: SchoolLevel | "") => {
     setLevel(next);
-    // The chart changes with the level; keep the same account if it exists there.
-    const nextOptions = charts[next] ?? [];
-    if (!nextOptions.some((o) => o.id === accountType)) {
-      setAccountType(nextOptions[0]?.id ?? "");
-    }
+    // The chart changes with the level, so an account chosen under the old one
+    // is cleared rather than silently carried to a chart it may not exist in.
+    const nextOptions = next === "" ? [] : charts[next] ?? [];
+    if (!nextOptions.some((o) => o.id === accountType)) setAccountType("");
   };
 
   return (
@@ -57,25 +60,42 @@ export function NewBookForm({
 
       <div className="grid-2">
         <label className="field">School level
-          <select name="level" value={level} onChange={(e) => onLevel(e.target.value as SchoolLevel)}>
+          <select
+            name="level"
+            value={level}
+            required
+            onChange={(e) => onLevel(e.target.value as SchoolLevel | "")}
+          >
+            <option value="">Choose the level…</option>
             {levels.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
           </select>
         </label>
         <label className="field">Financial year
-          <select name="fyLabel" value={fyLabel} onChange={(e) => setFyLabel(e.target.value)}>
+          <select name="fyLabel" value={fyLabel} required onChange={(e) => setFyLabel(e.target.value)}>
+            <option value="">Choose the year…</option>
             {years.map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
         </label>
       </div>
 
       <label className="field">Account
-        <select name="accountType" value={chosen?.id ?? ""} onChange={(e) => setAccountType(e.target.value)}>
+        <select
+          name="accountType"
+          value={accountType}
+          required
+          disabled={level === ""}
+          onChange={(e) => setAccountType(e.target.value)}
+        >
+          <option value="">
+            {level === "" ? "Choose the school level first" : "Choose the account…"}
+          </option>
           {options.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
         </select>
       </label>
 
       <div style={{ borderTop: "1px solid var(--rule-soft)", paddingTop: "1.25rem" }}>
         <div className="eyebrow" style={{ marginBottom: ".75rem" }}>Vote heads that will be opened</div>
+        {!chosen && <p className="note" style={{ margin: 0 }}>Choose the level and the account to see them.</p>}
         <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
           {chosen?.heads.map((h) => (
             <div key={h.code} style={{ border: "1px solid var(--rule-card)", borderRadius: 3, padding: ".45rem .7rem", fontSize: ".82rem", background: "var(--paper)" }}>
@@ -97,9 +117,10 @@ export function NewBookForm({
             This level and year needs a subscription
           </div>
           <p className="note" style={{ margin: "0 0 1rem", lineHeight: 1.6 }}>
-            KSh {priceLabel(level)} for {fyLabel}, covering every account this school keeps at{" "}
-            {level} level for the year. Pay here and the book opens as soon as the payment goes
-            through — you will not type this form again.
+            KSh {priceLabel(level as SchoolLevel)} for {fyLabel}, covering every account this
+            school keeps at {LEVEL_LABEL[level as SchoolLevel].toLowerCase()} level for the year.
+            Pay here and the book opens as soon as the payment goes through — you will not type
+            this form again.
           </p>
           <label className="field" style={{ maxWidth: 320 }}>M-Pesa number
             <input name="phone" defaultValue={defaultPhone} placeholder="0712 345 678" inputMode="tel" />
@@ -111,10 +132,19 @@ export function NewBookForm({
           not a fault the bursar should read. */}
       {error && error !== "NEEDS_PAYMENT" && <p className="error">{error}</p>}
 
-      <button type="submit" className="btn btn-primary" style={{ alignSelf: "flex-start" }} disabled={pending}>
+      <button
+        type="submit"
+        className="btn btn-primary"
+        style={{ alignSelf: "flex-start" }}
+        disabled={pending || !ready}
+      >
         {pending
           ? (needsPayment ? "Sending the request…" : "Creating…")
-          : (needsPayment ? `Pay KSh ${priceLabel(level)} and create the book` : "Create the book")}
+          : !ready
+            ? "Choose the level, year and account"
+            : needsPayment
+              ? `Pay KSh ${priceLabel(level as SchoolLevel)} and create the book`
+              : "Create the book"}
       </button>
     </form>
   );

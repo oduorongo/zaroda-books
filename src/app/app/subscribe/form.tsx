@@ -1,15 +1,9 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { LEVEL_PRICE, formatKes, priceLabel } from "@/domain";
+import { LEVEL_OPTIONS, LEVEL_PRICE, formatKes, priceLabel } from "@/domain";
 import type { SchoolLevel } from "@/domain";
 import { payAction } from "./actions";
-
-const LEVELS: { id: SchoolLevel; label: string }[] = [
-  { id: "primary", label: "Primary" },
-  { id: "junior", label: "Junior school" },
-  { id: "senior", label: "Secondary" },
-];
 
 export function SubscribeForm({ years, defaultPhone, testAmountCents }: {
   years: string[];
@@ -36,7 +30,7 @@ export function SubscribeForm({ years, defaultPhone, testAmountCents }: {
             onChange={(e) => setLevel(e.target.value as SchoolLevel)}
           >
             <option value="">Choose the level…</option>
-            {LEVELS.map((l) => (
+            {LEVEL_OPTIONS.map((l) => (
               <option key={l.id} value={l.id}>{l.label} — KSh {priceLabel(l.id)}</option>
             ))}
           </select>

@@ -296,3 +296,40 @@ a:hover { color: var(--gold); }
   /* No trailing blank sheet at the end of the run. */
   .voucher-sheet:last-child { break-after: auto; page-break-after: auto; }
 }
+
+/* Phones. The books are wide by nature — a cash book has both sides and a
+   column per vote head — so the tables scroll inside themselves rather than
+   dragging the whole page sideways. Everything that is a row of controls
+   wraps instead. */
+@media (max-width: 720px) {
+  /* Nothing may push the page wider than the screen. */
+  html, body { max-width: 100%; overflow-x: hidden; }
+
+  /* The table keeps its columns and takes its own scrollbar. Squeezing the
+     columns would break the alignment the figures are read by. */
+  table { display: block; overflow-x: auto; white-space: nowrap; }
+  th, td { padding: .4rem .5rem; }
+
+  /* Except the prose-ish cells, which should wrap rather than stretch. */
+  td .note, td:first-child { white-space: normal; }
+  td, th { overflow-wrap: anywhere; }
+
+  /* Rows of buttons and links. */
+  .report-actions { flex-wrap: wrap; }
+  .report-actions .btn { flex: 1 1 auto; text-align: center; }
+  .report-bar { gap: .9rem; }
+
+  nav.tabs { overflow-x: auto; gap: 1rem; padding-bottom: .2rem; }
+  nav.tabs a { white-space: nowrap; }
+
+  /* Two-up fields become one-up: side by side they are too narrow to read. */
+  .grid-2, .grid-3, .grid-4 { grid-template-columns: minmax(0, 1fr); }
+
+  .card { padding: 1.1rem 1.15rem; }
+  .workspace { padding: 1.4rem 1rem 2.5rem; }
+  h1 { font-size: 1.45rem; }
+  .hero-copy h1 { font-size: 1.9rem; }
+
+  /* Long, unbreakable strings — emails, name keys, M-Pesa references. */
+  .mono { overflow-wrap: anywhere; }
+}

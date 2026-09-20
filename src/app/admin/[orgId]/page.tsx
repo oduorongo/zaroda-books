@@ -17,7 +17,9 @@ export default async function TenantPage({ params }: { params: Promise<{ orgId: 
   const money = revenue(subs.map((s) => ({
     level: s.subscription.level, paidAt: s.subscription.paidAt, isFree: s.subscription.isFree,
   })));
-  const years = financialYearLabels(financialYearInProgress() + 1, financialYearInProgress() - 2);
+  // Back to 2023/24: a book keeper taking on a school writes up its back
+  // years, and those years still need subscribing to.
+  const years = financialYearLabels(financialYearInProgress() + 1, 2023);
 
   return (
     <>

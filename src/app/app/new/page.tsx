@@ -1,5 +1,6 @@
 import {
-  CHART_OF_ACCOUNTS, accountTypesFor, financialYearInProgress, financialYearLabels, priceLabel,
+  CHART_OF_ACCOUNTS, LEVEL_OPTIONS, accountTypesFor, financialYearInProgress,
+  financialYearLabels, priceLabel,
 } from "@/domain";
 import type { SchoolLevel } from "@/domain";
 import Link from "next/link";
@@ -11,12 +12,6 @@ import { eq } from "drizzle-orm";
 import { NewBookForm } from "./form";
 import { ArchivedBooks } from "./archived";
 import { BackLink } from "../back-link";
-
-const LEVELS: { id: SchoolLevel; label: string }[] = [
-  { id: "primary", label: "Primary" },
-  { id: "junior", label: "Junior School" },
-  { id: "senior", label: "Secondary" },
-];
 
 /**
  * Where the tenant stands before they fill anything in. A refusal arrived at
@@ -134,7 +129,7 @@ export default async function NewBookPage() {
       <Entitlement {...entitlements} isOwner={owner} />
       <NewBookForm
         years={years}
-        levels={LEVELS}
+        levels={LEVEL_OPTIONS}
         charts={charts}
         covered={entitlements.covered}
         isOwner={owner}

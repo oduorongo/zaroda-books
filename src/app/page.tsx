@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { priceLabel } from "@/domain";
+import { LEVEL_OPTIONS, priceLabel } from "@/domain";
 import { Logo } from "./logo";
 
 const steps = [
@@ -12,11 +12,7 @@ const steps = [
 
 // The price itself comes from LEVEL_PRICE, the same figure the console bills
 // from, so raising one is a single edit in src/domain/pricing.ts.
-const levels = [
-  { name: "Primary school", level: "primary" },
-  { name: "Junior school", level: "junior" },
-  { name: "Senior school", level: "senior" },
-] as const;
+const levels = LEVEL_OPTIONS;
 
 const outputs = [
   { name: "Analysed cash book", note: "Both sides, cash and bank columns, monthly totals", tag: "Monthly" },
@@ -67,7 +63,7 @@ export default function Home() {
               </h1>
               <p style={{ textWrap: "pretty" }}>
                 Zaroda Books is built for the people who keep the books for primary, junior and
-                secondary schools. Enter the receipts and the payments once. The cash book, ledger,
+                senior schools. Enter the receipts and the payments once. The cash book, ledger,
                 trial balance and cash flow statement are prepared automatically, per vote head, to
                 the last shilling.
               </p>
@@ -140,16 +136,16 @@ export default function Home() {
 
           <div className="grid-3">
             {levels.map((l) => (
-              <div key={l.name} className="card" style={{ padding: "1.9rem 2rem", display: "flex", flexDirection: "column" }}>
-                <div className="eyebrow" style={{ color: "var(--gold)" }}>{l.name}</div>
+              <div key={l.label} className="card" style={{ padding: "1.9rem 2rem", display: "flex", flexDirection: "column" }}>
+                <div className="eyebrow" style={{ color: "var(--gold)" }}>{l.label}</div>
                 <div style={{ display: "flex", alignItems: "flex-end", gap: ".5rem", margin: ".9rem 0 .3rem" }}>
                   <div style={{ fontFamily: "var(--font-heading)", fontSize: "2.75rem", fontWeight: 700, lineHeight: 1 }}>
-                    KSh&nbsp;{priceLabel(l.level)}
+                    KSh&nbsp;{priceLabel(l.id)}
                   </div>
                   <div style={{ color: "var(--muted)", fontSize: ".9rem", paddingBottom: ".45rem" }}>per year</div>
                 </div>
                 <div style={{ color: "var(--muted)", fontSize: ".88rem", lineHeight: 1.55 }}>
-                  Every account kept at {l.level} level, for one financial year.
+                  Every account kept at {l.id} level, for one financial year.
                 </div>
                 <Link href="/signup" className="btn btn-gold" style={{ display: "block", textAlign: "center", marginTop: "1.5rem", color: "#fff", textDecoration: "none" }}>
                   Subscribe
