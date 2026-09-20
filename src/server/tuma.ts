@@ -104,10 +104,26 @@ export async function initiateStkPush(opts: {
           continue;
         }
         const message = data.message;
+        const text = Array.isArray(message) ? message.join(", ") : (message as string) ?? "";
+
+        // Tuma's own wording for an account still in sandbox names the
+        // environment and the test cap. That is a fact about our setup, not
+        // about the person trying to pay, so they get told to reach us and we
+        // get the real reason in the log and in the stored raw response.
+        if (/sandbox/i.test(text)) {
+          console.error("Tuma refused a live-priced payment — account is still in sandbox:", text);
+          return {
+            ok: false,
+            raw: data,
+            detail:
+              "M-Pesa payment is not available just now. Reach us on WhatsApp 0781 230 805 "
+              + "and we will open the subscription for you.",
+          };
+        }
+
         const friendly = resp.status >= 500
           ? "The M-Pesa payment service is unavailable for a moment. Try again shortly."
-          : (Array.isArray(message) ? message.join(", ") : message as string)
-            || `The payment request failed (${resp.status}).`;
+          : text || `The payment request failed (${resp.status}).`;
         return { ok: false, raw: data, detail: friendly };
       }
 
