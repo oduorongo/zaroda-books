@@ -13,8 +13,9 @@ export function SideNav() {
     ? [
         { no: "01", label: "Create the book", href: "/app/new" },
         { no: "02", label: "Receipts", href: `/app/${accountId}/receipts` },
-        { no: "03", label: "Payments", href: `/app/${accountId}/payments` },
-        { no: "04", label: "Cash and bank", href: `/app/${accountId}/cash-and-bank` },
+        // Money is received, then banked, then spent. The nav follows the work.
+        { no: "03", label: "Cash and bank", href: `/app/${accountId}/cash-and-bank` },
+        { no: "04", label: "Payments", href: `/app/${accountId}/payments` },
         { no: "05", label: "Final books", href: `/app/${accountId}/cash-book` },
         { no: "06", label: "Vote heads", href: `/app/${accountId}/vote-heads` },
         { no: "07", label: "Book settings", href: `/app/${accountId}/settings` },
