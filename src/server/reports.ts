@@ -383,7 +383,7 @@ export async function paymentVoucherDoc(
           ["Date paid", txn.date],
           ["Voucher no.", txn.vrNo ?? "—"],
           ["Cheque no.", txn.chequeNo ?? "—"],
-          ["Particulars", txn.particulars],
+          ["Payee / paid to", txn.particulars],
           ["Paid from", txn.cash > 0 ? "Cash" : "Bank"],
           ["Amount paid", csvAmount(total)],
         ],

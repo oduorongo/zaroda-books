@@ -8,21 +8,25 @@ import {
   createSubscription,
   requirePlatformAdmin,
   setOrgApproved,
-  setSubscriptionPaid,
+  setSubscriptionStatus,
+  type SubscriptionStatus,
   unbindSubscription,
 } from "@/server/platform";
 
 const message = (e: unknown) =>
   e instanceof Error ? e.message : "That could not be done.";
 
-export async function setPaidAction(_prev: string | null, form: FormData): Promise<string | null> {
+export async function setStatusAction(_prev: string | null, form: FormData): Promise<string | null> {
   const orgId = String(form.get("orgId") ?? "");
+  const status = String(form.get("status") ?? "");
+  if (!["paid", "unpaid", "free"].includes(status)) return "Choose paid, unpaid or free.";
   try {
-    await setSubscriptionPaid(String(form.get("subscriptionId") ?? ""), form.get("paid") === "yes");
+    await setSubscriptionStatus(String(form.get("subscriptionId") ?? ""), status as SubscriptionStatus);
   } catch (e) {
     return message(e);
   }
   revalidatePath(`/admin/${orgId}`);
+  revalidatePath("/admin");
   return null;
 }
 

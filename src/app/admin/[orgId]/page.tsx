@@ -5,7 +5,7 @@ import {
 import { getTenant } from "@/server/platform";
 import { viewAsAction } from "./actions";
 import {
-  ApproveButton, NewSubscriptionForm, PaidToggle, UnbindForm,
+  ApproveButton, NewSubscriptionForm, StatusPicker, UnbindForm,
 } from "./subscription-forms";
 
 const stamp = (d: Date | null) =>
@@ -87,11 +87,11 @@ export default async function TenantPage({ params }: { params: Promise<{ orgId: 
                   {s.isFree ? "the free school" : s.paidAt ? stamp(s.paidAt) : "unpaid"}
                 </td>
                 <td>
-                  {/* Marking the free school paid would be recording money that was
-                      never owed, so the toggle is not offered on it. */}
-                  {!s.isFree && (
-                    <PaidToggle orgId={org.id} subscriptionId={s.id} paid={Boolean(s.paidAt)} />
-                  )}
+                  <StatusPicker
+                    orgId={org.id}
+                    subscriptionId={s.id}
+                    status={s.isFree ? "free" : s.paidAt ? "paid" : "unpaid"}
+                  />
                   {school && (
                     <UnbindForm orgId={org.id} subscriptionId={s.id} schoolName={school.name} />
                   )}

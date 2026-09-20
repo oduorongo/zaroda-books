@@ -3,20 +3,32 @@
 import { useActionState, useState } from "react";
 import { LEVEL_OPTIONS } from "@/domain";
 import {
-  createSubscriptionAction, setApprovedAction, setPaidAction, unbindAction,
+  createSubscriptionAction, setApprovedAction, setStatusAction, unbindAction,
 } from "./actions";
 
-export function PaidToggle({ orgId, subscriptionId, paid }: {
-  orgId: string; subscriptionId: string; paid: boolean;
+/**
+ * All three states in one control, including the free school. The earlier
+ * version offered nothing at all on a free subscription, which left the one
+ * case that most needs correcting — a free school granted to the wrong org —
+ * with no way to put right.
+ */
+export function StatusPicker({ orgId, subscriptionId, status }: {
+  orgId: string;
+  subscriptionId: string;
+  status: "paid" | "unpaid" | "free";
 }) {
-  const [error, action, pending] = useActionState(setPaidAction, null);
+  const [error, action, pending] = useActionState(setStatusAction, null);
   return (
-    <form action={action} style={{ display: "inline" }}>
+    <form action={action} style={{ display: "flex", gap: ".4rem", alignItems: "center" }}>
       <input type="hidden" name="orgId" value={orgId} />
       <input type="hidden" name="subscriptionId" value={subscriptionId} />
-      <input type="hidden" name="paid" value={paid ? "no" : "yes"} />
+      <select name="status" defaultValue={status} style={{ padding: ".35rem .45rem", fontSize: ".8rem" }}>
+        <option value="paid">Paid</option>
+        <option value="unpaid">Unpaid</option>
+        <option value="free">Free school</option>
+      </select>
       <button type="submit" className="btn-link" style={{ fontSize: ".82rem" }} disabled={pending}>
-        {paid ? "Mark unpaid" : "Mark paid"}
+        {pending ? "Saving…" : "Set"}
       </button>
       {error && <span className="error"> {error}</span>}
     </form>

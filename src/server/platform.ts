@@ -194,19 +194,40 @@ async function record(
   });
 }
 
-export async function setSubscriptionPaid(subscriptionId: string, paid: boolean) {
+/** The three states a subscription can be in, as the console shows them. */
+export type SubscriptionStatus = "paid" | "unpaid" | "free";
+
+/**
+ * Sets a subscription to any of its three states, including turning one into
+ * the org's free school or taking that away.
+ *
+ * Granting free here is the only way an org gets a second free school, so it
+ * is a deliberate act by Zaroda rather than anything a tenant can reach, and
+ * both directions are written to the log.
+ */
+export async function setSubscriptionStatus(
+  subscriptionId: string,
+  status: SubscriptionStatus,
+) {
   const admin = await requirePlatformAdmin();
 
   const [before] = await db.select().from(schema.subscriptions)
     .where(eq(schema.subscriptions.id, subscriptionId));
   if (!before) notFound();
 
-  const paidAt = paid ? new Date() : null;
-  await db.update(schema.subscriptions).set({ paidAt })
+  // Free is not paid: the money was never owed, so recording a payment date
+  // against it would invent a receipt.
+  const next = {
+    paid: { paidAt: new Date(), isFree: false },
+    unpaid: { paidAt: null, isFree: false },
+    free: { paidAt: null, isFree: true },
+  }[status];
+
+  await db.update(schema.subscriptions).set(next)
     .where(eq(schema.subscriptions.id, subscriptionId));
 
-  await record(before.orgId, admin.id, paid ? "subscription.paid" : "subscription.unpaid",
-    subscriptionId, { paidAt: before.paidAt }, { paidAt });
+  await record(before.orgId, admin.id, `subscription.${status}`, subscriptionId,
+    { paidAt: before.paidAt, isFree: before.isFree }, next);
 }
 
 export async function createSubscription(

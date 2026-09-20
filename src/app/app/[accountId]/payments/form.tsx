@@ -67,7 +67,14 @@ export function PaymentForm({
           <input value={payment?.vrNo ?? "assigned on save"} readOnly disabled />
         </label>
         <label className="field">Cheque no.
-          <input name="chequeNo" placeholder="001432" defaultValue={payment?.chequeNo} />
+          {/* A cash payment has no cheque, so the box is shut rather than left
+              open to be filled in by habit. */}
+          <input
+            name="chequeNo"
+            placeholder={method === "cash" ? "Not used for cash" : "001432"}
+            defaultValue={payment?.chequeNo}
+            disabled={method === "cash"}
+          />
         </label>
         <label className="field">Paid by
           <select name="method" value={method} onChange={(e) => setMethod(e.target.value)}>
@@ -77,7 +84,7 @@ export function PaymentForm({
         </label>
       </div>
 
-      <label className="field" style={{ marginTop: "1.25rem" }}>Paid to / particulars
+      <label className="field" style={{ marginTop: "1.25rem" }}>Payee / paid to
         <input name="particulars" placeholder="Text Book Centre — exercise books" defaultValue={payment?.particulars} required />
       </label>
 
