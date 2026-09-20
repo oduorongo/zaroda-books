@@ -17,3 +17,16 @@ export function financialYearLabels(inProgress: number, earliest: number): strin
   }
   return labels;
 }
+
+/**
+ * The year before a label — the one a balance is brought forward from.
+ *
+ * Null for anything unreadable rather than a guess: a heading that names the
+ * wrong year on a set of opening balances is worse than one naming none.
+ */
+export function previousFinancialYear(label: string): string | null {
+  const match = /^(\d{4})\/\d{2}$/.exec(label.trim());
+  if (!match) return null;
+  const start = Number(match[1]) - 1;
+  return `${start}/${String((start + 1) % 100).padStart(2, "0")}`;
+}

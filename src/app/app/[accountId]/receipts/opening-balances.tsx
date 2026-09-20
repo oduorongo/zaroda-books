@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { previousFinancialYear } from "@/domain";
 import { saveOpeningBalancesAction } from "./actions";
 
 export function OpeningBalances({
@@ -12,11 +13,19 @@ export function OpeningBalances({
   openingBank: string;
 }) {
   const [message, action, pending] = useActionState(saveOpeningBalancesAction, null);
+  const previous = previousFinancialYear(fyLabel);
 
   return (
     <form action={action} className="card" style={{ marginBottom: "1.6rem" }}>
       <input type="hidden" name="accountId" value={accountId} />
-      <div className="eyebrow">Opening balances brought forward · FY {fyLabel}</div>
+      {/* The year the money came FROM, not the one it is being carried into.
+          Naming the current year read as though these were this year's closing
+          figures. */}
+      <div className="eyebrow">
+        {previous
+          ? `Opening balances brought forward from FY ${previous}`
+          : `Opening balances brought forward into FY ${fyLabel}`}
+      </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr) auto", gap: "1.25rem", alignItems: "end", marginTop: ".9rem" }}>
         <label className="field">Cash in hand (KES)
@@ -33,7 +42,8 @@ export function OpeningBalances({
       </div>
 
       <p className="note" style={{ marginTop: "1rem" }}>
-        Last year&rsquo;s closing cash and bank. This is not a receipt and is charged to no vote
+        {previous ? `The closing cash and bank of FY ${previous}.` : "Last year’s closing cash and bank."}{" "}
+        This is not a receipt and is charged to no vote
         head: it opens the cash book, and stands as the balance brought down on the trial balance
         all year. Changing it moves every book.
         {message && <strong style={{ color: "var(--gold)", marginLeft: ".5rem" }}>{message}</strong>}

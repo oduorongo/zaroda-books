@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { financialYearInProgress, financialYearLabels } from "../financial-year";
+import { financialYearInProgress, financialYearLabels, previousFinancialYear } from "../financial-year";
 
 describe("financialYearInProgress", () => {
   it("is the year that opened in July, once July has come", () => {
@@ -36,5 +36,27 @@ describe("financialYearLabels", () => {
 
   it("gives nothing when the earliest is after the year in progress", () => {
     expect(financialYearLabels(2021, 2022)).toEqual([]);
+  });
+});
+
+describe("previousFinancialYear", () => {
+  it("names the year a balance is brought forward from", () => {
+    expect(previousFinancialYear("2025/26")).toBe("2024/25");
+  });
+
+  it("steps back across a century boundary without breaking the two digits", () => {
+    expect(previousFinancialYear("2100/01")).toBe("2099/00");
+    expect(previousFinancialYear("2001/02")).toBe("2000/01");
+  });
+
+  it("pads the second half to two figures", () => {
+    // "2009/10" back one is "2008/09", not "2008/9".
+    expect(previousFinancialYear("2009/10")).toBe("2008/09");
+  });
+
+  it("gives nothing for a label it cannot read, rather than a wrong year", () => {
+    // A heading naming the wrong year is worse than one naming none.
+    expect(previousFinancialYear("")).toBeNull();
+    expect(previousFinancialYear("not a year")).toBeNull();
   });
 });
