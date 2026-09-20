@@ -62,16 +62,16 @@ export default function Home() {
               {/* Gold at 500 weight is thin against the navy; this is the first
                   line on the page and has to carry. */}
               <div className="mono" style={{ fontSize: ".82rem", fontWeight: 700, letterSpacing: ".18em", textTransform: "uppercase", color: "var(--gold-bright)", marginBottom: "1.4rem" }}>
-                For book keepers of Kenyan public schools
+                For heads of institution and book keepers of Kenyan public schools
               </div>
               <h1 style={{ textWrap: "pretty" }}>
                 The books of accounts, prepared by the system.
               </h1>
               <p style={{ textWrap: "pretty" }}>
-                Zaroda Books is built for the people who keep the books for primary, junior and
-                senior schools. Enter the receipts and the payments once. The cash book, ledger,
-                trial balance and cash flow statement are prepared automatically, per vote head, to
-                the last shilling.
+                Zaroda Books is built for the heads of institution, bursars and accountants who
+                keep the books for primary, junior and senior schools. Enter the receipts and the
+                payments once. The cash book, ledger, trial balance and cash flow statement are
+                prepared automatically, per vote head, to the last shilling.
               </p>
               <div className="hero-actions">
                 <Link href="/signup" className="btn btn-gold" style={{ color: "#fff", textDecoration: "none" }}>

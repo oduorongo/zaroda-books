@@ -1,5 +1,7 @@
 import { financialYearInProgress, financialYearLabels } from "@/domain";
 import { loadBook } from "@/server/book-context";
+import { auditorsOverOrg } from "@/server/audit";
+import { describeAuditScope } from "@/domain";
 import { getTxns } from "@/server/queries";
 import { FinancialYearForm } from "./form";
 import { ArchiveForm } from "./archive-form";
@@ -12,7 +14,8 @@ export default async function SettingsPage({
   params: Promise<{ accountId: string }>;
 }) {
   const { accountId } = await params;
-  const { fy, school, account } = await loadBook(accountId);
+  const { user, fy, school, account } = await loadBook(accountId);
+  const auditors = await auditorsOverOrg(user.orgId);
   const entries = (await getTxns(fy.id)).length;
 
   // The year the book is on may be older than the list a new book is offered,
@@ -50,6 +53,28 @@ export default async function SettingsPage({
       />
 
       <h2>Archive this book</h2>
+      {auditors.length > 0 && (
+        <div className="card" style={{ maxWidth: 720, marginBottom: "1.6rem" }}>
+          <div className="eyebrow" style={{ color: "var(--gold)" }}>Who else can read these books</div>
+          <p className="note" style={{ margin: ".5rem 0 .9rem", lineHeight: 1.6 }}>
+            Ministry internal auditors hold a standing right to read the books of schools in
+            their area. They can change nothing, and every school they open is recorded in the
+            audit log below.
+          </p>
+          <table>
+            <thead><tr><th>Auditor</th><th>Area</th></tr></thead>
+            <tbody>
+              {auditors.map((a) => (
+                <tr key={a.auditor.id}>
+                  <td>{a.name}<div className="note">{a.email}</div></td>
+                  <td>{describeAuditScope(a.auditor)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       <ArchiveForm accountId={accountId} schoolName={school.name} entries={entries} />
     </>
   );

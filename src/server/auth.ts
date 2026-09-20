@@ -2,7 +2,8 @@ import "server-only";
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { db, schema } from "@/db";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
+import type { AuditScope } from "@/domain";
 
 const COOKIE = "zb_session";
 const VIEW_AS_COOKIE = "zb_view_as";
@@ -113,6 +114,12 @@ export interface CurrentUser {
   viewingAs: { orgId: string; orgName: string } | null;
   /** A view-as session may read every book and write to none of them. */
   readOnly: boolean;
+  /**
+   * Set while a Ministry auditor is reading. Every book query narrows to the
+   * schools in this area, so an auditor inside an org that keeps thirty
+   * schools still sees only the ones in their sub-county.
+   */
+  auditScope: AuditScope | null;
 }
 
 /** The signed-in user and the org that scopes every query they may run. */
@@ -124,18 +131,28 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   if (!account) return null;
 
   const viewing = await viewAsOrgId();
-  if (viewing && (await isPlatformAdmin(userId))) {
-    const [org] = await db.select().from(schema.orgs).where(eq(schema.orgs.id, viewing));
-    if (org) {
-      return {
-        id: account.id,
-        name: account.name,
-        email: account.email,
-        orgId: org.id,
-        role: "viewer",
-        viewingAs: { orgId: org.id, orgName: org.name },
-        readOnly: true,
-      };
+  if (viewing) {
+    // Re-checked on every read rather than trusted from the cookie, so
+    // withdrawing a grant ends any session already in progress.
+    const [admin, scope] = await Promise.all([
+      isPlatformAdmin(userId),
+      auditorScope(userId),
+    ]);
+    if (admin || scope) {
+      const [org] = await db.select().from(schema.orgs).where(eq(schema.orgs.id, viewing));
+      if (org) {
+        return {
+          id: account.id,
+          name: account.name,
+          email: account.email,
+          orgId: org.id,
+          role: "viewer",
+          viewingAs: { orgId: org.id, orgName: org.name },
+          readOnly: true,
+          // A platform admin sees the whole org; an auditor only their area.
+          auditScope: admin ? null : scope,
+        };
+      }
     }
   }
 
@@ -153,5 +170,15 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     role: membership.role,
     viewingAs: null,
     readOnly: false,
+    auditScope: null,
   };
+}
+
+/** The live audit grant for a user, or null. Revoked grants never count. */
+export async function auditorScope(userId: string): Promise<AuditScope | null> {
+  const [row] = await db
+    .select({ county: schema.auditors.county, subCounty: schema.auditors.subCounty })
+    .from(schema.auditors)
+    .where(and(eq(schema.auditors.userId, userId), isNull(schema.auditors.revokedAt)));
+  return row ?? null;
 }

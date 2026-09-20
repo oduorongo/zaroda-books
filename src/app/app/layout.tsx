@@ -22,13 +22,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!user) redirect("/login");
 
   const [books, admin] = await Promise.all([
-    getOrgBooks(user.orgId),
+    getOrgBooks(user.orgId, user.auditScope),
     isPlatformAdmin(user.id),
   ]);
 
   return (
     <>
-      {user.viewingAs && <ViewAsBanner orgName={user.viewingAs.orgName} />}
+      {user.viewingAs && (
+        <ViewAsBanner orgName={user.viewingAs.orgName} asAuditor={user.auditScope !== null} />
+      )}
     <div className="shell">
       <nav className="sidebar">
         <div className="sidebar-head">

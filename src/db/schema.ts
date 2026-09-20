@@ -253,3 +253,26 @@ export const subscriptionPayments = pgTable("subscription_payments", {
   // The callback finds its payment by this, so it must be quick and unique.
   unique("sub_payments_merchant_request").on(t.merchantRequestId),
 ]);
+
+/**
+ * A Ministry internal auditor, granted the schools of one sub-county — or of
+ * a whole county — wherever those schools' books are kept.
+ *
+ * This is the only thing besides platform_admins that reads across orgs, so
+ * it is granted from /admin alone and never by a tenant. Access is strictly
+ * read-only, enforced in the session rather than here, and every school an
+ * auditor opens is written to audit_log.
+ *
+ * Revoked rather than deleted: who could see a school's books, and when, is
+ * itself something an audit may ask about.
+ */
+export const auditors = pgTable("auditors", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  county: text("county").notNull(),
+  /** Null means every sub-county of that county. */
+  subCounty: text("sub_county"),
+  grantedBy: uuid("granted_by").references(() => users.id),
+  grantedAt: timestamp("granted_at").defaultNow().notNull(),
+  revokedAt: timestamp("revoked_at"),
+}, (t) => [index("auditors_user_idx").on(t.userId)]);

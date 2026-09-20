@@ -4,7 +4,11 @@ import { endViewAsAction } from "./view-as-actions";
  * Impossible to miss, because the danger of a view-as session is forgetting you
  * are in one and reading another school's figures as your own.
  */
-export function ViewAsBanner({ orgName }: { orgName: string }) {
+export function ViewAsBanner({ orgName, asAuditor }: {
+  orgName: string;
+  /** An auditor reads under a Ministry grant, not as Zaroda. */
+  asAuditor: boolean;
+}) {
   return (
     <div
       style={{
@@ -14,8 +18,13 @@ export function ViewAsBanner({ orgName }: { orgName: string }) {
       }}
     >
       <div>
-        Viewing <strong>{orgName}</strong> as the system owner. Read only — nothing can be posted
-        or changed.
+        {asAuditor ? (
+          <>Auditing the books kept by <strong>{orgName}</strong>. Read only, and this visit is
+          recorded.</>
+        ) : (
+          <>Viewing <strong>{orgName}</strong> as the system owner. Read only — nothing can be
+          posted or changed.</>
+        )}
       </div>
       <form action={endViewAsAction}>
         <button type="submit" className="btn-link" style={{ color: "#fff", fontSize: ".88rem" }}>

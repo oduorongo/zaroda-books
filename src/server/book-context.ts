@@ -21,7 +21,7 @@ export async function loadBook(accountId: string, opts: { write?: boolean } = {}
   if (!user) redirect("/login");
   if (opts.write && user.readOnly) throw new ReadOnlyError();
 
-  const { account, school } = await getBookForOrg(accountId, user.orgId);
+  const { account, school } = await getBookForOrg(accountId, user.orgId, user.auditScope);
   const [heads, fy] = await Promise.all([
     getVoteHeads(accountId),
     getFinancialYear(accountId),

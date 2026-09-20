@@ -1,8 +1,8 @@
 import "server-only";
 import { notFound } from "next/navigation";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { LEVEL_PRICE, chargeAmount, revenue, type SchoolLevel } from "@/domain";
+import { LEVEL_PRICE, auditorCanSee, chargeAmount, revenue, type SchoolLevel } from "@/domain";
 import { tumaCallbackUrl } from "@/server/tuma";
 import { getCurrentUser, isPlatformAdmin } from "@/server/auth";
 
@@ -382,4 +382,50 @@ export async function gatewayStatus() {
     primaryWouldCharge: cents,
     callbackUrl: tumaCallbackUrl(),
   };
+}
+
+/** Every audit grant, live and withdrawn, for the owner console. */
+export async function listAuditors() {
+  await requirePlatformAdmin();
+  return db
+    .select({
+      auditor: schema.auditors,
+      name: schema.users.name,
+      email: schema.users.email,
+    })
+    .from(schema.auditors)
+    .innerJoin(schema.users, eq(schema.users.id, schema.auditors.userId))
+    .orderBy(desc(schema.auditors.grantedAt));
+}
+
+/**
+ * Grants an existing account the audit of one area. The person must already
+ * have signed up: creating a login here would mean choosing a password for
+ * someone, and nobody should hold a credential they did not set.
+ */
+export async function grantAuditor(email: string, county: string, subCounty: string | null) {
+  const admin = await requirePlatformAdmin();
+
+  const [user] = await db.select().from(schema.users)
+    .where(eq(schema.users.email, email.trim().toLowerCase()));
+  if (!user) {
+    throw new Error("No account with that email. Ask the auditor to sign up first, then grant it.");
+  }
+
+  const [live] = await db.select().from(schema.auditors).where(and(
+    eq(schema.auditors.userId, user.id),
+    isNull(schema.auditors.revokedAt),
+  ));
+  if (live) throw new Error("That account already holds an audit grant. Withdraw it first.");
+
+  await db.insert(schema.auditors).values({
+    userId: user.id, county, subCounty, grantedBy: admin.id,
+  });
+}
+
+/** Withdrawn, not deleted: who could read a school's books is itself auditable. */
+export async function revokeAuditor(auditorId: string) {
+  await requirePlatformAdmin();
+  await db.update(schema.auditors).set({ revokedAt: new Date() })
+    .where(eq(schema.auditors.id, auditorId));
 }

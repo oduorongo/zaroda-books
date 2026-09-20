@@ -1,7 +1,8 @@
 import "server-only";
 import { db, schema } from "@/db";
 import { and, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
-import type { Txn, VoteHead } from "@/domain";
+import type { AuditScope, Txn, VoteHead } from "@/domain";
+import { auditorCanSee } from "@/domain";
 
 export async function getAccountAndSchool(accountId: string) {
   const [row] = await db
@@ -25,17 +26,26 @@ export async function getFirstAccount() {
 }
 
 /** Every book the org keeps. The tenancy boundary: always scope by org here, never in a route. */
-export async function getOrgBooks(orgId: string) {
-  return db
+export async function getOrgBooks(orgId: string, scope?: AuditScope | null) {
+  const rows = await db
     .select({ account: schema.accounts, school: schema.schools })
     .from(schema.accounts)
     .innerJoin(schema.schools, eq(schema.accounts.schoolId, schema.schools.id))
     .where(and(eq(schema.schools.orgId, orgId), isNull(schema.accounts.archivedAt)))
     .orderBy(schema.schools.name);
+
+  // Filtered here rather than in SQL: the county names are typed by hand in
+  // two places and the comparison that decides this belongs in the domain,
+  // where it is tested, not in a LIKE clause.
+  return scope ? rows.filter((r) => auditorCanSee(scope, r.school)) : rows;
 }
 
-/** Loads one book, refusing it if it does not belong to the caller's org. */
-export async function getBookForOrg(accountId: string, orgId: string) {
+/**
+ * Loads one book, refusing it if it does not belong to the caller's org — and,
+ * for an auditor, if the school is outside their area. The check is here and
+ * not only in the listing, so a book cannot be reached by guessing its link.
+ */
+export async function getBookForOrg(accountId: string, orgId: string, scope?: AuditScope | null) {
   const [row] = await db
     .select({ account: schema.accounts, school: schema.schools })
     .from(schema.accounts)
@@ -47,6 +57,7 @@ export async function getBookForOrg(accountId: string, orgId: string) {
     ));
   // An archived book is unreachable even by its own link, not merely unlisted.
   if (!row) throw new Error("Account not found.");
+  if (scope && !auditorCanSee(scope, row.school)) throw new Error("Account not found.");
   return row;
 }
 
