@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { formatKes } from "@/domain";
+import { formatKes, isCapitationAccount } from "@/domain";
+import type { AccountType } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getTxns } from "@/server/queries";
 import { db, schema } from "@/db";
@@ -15,6 +16,10 @@ export default async function AcknowledgementPage({
 }) {
   const { accountId, transactionId } = await params;
   const { heads, fy, school, account } = await loadBook(accountId);
+
+  // An acknowledgement is a return to the Ministry for money the Ministry
+  // sent. There is nothing to acknowledge on an account parents pay into.
+  if (!isCapitationAccount(school.level, account.type as AccountType)) notFound();
 
   const txns = await getTxns(fy.id);
   const txn = txns.find((t) => t.id === transactionId);

@@ -214,3 +214,16 @@ export const flatOnlyHeadCodes = (level: SchoolLevel, accountType: AccountType):
   (chartFor(level, accountType)?.heads ?? [])
     .filter((h) => h.flat && !h.perLearner)
     .map((h) => h.code);
+
+/**
+ * Whether this account is funded by capitation, and so has an enrolment to
+ * derive and an acknowledgement to return to the Ministry.
+ *
+ * Read from the chart rather than kept as a second list: an account is
+ * capitation funded exactly when one of its heads carries a rate from a
+ * circular. Boarding, lunch and infrastructure carry none — parents pay into
+ * them, or they are funded by transfer — so a per-learner figure there would
+ * be an invention.
+ */
+export const isCapitationAccount = (level: SchoolLevel, accountType: AccountType): boolean =>
+  (chartFor(level, accountType)?.heads ?? []).some((h) => h.perLearner || h.flat);

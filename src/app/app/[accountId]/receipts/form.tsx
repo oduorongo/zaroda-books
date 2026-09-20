@@ -24,13 +24,19 @@ const num = (v: string) => {
 };
 
 export function ReceiptForm({
-  accountId, heads, receipt, flatOnly = [],
+  accountId, heads, receipt, flatOnly = [], capitation = true,
 }: {
   accountId: string;
   heads: VoteHead[];
   receipt?: ReceiptDraft;
   /** Codes the circular funds per school: their rate box stays shut. */
   flatOnly?: string[];
+  /**
+   * Whether this account receives capitation. Boarding, lunch and the other
+   * accounts parents pay into have no circular and no rate per learner, so
+   * there is no enrolment to derive and the box is left off entirely.
+   */
+  capitation?: boolean;
 }) {
   const [error, action, pending] = useActionState(receipt ? amendReceipt : postReceipt, null);
   const [amount, setAmount] = useState(receipt?.amount ?? "");
@@ -88,7 +94,7 @@ export function ReceiptForm({
       <input type="hidden" name="accountId" value={accountId} />
       {receipt && <input type="hidden" name="transactionId" value={receipt.id} />}
 
-      <div className="grid-4">
+      <div className={capitation ? "grid-4" : "grid-3"}>
         <label className="field">Date
           <input name="date" type="date" value={date} required
             onChange={(e) => {
@@ -104,12 +110,14 @@ export function ReceiptForm({
           <input name="amount" className="mono" inputMode="decimal" placeholder="0"
             value={amount} onChange={(e) => setAmount(e.target.value)} required />
         </label>
-        <div className="field">Learners (computed)
-          <div className="mono" style={{ padding: ".8rem .85rem", border: "1px dashed var(--rule)", borderRadius: 3, background: "var(--band)", display: "flex", justifyContent: "space-between", gap: ".6rem" }}>
-            <span>{enrolment ? enrolment.toLocaleString("en-KE") : "—"}</span>
-            <span className="code" style={{ fontSize: ".68rem", letterSpacing: ".1em", textTransform: "uppercase", alignSelf: "center" }}>Auto</span>
+        {capitation && (
+          <div className="field">Learners (computed)
+            <div className="mono" style={{ padding: ".8rem .85rem", border: "1px dashed var(--rule)", borderRadius: 3, background: "var(--band)", display: "flex", justifyContent: "space-between", gap: ".6rem" }}>
+              <span>{enrolment ? enrolment.toLocaleString("en-KE") : "—"}</span>
+              <span className="code" style={{ fontSize: ".68rem", letterSpacing: ".1em", textTransform: "uppercase", alignSelf: "center" }}>Auto</span>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <label className="field" style={{ marginTop: "1.25rem" }}>Particulars

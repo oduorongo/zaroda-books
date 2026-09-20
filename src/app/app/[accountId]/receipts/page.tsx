@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { buildLedger, flatOnlyHeadCodes, formatKes, toKes } from "@/domain";
+import { buildLedger, flatOnlyHeadCodes, formatKes, isCapitationAccount, toKes } from "@/domain";
 import type { AccountType } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getTxns } from "@/server/queries";
@@ -14,6 +14,9 @@ export default async function ReceiptsPage({
 }) {
   const { accountId } = await params;
   const { heads, fy, school, account } = await loadBook(accountId);
+  // Boarding, lunch and the like take money from parents, not the Ministry:
+  // no enrolment to derive, nothing to acknowledge.
+  const capitation = isCapitationAccount(school.level, account.type as AccountType);
   const txns = await getTxns(fy.id);
 
   // Heads the circular funds per school: their rate box is closed.
@@ -47,7 +50,7 @@ export default async function ReceiptsPage({
         openingBank={fy.openingBank ? String(toKes(fy.openingBank)) : ""}
       />
 
-      <ReceiptForm accountId={accountId} heads={heads} flatOnly={flatOnly} />
+      <ReceiptForm accountId={accountId} heads={heads} flatOnly={flatOnly} capitation={capitation} />
 
       <div className="grid-2" style={{ marginTop: "1.6rem", alignItems: "start" }}>
         <div className="card">
@@ -86,7 +89,11 @@ export default async function ReceiptsPage({
                 <div className="mono" style={{ fontSize: ".9rem" }}>
                   {formatKes(r.kind === "receipt" ? r.cash + r.bank : 0)}
                 </div>
-                <Link className="note" href={`/app/${accountId}/receipts/${r.id}/acknowledgement`}>View</Link>
+                {capitation && (
+                  <Link className="note" href={`/app/${accountId}/receipts/${r.id}/acknowledgement`}>
+                    Acknowledgement
+                  </Link>
+                )}
               </div>
             </div>
           ))}
