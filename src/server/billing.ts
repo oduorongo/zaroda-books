@@ -8,6 +8,8 @@ import {
 import {
   checkPaymentStatus, initiateStkPush, tumaCallbackUrl, tumaConfigured,
 } from "@/server/tuma";
+import { createBook } from "@/server/books";
+import type { AccountType } from "@/domain";
 
 /**
  * Collecting the subscription. A confirmed payment opens the subscription row
@@ -21,6 +23,8 @@ export async function startSubscriptionPayment(input: {
   level: SchoolLevel;
   fyLabel: string;
   phone: string;
+  /** The book to open once the money arrives, if this began at the book form. */
+  pendingBook?: { schoolName: string; accountType: string };
 }): Promise<{ ok: true; paymentId: string } | { ok: false; error: string }> {
   if (!tumaConfigured()) {
     return {
@@ -74,6 +78,8 @@ export async function startSubscriptionPayment(input: {
     description,
     rawResponse: JSON.stringify(result.raw ?? {}),
     initiatedBy: input.userId,
+    pendingSchoolName: input.pendingBook?.schoolName ?? null,
+    pendingAccountType: input.pendingBook?.accountType ?? null,
   }).returning();
 
   if (!result.ok) {
@@ -136,6 +142,30 @@ export async function markPaymentSucceeded(
       fyLabel: payment.fyLabel,
       paidAt: now,
     });
+  }
+
+  // The book the tenant was opening when they were asked to pay. Finishing it
+  // here is the whole point of taking the details at the book form: they typed
+  // the school once and do not come back to a blank form.
+  //
+  // A failure here must not unmake the payment. The money arrived and the
+  // subscription is open, so the worst case is the bursar opening the book by
+  // hand — which the form will now allow, since the level and year are paid for.
+  if (payment.pendingSchoolName && payment.pendingAccountType) {
+    try {
+      const { account } = await createBook({
+        orgId: payment.orgId,
+        schoolName: payment.pendingSchoolName,
+        level: payment.level,
+        accountType: payment.pendingAccountType as AccountType,
+        fyLabel: payment.fyLabel,
+      });
+      await db.update(schema.subscriptionPayments)
+        .set({ createdAccountId: account.id })
+        .where(eq(schema.subscriptionPayments.id, payment.id));
+    } catch (err) {
+      console.error("Paid, but the book could not be opened:", err);
+    }
   }
 
   await db.insert(schema.auditLog).values({

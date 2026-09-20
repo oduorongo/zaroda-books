@@ -6,6 +6,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser, isPlatformAdmin } from "@/server/auth";
 import { orgEntitlements } from "@/server/books";
+import { db, schema } from "@/db";
+import { eq } from "drizzle-orm";
 import { NewBookForm } from "./form";
 import { ArchivedBooks } from "./archived";
 import { BackLink } from "../back-link";
@@ -95,6 +97,13 @@ export default async function NewBookPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
+  const [entitlements, owner, [account]] = await Promise.all([
+    orgEntitlements(user.orgId),
+    isPlatformAdmin(user.id),
+    db.select({ phone: schema.users.phone }).from(schema.users)
+      .where(eq(schema.users.id, user.id)),
+  ]);
+
   // Books are opened for years already gone as often as for the current one:
   // a freelance accountant taking on a school writes up its back years first.
   const years = financialYearLabels(financialYearInProgress(), 2022);
@@ -122,8 +131,15 @@ export default async function NewBookPage() {
         The school, the level, the account and the financial year fix the chart of accounts and the
         twelve monthly periods. These cannot be renumbered afterwards.
       </p>
-      <Entitlement {...await orgEntitlements(user.orgId)} isOwner={await isPlatformAdmin(user.id)} />
-      <NewBookForm years={years} levels={LEVELS} charts={charts} />
+      <Entitlement {...entitlements} isOwner={owner} />
+      <NewBookForm
+        years={years}
+        levels={LEVELS}
+        charts={charts}
+        covered={entitlements.covered}
+        isOwner={owner}
+        defaultPhone={account?.phone ?? ""}
+      />
       <ArchivedBooks orgId={user.orgId} />
     </div>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import type { SchoolLevel } from "@/domain";
+import { priceLabel, type SchoolLevel } from "@/domain";
 import { createBookAction } from "./actions";
 
 interface ChartOption {
@@ -12,15 +12,25 @@ interface ChartOption {
 }
 
 export function NewBookForm({
-  years, levels, charts,
+  years, levels, charts, covered, isOwner, defaultPhone,
 }: {
   years: string[];
   levels: { id: SchoolLevel; label: string }[];
   charts: Record<string, ChartOption[]>;
+  /** Level-and-year pairs the org may already open. */
+  covered: { level: string; fyLabel: string }[];
+  isOwner: boolean;
+  defaultPhone: string;
 }) {
   const [error, action, pending] = useActionState(createBookAction, null);
   const [level, setLevel] = useState<SchoolLevel>(levels[0].id);
   const [accountType, setAccountType] = useState(charts[levels[0].id][0].id);
+  const [fyLabel, setFyLabel] = useState(years[0]);
+
+  // Shown the moment the pair is uncovered, so the price is known before the
+  // form is filled in rather than after it is refused.
+  const needsPayment = !isOwner
+    && !covered.some((c) => c.level === level && c.fyLabel === fyLabel);
 
   const options = charts[level] ?? [];
   const chosen = options.find((o) => o.id === accountType) ?? options[0];
@@ -52,7 +62,7 @@ export function NewBookForm({
           </select>
         </label>
         <label className="field">Financial year
-          <select name="fyLabel" defaultValue={years[0]}>
+          <select name="fyLabel" value={fyLabel} onChange={(e) => setFyLabel(e.target.value)}>
             {years.map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
         </label>
@@ -81,9 +91,30 @@ export function NewBookForm({
         )}
       </div>
 
-      {error && <p className="error">{error}</p>}
+      {needsPayment && (
+        <div style={{ borderTop: "1px solid var(--rule-soft)", paddingTop: "1.25rem" }}>
+          <div className="eyebrow" style={{ color: "var(--gold)", marginBottom: ".4rem" }}>
+            This level and year needs a subscription
+          </div>
+          <p className="note" style={{ margin: "0 0 1rem", lineHeight: 1.6 }}>
+            KSh {priceLabel(level)} for {fyLabel}, covering every account this school keeps at{" "}
+            {level} level for the year. Pay here and the book opens as soon as the payment goes
+            through — you will not type this form again.
+          </p>
+          <label className="field" style={{ maxWidth: 320 }}>M-Pesa number
+            <input name="phone" defaultValue={defaultPhone} placeholder="0712 345 678" inputMode="tel" />
+          </label>
+        </div>
+      )}
+
+      {/* NEEDS_PAYMENT is the server telling the form to ask for the number,
+          not a fault the bursar should read. */}
+      {error && error !== "NEEDS_PAYMENT" && <p className="error">{error}</p>}
+
       <button type="submit" className="btn btn-primary" style={{ alignSelf: "flex-start" }} disabled={pending}>
-        {pending ? "Creating…" : "Create the book"}
+        {pending
+          ? (needsPayment ? "Sending the request…" : "Creating…")
+          : (needsPayment ? `Pay KSh ${priceLabel(level)} and create the book` : "Create the book")}
       </button>
     </form>
   );

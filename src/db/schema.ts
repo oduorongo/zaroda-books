@@ -236,6 +236,15 @@ export const subscriptionPayments = pgTable("subscription_payments", {
   initiatedBy: uuid("initiated_by").references(() => users.id),
   /** Zaroda's own receipt reference, issued when the payment succeeds. */
   receiptNo: text("receipt_no"),
+  /**
+   * The book the tenant was trying to open when they were asked to pay. Held
+   * here so the payment can finish the job it was started for: the callback
+   * opens the book from these, and the bursar never retypes the form.
+   */
+  pendingSchoolName: text("pending_school_name"),
+  pendingAccountType: text("pending_account_type"),
+  /** The book the callback opened, so the waiting page can go straight to it. */
+  createdAccountId: uuid("created_account_id").references(() => accounts.id),
   paidAt: timestamp("paid_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

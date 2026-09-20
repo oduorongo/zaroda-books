@@ -10,7 +10,12 @@ import { checkAction } from "../actions";
  * path and usually wins; this is the fallback for when it never arrives, which
  * the school system saw often enough to build the same thing.
  */
-export function Waiting({ paymentId, initial }: { paymentId: string; initial: string }) {
+export function Waiting({ paymentId, initial, accountId }: {
+  paymentId: string;
+  initial: string;
+  /** The book the callback opened, if this payment began at the book form. */
+  accountId: string | null;
+}) {
   const [status, setStatus] = useState(initial);
   const [elapsed, setElapsed] = useState(0);
   const router = useRouter();
@@ -35,12 +40,19 @@ export function Waiting({ paymentId, initial }: { paymentId: string; initial: st
       <div className="card" style={{ borderLeft: "3px solid var(--gold)" }}>
         <div className="eyebrow" style={{ color: "var(--gold)" }}>Payment received</div>
         <p style={{ margin: ".6rem 0 1.2rem", lineHeight: 1.6 }}>
-          The subscription is open. You can create the book now — the first school it is used for
-          is the one it stays with for the year.
+          {accountId
+            ? "The subscription is open and your book has been created, from the details you "
+              + "already entered. Nothing to type again."
+            : "The subscription is open. You can create the book now — the first school it is "
+              + "used for is the one it stays with for the year."}
         </p>
         <div style={{ display: "flex", gap: ".7rem", flexWrap: "wrap" }}>
-          <Link href="/app/new" className="btn btn-gold" style={{ color: "#fff", textDecoration: "none" }}>
-            Create the book
+          <Link
+            href={accountId ? `/app/${accountId}/receipts` : "/app/new"}
+            className="btn btn-gold"
+            style={{ color: "#fff", textDecoration: "none" }}
+          >
+            {accountId ? "Open the book" : "Create the book"}
           </Link>
           <Link href={`/app/subscribe/${paymentId}/receipt`} className="btn btn-quiet" style={{ textDecoration: "none" }}>
             Receipt

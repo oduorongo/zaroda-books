@@ -29,7 +29,7 @@ export default async function PaymentPage({
       <p className="sub" style={{ textTransform: "capitalize" }}>
         {payment.level} · {payment.fyLabel} · {payment.phone}
       </p>
-      <Waiting paymentId={payment.id} initial={payment.status} />
+      <Waiting paymentId={payment.id} initial={payment.status} accountId={payment.createdAccountId} />
     </div>
   );
 }
