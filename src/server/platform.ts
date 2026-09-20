@@ -2,7 +2,8 @@ import "server-only";
 import { notFound } from "next/navigation";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { revenue, type SchoolLevel } from "@/domain";
+import { LEVEL_PRICE, chargeAmount, revenue, type SchoolLevel } from "@/domain";
+import { tumaCallbackUrl } from "@/server/tuma";
 import { getCurrentUser, isPlatformAdmin } from "@/server/auth";
 
 /**
@@ -355,5 +356,30 @@ export async function coverage(): Promise<{
     schoolsPlaced,
     schoolsUnplaced: schools.length - schoolsPlaced,
     countiesReached: rows.filter((r) => r.schools > 0).length,
+  };
+}
+
+/**
+ * What the running server actually sees of the payment configuration. Reading
+ * it from production is the only reliable way to tell a code problem from an
+ * environment one — a variable can be present in the Vercel dashboard and
+ * still not reach the build, or carry stray quotes that make it unusable.
+ */
+export async function gatewayStatus() {
+  await requirePlatformAdmin();
+
+  const raw = process.env.TUMA_TEST_AMOUNT_KES;
+  const { cents, isTest } = chargeAmount(LEVEL_PRICE.primary, raw);
+  const key = process.env.TUMA_API_KEY;
+
+  return {
+    email: process.env.TUMA_EMAIL ?? null,
+    keyPresent: Boolean(key),
+    keyLength: key?.length ?? 0,
+    keyEnds: key ? key.slice(-4) : null,
+    testAmountRaw: raw === undefined ? null : JSON.stringify(raw),
+    testAmountApplies: isTest,
+    primaryWouldCharge: cents,
+    callbackUrl: tumaCallbackUrl(),
   };
 }

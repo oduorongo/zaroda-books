@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { formatKes } from "@/domain";
-import { listTenants, platformTotals } from "@/server/platform";
+import { gatewayStatus, listTenants, platformTotals } from "@/server/platform";
 
 const day = (d: Date | null) =>
   d ? new Date(d).toLocaleDateString("en-KE", { day: "2-digit", month: "short", year: "numeric" }) : "—";
@@ -21,6 +21,7 @@ export default async function AdminPage() {
   const tenants = await listTenants();
   const t = platformTotals(tenants);
   const pending = tenants.filter((x) => !x.approvedAt).length;
+  const gateway = await gatewayStatus();
 
   return (
     <>
@@ -47,6 +48,51 @@ export default async function AdminPage() {
           value={`KSh ${formatKes(t.outstanding)}`}
           note={`${t.unpaidCount} awaiting payment · ${t.freeCount} free`}
         />
+      </div>
+
+      <div className="card" style={{ marginBottom: "1.25rem" }}>
+        <div className="eyebrow" style={{ color: "var(--gold)", marginBottom: ".75rem" }}>
+          M-Pesa gateway — as this server sees it
+        </div>
+        <table>
+          <tbody>
+            <tr>
+              <td>Tuma account</td>
+              <td className="n mono">{gateway.email ?? <span style={{ color: "var(--alarm)" }}>not set</span>}</td>
+            </tr>
+            <tr>
+              <td>API key</td>
+              <td className="n mono">
+                {gateway.keyPresent
+                  ? `${gateway.keyLength} chars, ends ${gateway.keyEnds}`
+                  : <span style={{ color: "var(--alarm)" }}>not set</span>}
+              </td>
+            </tr>
+            <tr>
+              <td>TUMA_TEST_AMOUNT_KES</td>
+              <td className="n mono">
+                {gateway.testAmountRaw ?? <span className="zero">not set</span>}
+              </td>
+            </tr>
+            <tr className="total">
+              <td>A primary subscription would charge</td>
+              <td className="n" style={{ color: gateway.testAmountApplies ? "var(--alarm)" : undefined }}>
+                KSh {formatKes(gateway.primaryWouldCharge)}
+                {gateway.testAmountApplies ? " (test amount)" : " (list price)"}
+              </td>
+            </tr>
+            <tr>
+              <td>Callback URL</td>
+              <td className="n mono" style={{ fontSize: ".78rem" }}>{gateway.callbackUrl}</td>
+            </tr>
+          </tbody>
+        </table>
+        {gateway.testAmountRaw !== null && !gateway.testAmountApplies && (
+          <p className="error" style={{ marginTop: ".9rem" }}>
+            The variable is set but not being used — the value above is not a positive number.
+            Stray quotes or spaces will do this. Re-add it as a bare 1.
+          </p>
+        )}
       </div>
 
       <div className="card" style={{ padding: "1.25rem 1.5rem" }}>
