@@ -1,8 +1,9 @@
 import "server-only";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import {
-  LEVEL_PRICE, chargeAmount, normalisePhoneForTuma, priceLabel, type SchoolLevel,
+  LEVEL_PRICE, chargeAmount, normalisePhoneForTuma, priceLabel, subscriptionReceiptNo,
+  type SchoolLevel,
 } from "@/domain";
 import {
   checkPaymentStatus, initiateStkPush, tumaCallbackUrl, tumaConfigured,
@@ -97,9 +98,22 @@ export async function markPaymentSucceeded(
   if (payment.status === "success") return; // Callback and poll can both arrive.
 
   const now = new Date();
+
+  // Numbered in the order receipts are issued within the financial year the
+  // subscription is for, so a tenant's receipt has a reference to quote that
+  // is ours rather than Safaricom's.
+  const [{ issued } = { issued: 0 }] = await db
+    .select({ issued: sql<number>`count(*)::int` })
+    .from(schema.subscriptionPayments)
+    .where(and(
+      eq(schema.subscriptionPayments.fyLabel, payment.fyLabel),
+      isNotNull(schema.subscriptionPayments.receiptNo),
+    ));
+
   await db.update(schema.subscriptionPayments).set({
     status: "success",
     mpesaReceipt: mpesaReceipt ?? null,
+    receiptNo: subscriptionReceiptNo(payment.fyLabel, issued),
     callbackRaw: JSON.stringify(rawBody ?? {}),
     paidAt: now,
     updatedAt: now,

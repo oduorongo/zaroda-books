@@ -38,9 +38,14 @@ export function Waiting({ paymentId, initial }: { paymentId: string; initial: st
           The subscription is open. You can create the book now — the first school it is used for
           is the one it stays with for the year.
         </p>
-        <Link href="/app/new" className="btn btn-gold" style={{ color: "#fff", textDecoration: "none" }}>
-          Create the book
-        </Link>
+        <div style={{ display: "flex", gap: ".7rem", flexWrap: "wrap" }}>
+          <Link href="/app/new" className="btn btn-gold" style={{ color: "#fff", textDecoration: "none" }}>
+            Create the book
+          </Link>
+          <Link href={`/app/subscribe/${paymentId}/receipt`} className="btn btn-quiet" style={{ textDecoration: "none" }}>
+            Receipt
+          </Link>
+        </div>
       </div>
     );
   }

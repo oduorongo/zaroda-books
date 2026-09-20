@@ -234,6 +234,8 @@ export const subscriptionPayments = pgTable("subscription_payments", {
   rawResponse: text("raw_response"),
   callbackRaw: text("callback_raw"),
   initiatedBy: uuid("initiated_by").references(() => users.id),
+  /** Zaroda's own receipt reference, issued when the payment succeeds. */
+  receiptNo: text("receipt_no"),
   paidAt: timestamp("paid_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

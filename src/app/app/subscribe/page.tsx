@@ -73,7 +73,7 @@ export default async function SubscribePage() {
             <thead>
               <tr>
                 <th>When</th><th>For</th><th className="n">Amount</th>
-                <th>M-Pesa receipt</th><th>Status</th>
+                <th>M-Pesa receipt</th><th>Status</th><th>Receipt</th>
               </tr>
             </thead>
             <tbody>
@@ -87,6 +87,11 @@ export default async function SubscribePage() {
                     {p.status === "pending"
                       ? <Link href={`/app/subscribe/${p.id}`}>waiting…</Link>
                       : p.status}
+                  </td>
+                  <td>
+                    {p.status === "success"
+                      ? <Link href={`/app/subscribe/${p.id}/receipt`}>{p.receiptNo ?? "View"}</Link>
+                      : <span className="zero">—</span>}
                   </td>
                 </tr>
               ))}

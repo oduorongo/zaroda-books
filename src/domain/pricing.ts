@@ -70,3 +70,14 @@ export function chargeAmount(
   }
   return { cents: Math.round(n * 100), isTest: true };
 }
+
+/**
+ * Zaroda's own reference for a subscription receipt, e.g. ZB/2025-26/0042.
+ *
+ * Separate from the M-Pesa receipt number, which is Safaricom's and proves the
+ * money moved. This one is ours and gives the tenant something to quote. The
+ * year is written with a dash so the whole reference reads as one token.
+ */
+export function subscriptionReceiptNo(fyLabel: string, issuedBefore: number): string {
+  return `ZB/${fyLabel.replace("/", "-")}/${String(issuedBefore + 1).padStart(4, "0")}`;
+}

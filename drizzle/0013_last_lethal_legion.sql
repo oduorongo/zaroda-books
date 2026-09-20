@@ -1,0 +1,1 @@
+ALTER TABLE "subscription_payments" ADD COLUMN "receipt_no" text;

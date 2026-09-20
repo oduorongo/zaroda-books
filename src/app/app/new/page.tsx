@@ -4,7 +4,7 @@ import {
 import type { SchoolLevel } from "@/domain";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/server/auth";
+import { getCurrentUser, isPlatformAdmin } from "@/server/auth";
 import { orgEntitlements } from "@/server/books";
 import { NewBookForm } from "./form";
 import { ArchivedBooks } from "./archived";
@@ -22,8 +22,20 @@ const LEVELS: { id: SchoolLevel; label: string }[] = [
  * out the rule.
  */
 function Entitlement({
-  freeUsed, covered, approved,
-}: Awaited<ReturnType<typeof orgEntitlements>>) {
+  freeUsed, covered, approved, isOwner,
+}: Awaited<ReturnType<typeof orgEntitlements>> & { isOwner: boolean }) {
+  if (isOwner) {
+    return (
+      <div className="card" style={{ marginBottom: "1.35rem" }}>
+        <div className="eyebrow" style={{ color: "var(--gold)" }}>Zaroda Solutions</div>
+        <p style={{ margin: ".5rem 0 0", fontSize: ".9rem", lineHeight: 1.6, color: "var(--muted)" }}>
+          Your own books open without a subscription. The subscription is money paid to
+          Zaroda, so there is nobody to pay it to.
+        </p>
+      </div>
+    );
+  }
+
   if (!approved && covered.length === 0) {
     return (
       <div className="card" style={{ marginBottom: "1.35rem", borderLeft: "3px solid var(--gold)" }}>
@@ -110,7 +122,7 @@ export default async function NewBookPage() {
         The school, the level, the account and the financial year fix the chart of accounts and the
         twelve monthly periods. These cannot be renumbered afterwards.
       </p>
-      <Entitlement {...await orgEntitlements(user.orgId)} />
+      <Entitlement {...await orgEntitlements(user.orgId)} isOwner={await isPlatformAdmin(user.id)} />
       <NewBookForm years={years} levels={LEVELS} charts={charts} />
       <ArchivedBooks orgId={user.orgId} />
     </div>

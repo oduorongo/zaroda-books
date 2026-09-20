@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/server/auth";
+import { getCurrentUser, isPlatformAdmin } from "@/server/auth";
 import { createBook } from "@/server/books";
 import { chartFor, type AccountType, type SchoolLevel } from "@/domain";
 
@@ -29,6 +29,9 @@ export async function createBookAction(
   try {
     ({ account } = await createBook({
       orgId: user.orgId, schoolName, level, accountType, fyLabel,
+      // Zaroda Solutions keeping its own books, checked against the table
+      // rather than taken from the session.
+      bypassEntitlement: await isPlatformAdmin(user.id),
     }));
   } catch (e) {
     return e instanceof Error ? e.message : "The book could not be created.";

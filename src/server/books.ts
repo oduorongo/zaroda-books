@@ -38,6 +38,12 @@ export async function createBook(input: {
   fyLabel: string;
   openingCash?: number;
   openingBank?: number;
+  /**
+   * Zaroda Solutions keeping its own books. The subscription is money paid to
+   * us, so charging ourselves for it is bookkeeping theatre. Set only from a
+   * verified platform_admins row, never from anything a tenant can reach.
+   */
+  bypassEntitlement?: boolean;
 }) {
   const chart = chartFor(input.level, input.accountType);
   if (!chart) {
@@ -66,12 +72,14 @@ export async function createBook(input: {
     nameKey,
   }).returning())[0];
 
-  await claimEntitlement({
-    orgId: input.orgId,
-    level: input.level,
-    fyLabel: input.fyLabel,
-    schoolId: school.id,
-  });
+  if (!input.bypassEntitlement) {
+    await claimEntitlement({
+      orgId: input.orgId,
+      level: input.level,
+      fyLabel: input.fyLabel,
+      schoolId: school.id,
+    });
+  }
 
   const [account] = await db.insert(schema.accounts).values({
     schoolId: school.id,
