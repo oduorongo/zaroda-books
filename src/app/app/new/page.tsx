@@ -1,5 +1,5 @@
 import {
-  CHART_OF_ACCOUNTS, LEVEL_OPTIONS, accountTypesFor, financialYearInProgress,
+  CHART_OF_ACCOUNTS, LEVEL_OPTIONS, accountTypesFor, chargeAmount, financialYearInProgress,
   financialYearLabels, priceLabel,
 } from "@/domain";
 import type { SchoolLevel } from "@/domain";
@@ -134,6 +134,9 @@ export default async function NewBookPage() {
         covered={entitlements.covered}
         isOwner={owner}
         defaultPhone={account?.phone ?? ""}
+        testAmountCents={chargeAmount(0, process.env.TUMA_TEST_AMOUNT_KES).isTest
+          ? chargeAmount(0, process.env.TUMA_TEST_AMOUNT_KES).cents
+          : null}
       />
       <ArchivedBooks orgId={user.orgId} />
     </div>

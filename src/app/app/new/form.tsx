@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { LEVEL_LABEL, priceLabel, type SchoolLevel } from "@/domain";
+import { LEVEL_LABEL, formatKes, priceLabel, type SchoolLevel } from "@/domain";
 import { createBookAction } from "./actions";
 
 interface ChartOption {
@@ -12,7 +12,7 @@ interface ChartOption {
 }
 
 export function NewBookForm({
-  years, levels, charts, covered, isOwner, defaultPhone,
+  years, levels, charts, covered, isOwner, defaultPhone, testAmountCents,
 }: {
   years: string[];
   levels: { id: SchoolLevel; label: string }[];
@@ -21,6 +21,8 @@ export function NewBookForm({
   covered: { level: string; fyLabel: string }[];
   isOwner: boolean;
   defaultPhone: string;
+  /** Set while Tuma is in sandbox: what will really be charged. */
+  testAmountCents: number | null;
 }) {
   const [error, action, pending] = useActionState(createBookAction, null);
   // Nothing preselected. The level, the year and the account fix the chart and
@@ -122,6 +124,12 @@ export function NewBookForm({
             Pay here and the book opens as soon as the payment goes through — you will not type
             this form again.
           </p>
+          {testAmountCents !== null && (
+            <p className="error" style={{ margin: "0 0 1rem" }}>
+              Test amount: KSh {formatKes(testAmountCents)} will actually be charged, not the
+              list price above.
+            </p>
+          )}
           <label className="field" style={{ maxWidth: 320 }}>M-Pesa number
             <input name="phone" defaultValue={defaultPhone} placeholder="0712 345 678" inputMode="tel" />
           </label>
@@ -143,7 +151,7 @@ export function NewBookForm({
           : !ready
             ? "Choose the level, year and account"
             : needsPayment
-              ? `Pay KSh ${priceLabel(level as SchoolLevel)} and create the book`
+              ? `Pay KSh ${testAmountCents === null ? priceLabel(level as SchoolLevel) : formatKes(testAmountCents)} and create the book`
               : "Create the book"}
       </button>
     </form>
