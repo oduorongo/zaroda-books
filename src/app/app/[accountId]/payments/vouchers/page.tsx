@@ -3,6 +3,7 @@ import { formatKes } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getTxns } from "@/server/queries";
 import { PrintButton } from "../../print-button";
+import { VoucherSignatures } from "../signatures";
 
 /**
  * Every voucher of the financial year, one to a page, for printing the year's
@@ -86,10 +87,7 @@ export default async function VoucherBookPage({
               </tbody>
             </table>
 
-            <p className="note" style={{ marginTop: "1.5rem" }}>
-              Certified that the goods or services were received and the expenditure is a proper
-              charge against the votes shown. Signed ______________________ on ______________.
-            </p>
+            <VoucherSignatures />
           </div>
         );
       })}

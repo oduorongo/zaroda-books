@@ -356,3 +356,16 @@ a:hover { color: var(--gold); }
   /* The address is the longest thing here and the least needed at a glance. */
   .admin-nav span { font-size: .78rem; overflow-wrap: anywhere; white-space: normal; }
 }
+
+/* The two signature columns at the foot of a payment voucher. Side by side on
+   paper, which is where they are signed; stacked on a phone. */
+.voucher-signatures {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.5rem;
+}
+@media (max-width: 720px) {
+  .voucher-signatures { grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+}
+@media print {
+  /* Never split a signature away from the line it belongs to. */
+  .voucher-signatures { break-inside: avoid; page-break-inside: avoid; gap: 3rem; }
+}

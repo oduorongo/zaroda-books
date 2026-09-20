@@ -5,6 +5,7 @@ import { loadBook } from "@/server/book-context";
 import { getTxns } from "@/server/queries";
 import { PdfButton } from "../../../pdf-button";
 import { PrintButton } from "../../../print-button";
+import { VoucherSignatures } from "../../signatures";
 
 export default async function VoucherPage({
   params,
@@ -72,10 +73,7 @@ export default async function VoucherPage({
           </tbody>
         </table>
 
-        <p className="note" style={{ marginTop: "1.75rem" }}>
-          Certified that the goods or services were received and the expenditure is a proper charge
-          against the votes shown. Signed ______________________ on ______________.
-        </p>
+        <VoucherSignatures />
       </div>
     </div>
   );

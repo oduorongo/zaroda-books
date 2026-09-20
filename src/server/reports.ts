@@ -393,8 +393,11 @@ export async function paymentVoucherDoc(
         columns: ["Code", "Vote head", "Amount"],
         rows: txn.allocations.map((a) => [a.voteHeadCode, nameOf(a.voteHeadCode), csvAmount(a.amount)]),
         total: ["", "Total", csvAmount(total)],
-        note: "Certified that the goods or services were received and the expenditure is a proper "
-          + "charge against the votes shown. Signed ______________________ on ______________.",
+        note:
+          "Certified that the goods or services were received and that the expenditure is a "
+          + "proper charge against the votes shown.  |  "
+          + "Certified by (name, signature, designation, date): __________________________  |  "
+          + "Received by — payee (name, signature, ID number, date): ____________________",
       },
     ],
   };
