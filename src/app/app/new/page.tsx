@@ -50,11 +50,11 @@ function Entitlement({
   if (!freeUsed && covered.length === 0) {
     return (
       <div className="card" style={{ marginBottom: "1.35rem" }}>
-        <div className="eyebrow" style={{ color: "var(--gold)" }}>Your first school is free</div>
+        <div className="eyebrow" style={{ color: "var(--gold)" }}>Your first book is free</div>
         <p style={{ margin: ".5rem 0 0", fontSize: ".9rem", lineHeight: 1.6, color: "var(--muted)" }}>
-          One school, at one level, for one financial year — with every account it keeps at that
-          level: tuition, operations, infrastructure, boarding, lunch. Open them as you need them.
-          A second school, a second level, or a later year is subscribed for.
+          One book, for one school, at one level, for one financial year. A second book —
+          operations alongside tuition, say — needs the subscription for that level, and
+          paying for it takes in the free one.
         </p>
       </div>
     );

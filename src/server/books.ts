@@ -292,7 +292,7 @@ async function claimEntitlement(input: {
   fyLabel: string;
   schoolId: string;
 }) {
-  const [[existing], used, [org]] = await Promise.all([
+  const [[existing], used, [org], [books]] = await Promise.all([
     db
       .select()
       .from(schema.subscriptions)
@@ -306,12 +306,23 @@ async function claimEntitlement(input: {
       .select({ approvedAt: schema.orgs.approvedAt })
       .from(schema.orgs)
       .where(eq(schema.orgs.id, input.orgId)),
+    // Books this school already keeps at this level and year. The free grant
+    // is one book, so the second one is where the subscription is asked for.
+    db
+      .select({ n: sql`count(*)::int` })
+      .from(schema.accounts)
+      .innerJoin(schema.financialYears, eq(schema.financialYears.accountId, schema.accounts.id))
+      .where(and(
+        eq(schema.accounts.schoolId, input.schoolId),
+        eq(schema.financialYears.label, input.fyLabel),
+      )),
   ]);
 
   const decision = bookEntitlement({
     subscription: existing,
     freeAllowanceUsed: used,
     orgApproved: Boolean(org?.approvedAt),
+    booksAlreadyOpen: Number(books?.n ?? 0),
     level: input.level,
     fyLabel: input.fyLabel,
     schoolId: input.schoolId,

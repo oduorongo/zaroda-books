@@ -4,6 +4,7 @@ import { bookEntitlement } from "../subscription";
 const args = (over: Partial<Parameters<typeof bookEntitlement>[0]> = {}) => ({
   subscription: undefined,
   freeAllowanceUsed: false,
+  booksAlreadyOpen: 0,
   orgApproved: true,
   level: "primary" as const,
   fyLabel: "2025/26",
@@ -34,13 +35,13 @@ describe("bookEntitlement, before the org is approved", () => {
     // A subscription row only exists because it was entered by hand after
     // payment, which is approval already. A second gate would strand a payer.
     expect(bookEntitlement(args({
-      subscription: { schoolId: null }, orgApproved: false, freeAllowanceUsed: true,
+      subscription: { schoolId: null, paidAt: null, isFree: false }, orgApproved: false, freeAllowanceUsed: true,
     }))).toEqual({ allowed: true, bindTo: "school-a", grantFree: false });
   });
 
   it("opens another account on a subscribed school while unapproved", () => {
     expect(bookEntitlement(args({
-      subscription: { schoolId: "school-a" }, orgApproved: false,
+      subscription: { schoolId: "school-a", paidAt: null, isFree: false }, orgApproved: false,
     }))).toEqual({ allowed: true, bindTo: null, grantFree: false });
   });
 

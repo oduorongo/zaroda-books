@@ -4,6 +4,7 @@ import { bookEntitlement } from "../subscription";
 const args = (over: Partial<Parameters<typeof bookEntitlement>[0]> = {}) => ({
   subscription: undefined,
   freeAllowanceUsed: false,
+  booksAlreadyOpen: 0,
   orgApproved: true,
   level: "primary" as const,
   fyLabel: "2025/26",
@@ -33,27 +34,27 @@ describe("bookEntitlement", () => {
 
   it("opens a book against a subscription that was paid for but never used", () => {
     expect(bookEntitlement(args({
-      subscription: { schoolId: null }, freeAllowanceUsed: true,
+      subscription: { schoolId: null, paidAt: null, isFree: false }, freeAllowanceUsed: true,
     }))).toEqual({ allowed: true, bindTo: "school-a", grantFree: false });
   });
 
   it("opens another account for the school the subscription is already bound to", () => {
     // One payment covers every account that level needs, free or paid alike.
     expect(bookEntitlement(args({
-      subscription: { schoolId: "school-a" }, freeAllowanceUsed: true,
+      subscription: { schoolId: "school-a", paidAt: null, isFree: false }, freeAllowanceUsed: true,
     }))).toEqual({ allowed: true, bindTo: null, grantFree: false });
   });
 
   it("opens a second account on the free school without a second grant", () => {
     // The free school is a whole school, not one book: its other accounts follow.
     expect(bookEntitlement(args({
-      subscription: { schoolId: "school-a" }, freeAllowanceUsed: true,
+      subscription: { schoolId: "school-a", paidAt: null, isFree: false }, freeAllowanceUsed: true,
     }))).toEqual({ allowed: true, bindTo: null, grantFree: false });
   });
 
   it("still refuses a different school on a bound subscription", () => {
     const d = bookEntitlement(args({
-      subscription: { schoolId: "school-a" }, schoolId: "school-b", freeAllowanceUsed: true,
+      subscription: { schoolId: "school-a", paidAt: null, isFree: false }, schoolId: "school-b", freeAllowanceUsed: true,
     }));
     expect(d.allowed).toBe(false);
   });

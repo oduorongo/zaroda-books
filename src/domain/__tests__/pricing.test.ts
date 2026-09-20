@@ -80,3 +80,19 @@ describe("revenue, with the free school", () => {
     });
   });
 });
+
+describe("revenue, once a free book is absorbed by payment", () => {
+  it("counts a paid subscription as collected even though it began free", () => {
+    // Paying absorbs the free book. Leaving it in the free column would hide
+    // money that actually arrived.
+    expect(revenue([{ level: "primary", paidAt: new Date(), isFree: true }])).toEqual({
+      collected: 48_000, outstanding: 0, paidCount: 1, unpaidCount: 0, freeCount: 0,
+    });
+  });
+
+  it("still counts an unpaid free grant as free, owing nothing", () => {
+    expect(revenue([{ level: "primary", paidAt: null, isFree: true }])).toEqual({
+      collected: 0, outstanding: 0, paidCount: 0, unpaidCount: 0, freeCount: 1,
+    });
+  });
+});

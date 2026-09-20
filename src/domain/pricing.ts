@@ -30,11 +30,13 @@ export function revenue(
   };
   for (const s of subs) {
     const price = LEVEL_PRICE[s.level];
-    if (s.isFree) {
-      totals.freeCount += 1;
-    } else if (s.paidAt) {
+    // Paid wins over free: a free book absorbed by a later payment is money
+    // that arrived, and counting it as a gift would hide it.
+    if (s.paidAt) {
       totals.collected += price;
       totals.paidCount += 1;
+    } else if (s.isFree) {
+      totals.freeCount += 1;
     } else {
       totals.outstanding += price;
       totals.unpaidCount += 1;

@@ -52,9 +52,10 @@ export const schoolNameKey = (name: string): string =>
  * Whether a book may be opened at all, which is the subscription question plus
  * the free allowance in front of it.
  *
- * A tenant's first school is free: one level, one financial year, every account
- * that school needs. It is granted once per org and never again — a second
- * level, or the same school in a later year, is paid for like any other.
+ * A tenant's first BOOK is free: one account, at one level, for one financial
+ * year, granted once per org and never again. A second book at that same
+ * level needs the subscription — and paying absorbs the free one, so the
+ * subscription then covers every account at that level as it always did.
  *
  * An existing subscription always lets the book open, paid or not. The only row
  * that can exist unpaid without the grant is one entered by hand after money
@@ -66,19 +67,29 @@ export type Entitlement =
   | { allowed: false; reason: string };
 
 export function bookEntitlement(input: {
-  subscription: { schoolId: string | null } | undefined;
+  subscription: { schoolId: string | null; paidAt: Date | null; isFree: boolean } | undefined;
   freeAllowanceUsed: boolean;
   /** Whether Zaroda has reviewed this org. Gates the free school, nothing else. */
   orgApproved: boolean;
+  /** Books the school already keeps at this level and year. */
+  booksAlreadyOpen: number;
   level: SchoolLevel;
   fyLabel: string;
   schoolId: string;
 }): Entitlement {
   if (input.subscription) {
     const decision = subscriptionDecision(input.subscription, input.schoolId);
-    return decision.allowed
-      ? { allowed: true, bindTo: decision.bindTo, grantFree: false }
-      : decision;
+    if (!decision.allowed) return decision;
+
+    // The free grant is one book, not a whole level. Paying absorbs it: the
+    // subscription then covers every account at that level, the free one
+    // included, so nobody is left with a book outside what they bought.
+    const freeAndSpent = input.subscription.isFree
+      && input.subscription.paidAt === null
+      && input.booksAlreadyOpen > 0;
+    if (freeAndSpent) return needsSubscription(input.level, input.fyLabel);
+
+    return { allowed: true, bindTo: decision.bindTo, grantFree: false };
   }
 
   if (!input.freeAllowanceUsed) {
@@ -96,12 +107,16 @@ export function bookEntitlement(input: {
     return { allowed: true, bindTo: input.schoolId, grantFree: true };
   }
 
+  return needsSubscription(input.level, input.fyLabel);
+}
+
+/** One wording for the one reason a book is refused on money. */
+function needsSubscription(level: SchoolLevel, fyLabel: string): Entitlement {
   return {
     allowed: false,
     reason:
-      `Opening a ${input.level} book for ${input.fyLabel} needs a subscription: `
-      + `KSh ${priceLabel(input.level)} for the year, covering every account that `
-      + "school keeps at that level. Your free school has already been used. "
-      + "Talk to us and we will open it for you.",
+      `Opening this ${level} book for ${fyLabel} needs a subscription: `
+      + `KSh ${priceLabel(level)} for the year, covering every account this school `
+      + "keeps at that level. Your one free book has already been opened.",
   };
 }
