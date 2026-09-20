@@ -75,3 +75,52 @@ describe("parseTumaCallback", () => {
     expect(parseTumaCallback("nonsense").success).toBe(false);
   });
 });
+
+/**
+ * Bodies captured from Tuma's sandbox on 20 September 2026 — the first real
+ * callbacks this code ever received, copied verbatim. Guesswork above, fact here.
+ */
+describe("parseTumaCallback, against real Tuma bodies", () => {
+  it("reads the receipt from a completed payment", () => {
+    expect(parseTumaCallback({
+      status: "completed",
+      merchant_request_id: "aeab-4ded-a7a1-f42beaf3219456123271",
+      checkout_request_id: "ws_CO_20092026044414807724282065",
+      result_code: 0,
+      result_desc: "The service request is processed successfully.",
+      timestamp: "2026-09-20 04:44:26",
+      mpesa_receipt_number: "UIKPD71IKJ",
+      amount: 1,
+    })).toEqual({
+      merchantRequestId: "aeab-4ded-a7a1-f42beaf3219456123271",
+      success: true,
+      mpesaReceipt: "UIKPD71IKJ",
+    });
+  });
+
+  it("does not credit a prompt the customer never answered", () => {
+    // 1038, seen live: the PIN screen lapsed.
+    expect(parseTumaCallback({
+      status: "failed",
+      merchant_request_id: "cbc7-4eb6-8033-e874ef3eaa9660688712",
+      result_code: 1038,
+      result_desc: "No response from user.",
+      failure_reason: "No response from user.",
+    })).toEqual({
+      merchantRequestId: "cbc7-4eb6-8033-e874ef3eaa9660688712",
+      success: false,
+      mpesaReceipt: undefined,
+    });
+  });
+
+  it("does not credit a prompt the customer cancelled", () => {
+    // 1032, seen live: cancelled at the PIN screen.
+    expect(parseTumaCallback({
+      status: "cancelled",
+      merchant_request_id: "e2de-4827-be47-3be09950b86130718694",
+      result_code: 1032,
+      result_desc: "Request Cancelled by user.",
+      failure_reason: "Transaction cancelled by user",
+    }).success).toBe(false);
+  });
+});

@@ -49,7 +49,12 @@ export function parseTumaCallback(body: unknown): TumaCallback {
   const merchantRequestId = pick("merchant_request_id", "MerchantRequestID");
   const resultCode = pick("result_code", "ResultCode");
   const status = String(pick("status", "Status") ?? "").toLowerCase();
-  const mpesaReceipt = pick("mpesa_receipt", "MpesaReceiptNumber", "receipt_number");
+  // mpesa_receipt_number is the one Tuma actually sends — confirmed against a
+  // live callback. The others stay as fallbacks: nothing documents the shape,
+  // so a spelling seen once is not a promise.
+  const mpesaReceipt = pick(
+    "mpesa_receipt_number", "mpesa_receipt", "MpesaReceiptNumber", "receipt_number",
+  );
 
   const success = resultCode === 0 || resultCode === "0"
     || status === "success" || status === "completed";
