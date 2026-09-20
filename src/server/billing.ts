@@ -2,7 +2,7 @@ import "server-only";
 import { and, desc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import {
-  LEVEL_PRICE, normalisePhoneForTuma, priceLabel, type SchoolLevel,
+  LEVEL_PRICE, chargeAmount, normalisePhoneForTuma, priceLabel, type SchoolLevel,
 } from "@/domain";
 import {
   checkPaymentStatus, initiateStkPush, tumaCallbackUrl, tumaConfigured,
@@ -43,8 +43,16 @@ export async function startSubscriptionPayment(input: {
   }
 
   const [org] = await db.select().from(schema.orgs).where(eq(schema.orgs.id, input.orgId));
-  const amount = LEVEL_PRICE[input.level];
-  const description = `Zaroda Books — ${input.level} ${input.fyLabel} (${org?.name ?? "subscription"})`;
+
+  // Tuma's sandbox refuses anything from KES 100 up, so the real price cannot
+  // be pushed through it at all. TUMA_TEST_AMOUNT_KES substitutes a token
+  // amount; what is charged is also what is recorded.
+  const { cents: amount, isTest } = chargeAmount(
+    LEVEL_PRICE[input.level],
+    process.env.TUMA_TEST_AMOUNT_KES,
+  );
+  const description = `${isTest ? "TEST — " : ""}Zaroda Books`
+    + ` — ${input.level} ${input.fyLabel} (${org?.name ?? "subscription"})`;
 
   const result = await initiateStkPush({
     // Tuma bills in shillings; our money is cents everywhere else (rule 6).

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { financialYearInProgress, financialYearLabels, formatKes } from "@/domain";
+import { chargeAmount, financialYearInProgress, financialYearLabels, formatKes } from "@/domain";
 import { getCurrentUser } from "@/server/auth";
 import { orgPayments } from "@/server/billing";
 import { orgEntitlements } from "@/server/books";
@@ -36,7 +36,13 @@ export default async function SubscribePage() {
         keeps — tuition, operations, infrastructure, boarding, lunch. Paid by M-Pesa.
       </p>
 
-      <SubscribeForm years={years} defaultPhone={account?.phone ?? ""} />
+      <SubscribeForm
+        years={years}
+        defaultPhone={account?.phone ?? ""}
+        testAmountCents={chargeAmount(0, process.env.TUMA_TEST_AMOUNT_KES).isTest
+          ? chargeAmount(0, process.env.TUMA_TEST_AMOUNT_KES).cents
+          : null}
+      />
 
       {covered.length > 0 && (
         <div className="card" style={{ marginTop: "1.6rem" }}>

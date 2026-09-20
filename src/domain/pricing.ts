@@ -50,3 +50,23 @@ export function revenue(
  */
 export const priceLabel = (level: SchoolLevel): string =>
   Math.round(LEVEL_PRICE[level] / 100).toLocaleString("en-KE");
+
+/**
+ * What to actually charge. Tuma's sandbox refuses anything from KES 100 up, so
+ * a real subscription price cannot be pushed through it at all — TUMA_TEST_AMOUNT_KES
+ * substitutes a token amount for testing the round trip.
+ *
+ * The amount returned is what gets charged AND what gets recorded. Storing the
+ * list price against a shilling taken would put money in the books that never
+ * arrived, which is the one thing the books must never say.
+ */
+export function chargeAmount(
+  priceCents: Cents,
+  overrideKes: string | undefined,
+): { cents: Cents; isTest: boolean } {
+  const n = Number(overrideKes);
+  if (!overrideKes?.trim() || !Number.isFinite(n) || n <= 0) {
+    return { cents: priceCents, isTest: false };
+  }
+  return { cents: Math.round(n * 100), isTest: true };
+}

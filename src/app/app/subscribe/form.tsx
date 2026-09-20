@@ -11,9 +11,11 @@ const LEVELS: { id: SchoolLevel; label: string }[] = [
   { id: "senior", label: "Secondary" },
 ];
 
-export function SubscribeForm({ years, defaultPhone }: {
+export function SubscribeForm({ years, defaultPhone, testAmountCents }: {
   years: string[];
   defaultPhone: string;
+  /** Set while Tuma is in sandbox: what will really be taken. */
+  testAmountCents: number | null;
 }) {
   const [error, action, pending] = useActionState(payAction, null);
   const [level, setLevel] = useState<SchoolLevel>("primary");
@@ -48,8 +50,13 @@ export function SubscribeForm({ years, defaultPhone }: {
       <div style={{ display: "flex", alignItems: "baseline", gap: ".5rem" }}>
         <span className="eyebrow">To pay</span>
         <span style={{ fontFamily: "var(--font-heading)", fontSize: "1.6rem", fontWeight: 700 }}>
-          KSh {formatKes(LEVEL_PRICE[level])}
+          KSh {formatKes(testAmountCents ?? LEVEL_PRICE[level])}
         </span>
+        {testAmountCents !== null && (
+          <span style={{ color: "var(--alarm)", fontSize: ".85rem" }}>
+            test amount — the list price is KSh {formatKes(LEVEL_PRICE[level])}
+          </span>
+        )}
       </div>
 
       {error && <p className="error">{error}</p>}
