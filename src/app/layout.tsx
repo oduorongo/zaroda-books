@@ -14,6 +14,11 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: "ZARODA BOOKS",
   description: "School books of accounts for bursars, heads of institution and accountants.",
+  // Search Console's HTML-tag verification. Set GOOGLE_SITE_VERIFICATION to the
+  // content value Google gives you; left unset, no tag is emitted at all.
+  verification: process.env.GOOGLE_SITE_VERIFICATION
+    ? { google: process.env.GOOGLE_SITE_VERIFICATION }
+    : undefined,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

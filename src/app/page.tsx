@@ -22,6 +22,10 @@ const outputs = [
   { name: "Acknowledgement receipt", note: "Enrolment used and the split, to return to the Ministry", tag: "Per receipt" },
 ];
 
+// Canonical here rather than in the root layout: metadata is inherited, so a
+// canonical on the layout would have every page claim to be the homepage.
+export const metadata = { alternates: { canonical: "/" } };
+
 export default function Home() {
   return (
     <main>
