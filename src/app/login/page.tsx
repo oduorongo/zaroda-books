@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { AuthLayout } from "../auth-layout";
+import { PasswordField } from "../password-field";
 import { login } from "./actions";
 
 export default function LoginPage() {
@@ -18,9 +19,7 @@ export default function LoginPage() {
         <label className="field">Email address
           <input name="email" type="email" placeholder="you@school.ac.ke" autoComplete="email" required />
         </label>
-        <label className="field">Password
-          <input name="password" type="password" autoComplete="current-password" required />
-        </label>
+        <PasswordField label="Password" name="password" autoComplete="current-password" />
         {error && <p className="error">{error}</p>}
         <button type="submit" className="btn btn-gold" disabled={pending}>
           {pending ? "Logging in…" : "Log in"}

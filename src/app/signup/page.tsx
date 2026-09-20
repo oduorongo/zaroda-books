@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { AuthLayout } from "../auth-layout";
+import { PasswordField } from "../password-field";
 import { CountyPicker } from "../county-picker";
 import { signup } from "./actions";
 
@@ -28,9 +29,13 @@ export default function SignupPage() {
         <label className="field">Email address
           <input name="email" type="email" placeholder="you@school.ac.ke" autoComplete="email" required />
         </label>
-        <label className="field">Password
-          <input name="password" type="password" placeholder="At least 10 characters" autoComplete="new-password" required />
-        </label>
+        <PasswordField
+          label="Password"
+          name="password"
+          autoComplete="new-password"
+          placeholder="At least 10 characters"
+          minLength={10}
+        />
         {error && <p className="error">{error}</p>}
         <button type="submit" className="btn btn-gold" disabled={pending}>
           {pending ? "Creating…" : "Create account"}
