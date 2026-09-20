@@ -59,7 +59,9 @@ export default function Home() {
           />
           <div className="wrap">
             <div className="hero-copy">
-              <div className="mono" style={{ fontSize: ".75rem", letterSpacing: ".2em", textTransform: "uppercase", color: "var(--gold)", marginBottom: "1.4rem" }}>
+              {/* Gold at 500 weight is thin against the navy; this is the first
+                  line on the page and has to carry. */}
+              <div className="mono" style={{ fontSize: ".82rem", fontWeight: 700, letterSpacing: ".18em", textTransform: "uppercase", color: "var(--gold-bright)", marginBottom: "1.4rem" }}>
                 For book keepers of Kenyan public schools
               </div>
               <h1 style={{ textWrap: "pretty" }}>

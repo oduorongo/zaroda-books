@@ -9,6 +9,8 @@
   --rule-card: #e3ded1;
   --rule-strong: #10223f;
   --gold: #a8801a;
+  /* The gold lifted for use on the navy, where the print gold goes muddy. */
+  --gold-bright: #d9a520;
   --alarm: #a32b18;
   --muted: #5d6673;
   --on-dark: #c8d2e2;
@@ -132,8 +134,11 @@ a:hover { color: var(--gold); }
   width: 3.5rem; height: 2px; background: var(--gold);
 }
 
+/* No margin-top:auto here. Pinning the footer to the bottom of a full-height
+   column left a screen-deep gap under a nav of seven items, which read as
+   something missing rather than as space. It follows the nav instead. */
 .sidebar-foot {
-  margin-top: auto; padding-top: 1.1rem; border-top: 1px solid rgba(251, 250, 247, .14);
+  padding-top: 1.1rem; border-top: 1px solid rgba(251, 250, 247, .14);
   font-size: .78rem; line-height: 1.5; color: var(--on-dark-dim);
 }
 .sidebar-foot .who { display: flex; align-items: center; gap: .65rem; margin-bottom: .6rem; }
