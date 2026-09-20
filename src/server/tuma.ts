@@ -173,3 +173,12 @@ export function tumaCallbackUrl(): string {
   ).replace(/\/+$/, "");
   return `${base}/api/tuma/callback`;
 }
+
+/**
+ * Whether the keys are present at all. Checked before a payment is started so
+ * a misconfigured server says so plainly, instead of waiting through two
+ * retries and recording a failed payment against a tenant who did nothing
+ * wrong and was never charged.
+ */
+export const tumaConfigured = (): boolean =>
+  Boolean(process.env.TUMA_EMAIL && process.env.TUMA_API_KEY);

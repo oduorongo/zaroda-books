@@ -4,7 +4,9 @@ import { db, schema } from "@/db";
 import {
   LEVEL_PRICE, normalisePhoneForTuma, priceLabel, type SchoolLevel,
 } from "@/domain";
-import { checkPaymentStatus, initiateStkPush, tumaCallbackUrl } from "@/server/tuma";
+import {
+  checkPaymentStatus, initiateStkPush, tumaCallbackUrl, tumaConfigured,
+} from "@/server/tuma";
 
 /**
  * Collecting the subscription. A confirmed payment opens the subscription row
@@ -19,6 +21,15 @@ export async function startSubscriptionPayment(input: {
   fyLabel: string;
   phone: string;
 }): Promise<{ ok: true; paymentId: string } | { ok: false; error: string }> {
+  if (!tumaConfigured()) {
+    return {
+      ok: false,
+      error:
+        "M-Pesa payment is not switched on for this site yet. Reach us on WhatsApp "
+        + "0781 230 805 and we will open the subscription for you.",
+    };
+  }
+
   const phone = normalisePhoneForTuma(input.phone);
   if (!phone) return { ok: false, error: "Enter the M-Pesa number as 07xx xxx xxx." };
 
