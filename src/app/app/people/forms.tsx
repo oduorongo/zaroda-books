@@ -13,7 +13,10 @@ export function InviteForm({ origin, schools }: {
 }) {
   const [result, action, pending] = useActionState(inviteAction, null);
   const [role, setRole] = useState<Role>("bursar");
-  const code = result?.startsWith("CODE:") ? result.slice(5) : null;
+  // CODE:sent:<code> or CODE:unsent:<code>
+  const parts = result?.startsWith("CODE:") ? result.split(":") : null;
+  const code = parts ? parts.slice(2).join(":") : null;
+  const emailed = parts?.[1] === "sent";
   const error = result && !code ? result : null;
 
   return (
@@ -50,11 +53,13 @@ export function InviteForm({ origin, schools }: {
 
       {code && (
         <div className="card" style={{ background: "var(--band)" }}>
-          <div className="eyebrow" style={{ color: "var(--gold)" }}>Send them this link</div>
-          <p className="note" style={{ margin: ".4rem 0 .6rem" }}>
-            We do not email it yet, so send it yourself — WhatsApp is fine. It works once and
-            lapses after 14 days. Anyone holding it can join these books, so do not post it
-            anywhere public.
+          <div className="eyebrow" style={{ color: "var(--gold)" }}>
+            {emailed ? "Invitation sent" : "Send them this link yourself"}
+          </div>
+          <p className="note" style={{ margin: ".4rem 0 .6rem", lineHeight: 1.6 }}>
+            {emailed
+              ? "They have been emailed a link. It works once and lapses after 14 days. The link is below too, in case the email does not arrive."
+              : "The email could not be sent, so pass this on yourself — WhatsApp is fine. Anyone holding it can join these books, so do not post it anywhere public."}
           </p>
           <code className="mono" style={{ display: "block", wordBreak: "break-all", fontSize: ".8rem", background: "var(--card)", border: "1px solid var(--rule)", padding: ".7rem .8rem", borderRadius: 3 }}>
             {origin}/join/{code}

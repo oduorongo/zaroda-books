@@ -2,7 +2,8 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { ROLES, can, type Role } from "@/domain";
+import { ROLES, ROLE_LABEL, can, type Role } from "@/domain";
+import { emailLayout, sendEmail } from "@/server/email";
 import { getCurrentUser } from "@/server/auth";
 
 /**
@@ -45,7 +46,12 @@ async function requireOwner() {
   return user;
 }
 
-export async function inviteToOrg(email: string, role: Role, schoolId: string | null) {
+export async function inviteToOrg(
+  email: string,
+  role: Role,
+  schoolId: string | null,
+  origin: string,
+) {
   const owner = await requireOwner();
   const address = email.trim().toLowerCase();
   if (!address.includes("@")) throw new Error("Enter a valid email address.");
@@ -81,7 +87,35 @@ export async function inviteToOrg(email: string, role: Role, schoolId: string | 
     before: null, after: JSON.stringify({ email: address, role, schoolId }),
   });
 
-  return code;
+  const [org] = await db.select().from(schema.orgs).where(eq(schema.orgs.id, owner.orgId));
+  const orgName = org?.name ?? "Zaroda Books";
+  const url = `${origin}/join/${code}`;
+  const asRole = ROLE_LABEL[role].toLowerCase();
+
+  // The code comes back either way. If the email fails, or is not configured,
+  // the owner can still pass the link on by hand — which is how this worked
+  // before there was any email at all.
+  const sent = await sendEmail({
+    to: address,
+    subject: `${owner.name} has invited you to ${orgName}`,
+    html: emailLayout({
+      heading: `Join ${orgName}`,
+      body:
+        `<strong>${owner.name}</strong> has invited you to keep the books at `
+        + `<strong>${orgName}</strong> as ${asRole}.`,
+      buttonLabel: "Take up the invitation",
+      buttonUrl: url,
+      footer:
+        "Sign in or create your account first, then open this link. It works once and "
+        + "lapses after fourteen days.",
+    }),
+    text:
+      `${owner.name} has invited you to ${orgName} as ${asRole}.\n\n`
+      + `Open this link to accept:\n${url}\n\n`
+      + "It works once and lapses after fourteen days.",
+  });
+
+  return { code, emailed: sent.ok };
 }
 
 export async function revokeInvite(invitationId: string) {

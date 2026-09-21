@@ -25,6 +25,9 @@ export default function LoginPage() {
           {pending ? "Logging in…" : "Log in"}
         </button>
         <p className="note">
+          <Link href="/forgot">Forgotten your password?</Link>
+        </p>
+        <p className="note">
           No account yet? <Link href="/signup">Create one</Link>
         </p>
       </form>

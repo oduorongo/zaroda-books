@@ -309,3 +309,20 @@ export const invitations = pgTable("invitations", {
   acceptedBy: uuid("accepted_by").references(() => users.id),
   revokedAt: timestamp("revoked_at"),
 }, (t) => [index("invitations_org_idx").on(t.orgId)]);
+
+/**
+ * A password reset in flight.
+ *
+ * The token is stored hashed, for the same reason passwords are: anyone who
+ * reads this table should not thereby be able to take over an account. It is
+ * single use and short-lived, because the link sits in an inbox afterwards.
+ */
+export const passwordResets = pgTable("password_resets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  tokenHash: text("token_hash").notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  requestedIp: text("requested_ip"),
+}, (t) => [index("password_resets_user_idx").on(t.userId)]);

@@ -6,6 +6,8 @@ export * from "./counties";
 export * from "./audit-scope";
 export * from "./book-scope";
 export * from "./permissions";
+export * from "./password-reset";
+export * from "./session";
 export * from "./voucher-numbers";
 export * from "./tuma";
 export * from "./csv";
