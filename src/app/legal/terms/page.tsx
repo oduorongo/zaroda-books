@@ -133,7 +133,7 @@ export default function TermsPage() {
       <h2>10. Contact</h2>
       <p>
         Zaroda Solutions<br />
-        <a href="mailto:info@zarodasolutions.com">info@zarodasolutions.com</a><br />
+        <a href="mailto:support@zarodasolutions.app">support@zarodasolutions.app</a><br />
         0724 282 065 · WhatsApp 0781 230 805
       </p>
     </>

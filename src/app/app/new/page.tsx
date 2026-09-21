@@ -41,7 +41,7 @@ function Entitlement({
           Your free school opens as soon as that is done, usually the same working day. Nothing is
           lost in the meantime. If it is urgent, reach us on{" "}
           <a href="https://wa.me/254781230805">WhatsApp 0781 230 805</a> or{" "}
-          <a href="mailto:info@zarodasolutions.com">info@zarodasolutions.com</a>.
+          <a href="mailto:support@zarodasolutions.app">support@zarodasolutions.app</a>.
         </p>
       </div>
     );

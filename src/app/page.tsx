@@ -192,7 +192,7 @@ export default function Home() {
             </div>
             <div>
               <div className="eyebrow" style={{ color: "var(--on-dark-dim)", marginBottom: ".35rem" }}>Email</div>
-              <a href="mailto:info@zarodasolutions.com" style={{ color: "var(--paper)" }}>info@zarodasolutions.com</a>
+              <a href="mailto:support@zarodasolutions.app" style={{ color: "var(--paper)" }}>support@zarodasolutions.app</a>
             </div>
             <div style={{ marginLeft: "auto", display: "flex", gap: "1.25rem" }}>
               <Link href="/privacy" style={{ color: "var(--on-dark)" }}>Privacy</Link>

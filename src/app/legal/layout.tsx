@@ -25,7 +25,7 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
 
       <footer className="dark-band">
         <div className="wrap" style={{ padding: "2rem 2.5rem", fontSize: ".9rem" }}>
-          Zaroda Solutions · <a href="mailto:info@zarodasolutions.com">info@zarodasolutions.com</a> ·{" "}
+          Zaroda Solutions · <a href="mailto:support@zarodasolutions.app">support@zarodasolutions.app</a> ·{" "}
           <a href="tel:+254724282065">0724 282 065</a>
         </div>
       </footer>

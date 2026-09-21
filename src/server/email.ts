@@ -96,7 +96,7 @@ export function emailLayout(opts: {
       </p>
     </div>
     <p style="margin:16px 0 0;font-size:12px;color:#5d6673;text-align:center">
-      Zaroda Solutions · info@zarodasolutions.com · 0724 282 065
+      Zaroda Solutions · support@zarodasolutions.app · 0724 282 065
     </p>
   </div>
 </body></html>`;

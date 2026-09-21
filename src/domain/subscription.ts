@@ -101,7 +101,7 @@ export function bookEntitlement(input: {
         reason:
           "Your account is with us for review, and your free school opens as soon as "
           + "that is done — usually the same working day. Nothing you have entered is "
-          + "lost. Reach us on WhatsApp 0781 230 805 or info@zarodasolutions.com.",
+          + "lost. Reach us on WhatsApp 0781 230 805 or support@zarodasolutions.app.",
       };
     }
     return { allowed: true, bindTo: input.schoolId, grantFree: true };
