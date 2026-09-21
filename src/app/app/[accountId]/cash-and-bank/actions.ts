@@ -11,7 +11,7 @@ export async function postTransfer(
   form: FormData,
 ): Promise<string | null> {
   const accountId = String(form.get("accountId") ?? "");
-  const { user, fy } = await loadBook(accountId, { write: true });
+  const { user, fy } = await loadBook(accountId, { write: true, require: "entry.post" });
 
   const date = String(form.get("date") ?? "");
   const direction = String(form.get("direction") ?? "");

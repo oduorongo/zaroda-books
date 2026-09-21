@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/server/auth";
 import { pollPayment, startSubscriptionPayment } from "@/server/billing";
-import type { SchoolLevel } from "@/domain";
+import { can, type SchoolLevel } from "@/domain";
 
 const LEVELS: SchoolLevel[] = ["primary", "junior", "senior"];
 
@@ -12,6 +12,9 @@ export async function payAction(_prev: string | null, form: FormData): Promise<s
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (user.readOnly) return "You are viewing these books as the system owner. Nothing can be paid from here.";
+  if (!can(user.role, "subscription.pay")) {
+    return "Only the owner of these books can pay the subscription.";
+  }
 
   const level = String(form.get("level") ?? "") as SchoolLevel;
   const fyLabel = String(form.get("fyLabel") ?? "").trim();

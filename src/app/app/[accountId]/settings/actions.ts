@@ -11,7 +11,7 @@ export async function changeFinancialYearAction(
   form: FormData,
 ): Promise<string | null> {
   const accountId = String(form.get("accountId") ?? "");
-  const { user } = await loadBook(accountId, { write: true });
+  const { user } = await loadBook(accountId, { write: true, require: "financialYear.change" });
 
   const fyLabel = String(form.get("fyLabel") ?? "").trim();
   if (!/^\d{4}\/\d{2}$/.test(fyLabel)) return "Choose the financial year.";
@@ -33,7 +33,7 @@ export async function archiveBookAction(
   form: FormData,
 ): Promise<string | null> {
   const accountId = String(form.get("accountId") ?? "");
-  const { user, school } = await loadBook(accountId, { write: true });
+  const { user, school } = await loadBook(accountId, { write: true, require: "book.archive" });
 
   // Typing the school's name is the confirmation: a book holds a year of work,
   // and a stray click should not be able to take it out of the list.
@@ -57,7 +57,7 @@ export async function saveSchoolAction(
   form: FormData,
 ): Promise<string | null> {
   const accountId = String(form.get("accountId") ?? "");
-  const { school } = await loadBook(accountId, { write: true });
+  const { school } = await loadBook(accountId, { write: true, require: "school.edit" });
 
   const county = String(form.get("county") ?? "").trim();
   const subCounty = String(form.get("subCounty") ?? "").trim();

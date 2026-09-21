@@ -9,7 +9,7 @@ export async function addVoteHeadAction(
   form: FormData,
 ): Promise<string | null> {
   const accountId = String(form.get("accountId") ?? "");
-  await loadBook(accountId, { write: true });
+  await loadBook(accountId, { write: true, require: "voteHead.manage" });
 
   const code = String(form.get("code") ?? "").trim().toUpperCase();
   const name = String(form.get("name") ?? "").trim();

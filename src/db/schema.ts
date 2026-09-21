@@ -35,6 +35,14 @@ export const memberships = pgTable("memberships", {
   orgId: uuid("org_id").references(() => orgs.id).notNull(),
   userId: uuid("user_id").references(() => users.id).notNull(),
   role: text("role", { enum: ["owner", "accountant", "bursar", "viewer"] }).notNull(),
+  /**
+   * Tie this person to one school. Null is the whole practice, which is what
+   * a freelancer and their own staff get.
+   *
+   * Without it, inviting one school's bursar to a freelancer who keeps thirty
+   * would hand them every other school's books.
+   */
+  schoolId: uuid("school_id").references(() => schools.id),
 }, (t) => [unique().on(t.orgId, t.userId)]);
 
 export const schools = pgTable("schools", {
@@ -276,3 +284,28 @@ export const auditors = pgTable("auditors", {
   grantedAt: timestamp("granted_at").defaultNow().notNull(),
   revokedAt: timestamp("revoked_at"),
 }, (t) => [index("auditors_user_idx").on(t.userId)]);
+
+/**
+ * An invitation to join an org with a given role.
+ *
+ * There is no email service yet, so the owner passes the code to the person
+ * themselves — by WhatsApp, as most things are here. That is why the code is
+ * long and random rather than guessable, and why it expires: an invitation
+ * read over someone's shoulder should not be usable a month later.
+ */
+export const invitations = pgTable("invitations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").references(() => orgs.id).notNull(),
+  /** Who it was meant for, so an owner can see what they sent. */
+  email: text("email").notNull(),
+  role: text("role", { enum: ["owner", "accountant", "bursar", "viewer"] }).notNull(),
+  /** The one school this invitation is for, or null for the whole practice. */
+  schoolId: uuid("school_id").references(() => schools.id),
+  code: text("code").notNull().unique(),
+  invitedBy: uuid("invited_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  acceptedAt: timestamp("accepted_at"),
+  acceptedBy: uuid("accepted_by").references(() => users.id),
+  revokedAt: timestamp("revoked_at"),
+}, (t) => [index("invitations_org_idx").on(t.orgId)]);

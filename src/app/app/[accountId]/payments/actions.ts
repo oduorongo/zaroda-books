@@ -65,7 +65,7 @@ export async function postPayment(
   form: FormData,
 ): Promise<string | null> {
   const accountId = String(form.get("accountId") ?? "");
-  const { user, heads, fy } = await loadBook(accountId, { write: true });
+  const { user, heads, fy } = await loadBook(accountId, { write: true, require: "entry.post" });
 
   const p = readPaymentForm(form, heads);
   if (p.error) return p.error;
@@ -104,7 +104,7 @@ export async function amendPayment(
 ): Promise<string | null> {
   const accountId = String(form.get("accountId") ?? "");
   const transactionId = String(form.get("transactionId") ?? "");
-  const { user, heads, fy } = await loadBook(accountId, { write: true });
+  const { user, heads, fy } = await loadBook(accountId, { write: true, require: "entry.amend" });
 
   const p = readPaymentForm(form, heads);
   if (p.error) return p.error;
@@ -142,7 +142,7 @@ export async function deletePayment(
 ): Promise<string | null> {
   const accountId = String(form.get("accountId") ?? "");
   const transactionId = String(form.get("transactionId") ?? "");
-  const { user, fy } = await loadBook(accountId, { write: true });
+  const { user, fy } = await loadBook(accountId, { write: true, require: "entry.delete" });
 
   try {
     await deleteTransaction({ transactionId, accountId, userId: user.id, orgId: user.orgId });

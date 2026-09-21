@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser, isPlatformAdmin } from "@/server/auth";
 import { createBook, orgEntitlements } from "@/server/books";
 import { startSubscriptionPayment } from "@/server/billing";
-import { chartFor, type AccountType, type SchoolLevel } from "@/domain";
+import { can, chartFor, type AccountType, type SchoolLevel } from "@/domain";
 
 const LEVELS: SchoolLevel[] = ["primary", "junior", "senior"];
 
@@ -15,6 +15,9 @@ export async function createBookAction(
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (user.readOnly) return "You are viewing these books as the system owner. Nothing can be created from here.";
+  if (!can(user.role, "book.create")) {
+    return "Only the owner of these books can open a new one. Ask them to add it.";
+  }
 
   const schoolName = String(form.get("schoolName") ?? "").trim();
   const level = String(form.get("level") ?? "") as SchoolLevel;

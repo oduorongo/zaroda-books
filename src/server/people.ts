@@ -1,0 +1,188 @@
+import "server-only";
+import { randomBytes } from "node:crypto";
+import { and, desc, eq, isNull } from "drizzle-orm";
+import { db, schema } from "@/db";
+import { ROLES, can, type Role } from "@/domain";
+import { getCurrentUser } from "@/server/auth";
+
+/**
+ * Who is in an org, and how someone else gets in.
+ *
+ * Every function that changes anything checks `people.manage`, which only an
+ * owner holds. Roles were unenforced until now, so this is the first place a
+ * tenant can hand out rights — and the place to be strict.
+ */
+
+const INVITE_DAYS = 14;
+
+export async function orgPeople(orgId: string) {
+  const [members, invites] = await Promise.all([
+    db
+      .select({ user: schema.users, membership: schema.memberships })
+      .from(schema.memberships)
+      .innerJoin(schema.users, eq(schema.users.id, schema.memberships.userId))
+      .where(eq(schema.memberships.orgId, orgId)),
+    db
+      .select()
+      .from(schema.invitations)
+      .where(and(
+        eq(schema.invitations.orgId, orgId),
+        isNull(schema.invitations.acceptedAt),
+        isNull(schema.invitations.revokedAt),
+      ))
+      .orderBy(desc(schema.invitations.createdAt)),
+  ]);
+  return { members, invites };
+}
+
+async function requireOwner() {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Sign in first.");
+  if (user.readOnly) throw new Error("This is a read-only session.");
+  if (!can(user.role, "people.manage")) {
+    throw new Error("Only the owner of these books can manage who has access.");
+  }
+  return user;
+}
+
+export async function inviteToOrg(email: string, role: Role, schoolId: string | null) {
+  const owner = await requireOwner();
+  const address = email.trim().toLowerCase();
+  if (!address.includes("@")) throw new Error("Enter a valid email address.");
+  if (!ROLES.includes(role)) throw new Error("Choose a role.");
+
+  const [already] = await db
+    .select({ id: schema.memberships.id })
+    .from(schema.memberships)
+    .innerJoin(schema.users, eq(schema.users.id, schema.memberships.userId))
+    .where(and(eq(schema.memberships.orgId, owner.orgId), eq(schema.users.email, address)));
+  if (already) throw new Error("That person is already on these books.");
+
+  // A school-scoped invitation must name a school of this org, or it would
+  // silently widen to the whole practice when taken up.
+  if (schoolId) {
+    const [school] = await db.select({ id: schema.schools.id }).from(schema.schools)
+      .where(and(eq(schema.schools.id, schoolId), eq(schema.schools.orgId, owner.orgId)));
+    if (!school) throw new Error("That school is not on these books.");
+  }
+
+  // Long and random because it is the whole credential: there is no email
+  // service yet, so the owner passes it on themselves.
+  const code = randomBytes(24).toString("base64url");
+  const expiresAt = new Date(Date.now() + INVITE_DAYS * 24 * 60 * 60 * 1000);
+
+  await db.insert(schema.invitations).values({
+    orgId: owner.orgId, email: address, role, schoolId, code, invitedBy: owner.id, expiresAt,
+  });
+
+  await db.insert(schema.auditLog).values({
+    orgId: owner.orgId, userId: owner.id,
+    action: "people.invited", entity: "invitation", entityId: null,
+    before: null, after: JSON.stringify({ email: address, role, schoolId }),
+  });
+
+  return code;
+}
+
+export async function revokeInvite(invitationId: string) {
+  const owner = await requireOwner();
+  await db.update(schema.invitations).set({ revokedAt: new Date() })
+    .where(and(
+      eq(schema.invitations.id, invitationId),
+      eq(schema.invitations.orgId, owner.orgId),
+    ));
+}
+
+/**
+ * Changes what someone may do. The last owner cannot be demoted: an org with
+ * no owner can never invite anyone, change a role, or open a book again, and
+ * only Zaroda could rescue it.
+ */
+export async function changeRole(userId: string, role: Role) {
+  const owner = await requireOwner();
+  if (!ROLES.includes(role)) throw new Error("Choose a role.");
+
+  const members = await db.select().from(schema.memberships)
+    .where(eq(schema.memberships.orgId, owner.orgId));
+  const target = members.find((m) => m.userId === userId);
+  if (!target) throw new Error("That person is not on these books.");
+
+  const owners = members.filter((m) => m.role === "owner");
+  if (target.role === "owner" && role !== "owner" && owners.length === 1) {
+    throw new Error("These books would be left with no owner. Make someone else an owner first.");
+  }
+
+  await db.update(schema.memberships).set({ role })
+    .where(eq(schema.memberships.id, target.id));
+
+  await db.insert(schema.auditLog).values({
+    orgId: owner.orgId, userId: owner.id,
+    action: "people.role", entity: "membership", entityId: target.id,
+    before: JSON.stringify({ role: target.role }), after: JSON.stringify({ role }),
+  });
+}
+
+export async function removeFromOrg(userId: string) {
+  const owner = await requireOwner();
+  if (userId === owner.id) throw new Error("You cannot remove yourself.");
+
+  const members = await db.select().from(schema.memberships)
+    .where(eq(schema.memberships.orgId, owner.orgId));
+  const target = members.find((m) => m.userId === userId);
+  if (!target) return;
+  if (target.role === "owner" && members.filter((m) => m.role === "owner").length === 1) {
+    throw new Error("These books would be left with no owner.");
+  }
+
+  await db.delete(schema.memberships).where(eq(schema.memberships.id, target.id));
+
+  await db.insert(schema.auditLog).values({
+    orgId: owner.orgId, userId: owner.id,
+    action: "people.removed", entity: "membership", entityId: target.id,
+    before: JSON.stringify({ userId, role: target.role }), after: null,
+  });
+}
+
+/**
+ * Takes up an invitation. The person must already be signed in, so the code
+ * never doubles as a way to create an account — a credential that both makes
+ * a login and grants access to a school's books is one thing too many.
+ */
+export async function acceptInvite(code: string) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Sign in or create your account first, then open the link again.");
+
+  const [invite] = await db.select().from(schema.invitations)
+    .where(eq(schema.invitations.code, code));
+  if (!invite || invite.revokedAt) throw new Error("That invitation is no longer valid.");
+  if (invite.acceptedAt) throw new Error("That invitation has already been used.");
+  if (invite.expiresAt < new Date()) throw new Error("That invitation has expired. Ask for another.");
+
+  const mine = await db.select().from(schema.memberships)
+    .where(eq(schema.memberships.userId, user.id));
+  if (mine.some((m) => m.orgId === invite.orgId)) {
+    throw new Error("You are already on these books.");
+  }
+  // One person, one set of books. getCurrentUser resolves a single membership,
+  // so a second one would put them in whichever the database returned first.
+  // Refused plainly rather than left to chance until there is a way to switch.
+  if (mine.length > 0) {
+    throw new Error(
+      "This account already keeps another set of books. Sign up with a different email "
+      + "to join these, or ask the owner to invite that address instead.",
+    );
+  }
+
+  await db.insert(schema.memberships).values({
+    orgId: invite.orgId, userId: user.id, role: invite.role, schoolId: invite.schoolId,
+  });
+  await db.update(schema.invitations)
+    .set({ acceptedAt: new Date(), acceptedBy: user.id })
+    .where(eq(schema.invitations.id, invite.id));
+
+  await db.insert(schema.auditLog).values({
+    orgId: invite.orgId, userId: user.id,
+    action: "people.joined", entity: "membership", entityId: null,
+    before: null, after: JSON.stringify({ email: user.email, role: invite.role }),
+  });
+}

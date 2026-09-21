@@ -3,7 +3,7 @@ import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypt
 import { cookies } from "next/headers";
 import { db, schema } from "@/db";
 import { and, eq, isNull } from "drizzle-orm";
-import type { AuditScope } from "@/domain";
+import type { AuditScope, BookScope } from "@/domain";
 
 const COOKIE = "zb_session";
 const VIEW_AS_COOKIE = "zb_view_as";
@@ -115,11 +115,13 @@ export interface CurrentUser {
   /** A view-as session may read every book and write to none of them. */
   readOnly: boolean;
   /**
-   * Set while a Ministry auditor is reading. Every book query narrows to the
-   * schools in this area, so an auditor inside an org that keeps thirty
-   * schools still sees only the ones in their sub-county.
+   * Which schools inside the org this session may reach. Org-wide for a
+   * member of the practice, one school for someone tied to it, an area for a
+   * Ministry auditor. Tenancy is checked first; this only ever narrows.
    */
-  auditScope: AuditScope | null;
+  bookScope: BookScope;
+  /** True while a Ministry auditor is reading, for wording and for logging. */
+  auditing: boolean;
 }
 
 /** The signed-in user and the org that scopes every query they may run. */
@@ -150,7 +152,10 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
           viewingAs: { orgId: org.id, orgName: org.name },
           readOnly: true,
           // A platform admin sees the whole org; an auditor only their area.
-          auditScope: admin ? null : scope,
+          bookScope: admin || !scope
+            ? { kind: "org" }
+            : { kind: "area", county: scope.county, subCounty: scope.subCounty },
+          auditing: !admin && Boolean(scope),
         };
       }
     }
@@ -170,7 +175,10 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     role: membership.role,
     viewingAs: null,
     readOnly: false,
-    auditScope: null,
+    bookScope: membership.schoolId
+      ? { kind: "school", schoolId: membership.schoolId }
+      : { kind: "org" },
+    auditing: false,
   };
 }
 

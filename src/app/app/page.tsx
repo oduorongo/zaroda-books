@@ -6,6 +6,6 @@ export default async function AppIndex() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const books = await getOrgBooks(user.orgId);
+  const books = await getOrgBooks(user.orgId, user.bookScope);
   redirect(books.length ? `/app/${books[0].account.id}/receipts` : "/app/new");
 }

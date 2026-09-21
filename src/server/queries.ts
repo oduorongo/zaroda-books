@@ -1,8 +1,8 @@
 import "server-only";
 import { db, schema } from "@/db";
 import { and, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
-import type { AuditScope, Txn, VoteHead } from "@/domain";
-import { auditorCanSee } from "@/domain";
+import type { BookScope, Txn, VoteHead } from "@/domain";
+import { scopeAllows } from "@/domain";
 
 export async function getAccountAndSchool(accountId: string) {
   const [row] = await db
@@ -26,7 +26,9 @@ export async function getFirstAccount() {
 }
 
 /** Every book the org keeps. The tenancy boundary: always scope by org here, never in a route. */
-export async function getOrgBooks(orgId: string, scope?: AuditScope | null) {
+// scope is required, not optional: an omitted scope silently returns every
+// school in the org, which is the one mistake this exists to prevent.
+export async function getOrgBooks(orgId: string, scope: BookScope) {
   const rows = await db
     .select({ account: schema.accounts, school: schema.schools })
     .from(schema.accounts)
@@ -34,10 +36,9 @@ export async function getOrgBooks(orgId: string, scope?: AuditScope | null) {
     .where(and(eq(schema.schools.orgId, orgId), isNull(schema.accounts.archivedAt)))
     .orderBy(schema.schools.name);
 
-  // Filtered here rather than in SQL: the county names are typed by hand in
-  // two places and the comparison that decides this belongs in the domain,
-  // where it is tested, not in a LIKE clause.
-  return scope ? rows.filter((r) => auditorCanSee(scope, r.school)) : rows;
+  // Filtered here rather than in SQL: the decision belongs in the domain,
+  // where it is tested, not spread across a WHERE clause.
+  return scope ? rows.filter((r) => scopeAllows(scope, r.school)) : rows;
 }
 
 /**
@@ -45,7 +46,7 @@ export async function getOrgBooks(orgId: string, scope?: AuditScope | null) {
  * for an auditor, if the school is outside their area. The check is here and
  * not only in the listing, so a book cannot be reached by guessing its link.
  */
-export async function getBookForOrg(accountId: string, orgId: string, scope?: AuditScope | null) {
+export async function getBookForOrg(accountId: string, orgId: string, scope?: BookScope) {
   const [row] = await db
     .select({ account: schema.accounts, school: schema.schools })
     .from(schema.accounts)
@@ -57,7 +58,7 @@ export async function getBookForOrg(accountId: string, orgId: string, scope?: Au
     ));
   // An archived book is unreachable even by its own link, not merely unlisted.
   if (!row) throw new Error("Account not found.");
-  if (scope && !auditorCanSee(scope, row.school)) throw new Error("Account not found.");
+  if (scope && !scopeAllows(scope, row.school)) throw new Error("Account not found.");
   return row;
 }
 

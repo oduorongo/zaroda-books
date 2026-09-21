@@ -15,7 +15,7 @@ export async function saveOpeningBalancesAction(
   form: FormData,
 ): Promise<string | null> {
   const accountId = String(form.get("accountId") ?? "");
-  const { fy } = await loadBook(accountId, { write: true });
+  const { fy } = await loadBook(accountId, { write: true, require: "openingBalances.set" });
 
   const cash = Number(form.get("openingCash") || 0);
   const bank = Number(form.get("openingBank") || 0);
@@ -109,7 +109,7 @@ export async function postReceipt(
   form: FormData,
 ): Promise<string | null> {
   const accountId = String(form.get("accountId") ?? "");
-  const { user, heads, fy, school, account } = await loadBook(accountId, { write: true });
+  const { user, heads, fy, school, account } = await loadBook(accountId, { write: true, require: "entry.post" });
 
   const r = readReceiptForm(form, heads, flatOnlyHeadCodes(school.level, account.type as AccountType));
   if (r.error) return r.error;
@@ -151,7 +151,7 @@ export async function amendReceipt(
 ): Promise<string | null> {
   const accountId = String(form.get("accountId") ?? "");
   const transactionId = String(form.get("transactionId") ?? "");
-  const { user, heads, school, account } = await loadBook(accountId, { write: true });
+  const { user, heads, school, account } = await loadBook(accountId, { write: true, require: "entry.amend" });
 
   const r = readReceiptForm(form, heads, flatOnlyHeadCodes(school.level, account.type as AccountType));
   if (r.error) return r.error;
@@ -189,7 +189,7 @@ export async function deleteReceipt(
 ): Promise<string | null> {
   const accountId = String(form.get("accountId") ?? "");
   const transactionId = String(form.get("transactionId") ?? "");
-  const { user } = await loadBook(accountId, { write: true });
+  const { user } = await loadBook(accountId, { write: true, require: "entry.delete" });
 
   try {
     await deleteTransaction({ transactionId, accountId, userId: user.id, orgId: user.orgId });

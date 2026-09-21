@@ -4,6 +4,8 @@ export * from "./subscription";
 export * from "./pricing";
 export * from "./counties";
 export * from "./audit-scope";
+export * from "./book-scope";
+export * from "./permissions";
 export * from "./voucher-numbers";
 export * from "./tuma";
 export * from "./csv";

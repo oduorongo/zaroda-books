@@ -11,7 +11,7 @@ export async function saveStatement(
 ): Promise<string | null> {
   const accountId = String(form.get("accountId") ?? "");
   const periodId = String(form.get("periodId") ?? "");
-  await loadBook(accountId, { write: true });
+  await loadBook(accountId, { write: true, require: "entry.amend" });
 
   const raw = String(form.get("statementBank") ?? "").trim();
   if (!raw) return "Enter the closing balance shown on the bank statement.";
@@ -34,7 +34,7 @@ export async function toggleCleared(form: FormData): Promise<void> {
   const accountId = String(form.get("accountId") ?? "");
   const transactionId = String(form.get("transactionId") ?? "");
   const clearedOn = String(form.get("clearedOn") ?? "").trim();
-  await loadBook(accountId, { write: true });
+  await loadBook(accountId, { write: true, require: "entry.amend" });
 
   await setCleared(transactionId, accountId, clearedOn || null);
   revalidatePath(`/app/${accountId}/bank-reconciliation`);
