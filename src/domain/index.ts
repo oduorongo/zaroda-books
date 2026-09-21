@@ -12,6 +12,7 @@ export * from "./login-throttle";
 export * from "./email-recipient";
 export * from "./choose-org";
 export * from "./vote-balance";
+export * from "./parse-amount";
 export * from "./voucher-numbers";
 export * from "./tuma";
 export * from "./csv";

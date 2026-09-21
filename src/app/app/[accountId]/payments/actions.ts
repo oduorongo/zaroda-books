@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { toCents } from "@/domain";
+import { parseAmount } from "@/domain";
 import type { Allocation, VoteHead } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getPeriodForDate } from "@/server/periods";
@@ -45,11 +45,13 @@ function readPaymentForm(form: FormData, heads: VoteHead[]): ReadResult {
 
   const allocations: Allocation[] = [];
   for (const h of heads) {
-    const raw = form.get(`amount_${h.code}`);
-    if (raw === null || String(raw).trim() === "") continue;
-    const amount = toCents(Number(raw));
-    if (!Number.isFinite(amount)) return { ...empty, error: `Enter ${h.code} as a figure.` };
-    if (amount < 0) return { ...empty, error: `A payment cannot be negative. Check ${h.code}.` };
+    // The same parser the form uses, so a figure that looks acceptable on
+    // screen cannot be refused here — see parse-amount.ts.
+    const amount = parseAmount(String(form.get(`amount_${h.code}`) ?? ""));
+    if (amount === null) continue;
+    if (amount === undefined) {
+      return { ...empty, error: `${h.code} cannot be read as a figure. Enter it as 3500 or 3,500.00.` };
+    }
     if (amount > 0) allocations.push({ voteHeadCode: h.code, amount });
   }
   if (!allocations.length) {

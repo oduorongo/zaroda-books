@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import {
-  formatKes, toCents, voteBalancesAsAt, type VoteEntry, type VoteHead,
+  formatKes, parseAmount, voteBalancesAsAt, type VoteEntry, type VoteHead,
 } from "@/domain";
 import { amendPayment, postPayment } from "./actions";
 
@@ -18,10 +18,7 @@ export interface PaymentDraft {
   amounts: Record<string, string>;
 }
 
-const num = (v: string) => {
-  const n = parseFloat(v.replace(/[^0-9.]/g, ""));
-  return Number.isFinite(n) ? n : 0;
-};
+
 
 export function PaymentForm({
   accountId, heads, entries, cashInHand, payment,
@@ -41,7 +38,11 @@ export function PaymentForm({
   const [amounts, setAmounts] = useState<Record<string, string>>(payment?.amounts ?? {});
   const [method, setMethod] = useState(payment?.method ?? "bank");
 
-  const charged = (code: string) => toCents(num(amounts[code] ?? ""));
+  // One parser, shared with the server — see parse-amount.ts. Anything
+  // unreadable counts as nothing here and is refused on save, rather than
+  // silently becoming zero in a total.
+  const charged = (code: string) => parseAmount(amounts[code] ?? "") || 0;
+  const unreadable = heads.filter((h) => parseAmount(amounts[h.code] ?? "") === undefined);
   // The payment is the sum of its lines, never a figure typed separately, so
   // the allocations cannot fail to equal what was paid. Rule 2.
   const total = heads.reduce((a, h) => a + charged(h.code), 0);
@@ -55,7 +56,9 @@ export function PaymentForm({
   // in hand negative — and a month cannot close on a negative cash balance.
   const shortOfCash = method === "cash" && total > cashInHand;
 
-  const note = !total
+  const note = unreadable.length
+    ? `${unreadable.map((h) => h.code).join(", ")} cannot be read as a figure.`
+    : !total
     ? "Enter an amount against each vote head this payment is charged to."
     : overdrawn.length
       ? `Virement: ${overdrawn.map((h) => h.code).join(", ")} ${
@@ -140,8 +143,10 @@ export function PaymentForm({
               );
             })}
             <tr className="total">
-              <td colSpan={3}>Total paid</td>
+              <td>Total paid</td>
               <td className="n">{formatKes(total)}</td>
+              <td></td>
+              <td></td>
             </tr>
           </tbody>
         </table>
