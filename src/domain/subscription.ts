@@ -95,13 +95,15 @@ export function bookEntitlement(input: {
   if (!input.freeAllowanceUsed) {
     // Only the free school waits on approval. A subscription, handled above,
     // was entered after payment and is not held a second time.
+    // Accounts are approved the moment they are created. This only bites
+    // where Zaroda has put one on hold.
     if (!input.orgApproved) {
       return {
         allowed: false,
         reason:
-          "Your account is with us for review, and your free school opens as soon as "
-          + "that is done — usually the same working day. Nothing you have entered is "
-          + "lost. Reach us on WhatsApp 0781 230 805 or support@zarodasolutions.app.",
+          "These books are on hold. Reach us on WhatsApp 0781 230 805 or "
+          + "support@zarodasolutions.app and we will sort it out. Nothing you have "
+          + "entered is lost.",
       };
     }
     return { allowed: true, bindTo: input.schoolId, grantFree: true };

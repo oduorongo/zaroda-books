@@ -35,7 +35,7 @@ export default async function AdminPage() {
         <Figure
           label="Orgs"
           value={String(t.orgs)}
-          note={pending === 0 ? `${t.users} users` : `${pending} awaiting review`}
+          note={pending === 0 ? `${t.users} users` : `${pending} on hold`}
         />
         <Figure label="Schools" value={String(t.schools)} note={`${t.books} books opened`} />
         <Figure
@@ -152,7 +152,7 @@ export default async function AdminPage() {
                   <Link href={`/admin/${row.orgId}`}>{row.orgName}</Link>
                   {!row.approvedAt && (
                     <div className="mono" style={{ fontSize: ".68rem", letterSpacing: ".12em", textTransform: "uppercase", color: "var(--alarm)" }}>
-                      Awaiting review
+                      On hold
                     </div>
                   )}
                 </td>

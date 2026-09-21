@@ -33,8 +33,7 @@ export default async function TenantPage({ params }: { params: Promise<{ orgId: 
           </p>
           {!org.approvedAt && (
             <p style={{ color: "var(--alarm)", fontSize: ".9rem", margin: "-1.25rem 0 0", maxWidth: "58ch" }}>
-              Awaiting review. Their free school is held back until you approve. Check first
-              whether this is the same person as an org already on the list.
+              On hold. They cannot open a book until this is lifted.
             </p>
           )}
         </div>

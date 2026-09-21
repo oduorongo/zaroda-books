@@ -26,7 +26,14 @@ export async function signup(_prev: string | null, form: FormData): Promise<stri
   if (existing) return "That email already has an account. Log in instead.";
 
   const [org] = await db.insert(schema.orgs)
-    .values({ name: practice || name, county, subCounty })
+    .values({
+      name: practice || name,
+      county,
+      subCounty,
+      // Approved on creation. The column stays so an account can still be
+      // put on hold from the console, but nobody now waits to be let in.
+      approvedAt: new Date(),
+    })
     .returning();
   const [user] = await db.insert(schema.users).values({
     email, name, passwordHash: hashPassword(password),

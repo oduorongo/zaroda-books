@@ -107,7 +107,7 @@ export function ApproveButton({ orgId, approved }: { orgId: string; approved: bo
       <input type="hidden" name="orgId" value={orgId} />
       <input type="hidden" name="approved" value={approved ? "no" : "yes"} />
       <button type="submit" className={approved ? "btn btn-quiet" : "btn btn-gold"} disabled={pending}>
-        {approved ? "Hold this account" : "Approve, release the free school"}
+        {approved ? "Put these books on hold" : "Lift the hold"}
       </button>
       {error && <p className="error">{error}</p>}
     </form>
