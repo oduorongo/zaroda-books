@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import { getCurrentUser, isPlatformAdmin } from "@/server/auth";
 import { getOrgBooks } from "@/server/queries";
@@ -33,9 +34,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       )}
     <div className="shell">
       <nav className="sidebar">
+        {/* The photograph already carries the mark, the wordmark and the gold
+            rule, so none of the three is drawn again over it. */}
         <div className="sidebar-head">
-          <Logo height={52} priority />
-          <div className="mono">Zaroda&nbsp;Books</div>
+          <Image
+            src="/nav-hero.png"
+            alt="Zaroda Books"
+            width={1024}
+            height={1536}
+            priority
+            sizes="268px"
+          />
         </div>
 
         <div>

@@ -121,22 +121,31 @@ a:hover { color: var(--gold); }
   display: block; color: var(--paper);
   font-family: var(--font-heading), Georgia, serif; font-size: .95rem; line-height: 1.3;
 }
-/* The Z alone, not the lockup: the lockup carries "Zaroda Solutions" and the
-   firm's tagline, which stacked three lines of type above the product name. */
-.sidebar-head { text-align: center; padding-bottom: 1.1rem; position: relative; }
-.sidebar-head img { margin: 0 auto; }
-.sidebar-head .mono {
-  letter-spacing: .18em; font-size: .72rem; text-transform: uppercase;
-  color: var(--paper); margin-top: .7rem;
+/* The nav hero. The photograph is portrait and carries the branding in its
+   top-left, so it is cropped to a band from the top: the mark, the wordmark,
+   the gold rule, and just enough of the office to place it. */
+.sidebar-head {
+  margin: -1.5rem -1.25rem 0;
+  height: 11rem;
+  overflow: hidden;
+  position: relative;
 }
+.sidebar-head img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: left top;
+  display: block;
+}
+/* Feathered into the sidebar so the photograph does not end on a hard line
+   above the nav. */
 .sidebar-head::after {
-  content: ""; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
-  width: 3.5rem; height: 2px; background: var(--gold);
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 3.5rem;
+  background: linear-gradient(to bottom, rgba(16, 34, 63, 0), var(--ink));
 }
-
-/* No margin-top:auto here. Pinning the footer to the bottom of a full-height
-   column left a screen-deep gap under a nav of seven items, which read as
-   something missing rather than as space. It follows the nav instead. */
 .sidebar-foot {
   padding-top: 1.1rem; border-top: 1px solid rgba(251, 250, 247, .14);
   font-size: .78rem; line-height: 1.5; color: var(--on-dark-dim);

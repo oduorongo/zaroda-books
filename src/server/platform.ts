@@ -2,7 +2,12 @@ import "server-only";
 import { notFound } from "next/navigation";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { LEVEL_PRICE, auditorCanSee, chargeAmount, revenue, type SchoolLevel } from "@/domain";
+import {
+  LEVEL_PRICE, auditorCanSee, chargeAmount, revenue, subscriptionStateFor,
+  type SchoolLevel, type SubscriptionStatus,
+} from "@/domain";
+
+export type { SubscriptionStatus };
 import { tumaCallbackUrl } from "@/server/tuma";
 import { getCurrentUser, isPlatformAdmin } from "@/server/auth";
 
@@ -195,9 +200,6 @@ async function record(
   });
 }
 
-/** The three states a subscription can be in, as the console shows them. */
-export type SubscriptionStatus = "paid" | "unpaid" | "free";
-
 /**
  * Sets a subscription to any of its three states, including turning one into
  * the org's free school or taking that away.
@@ -216,13 +218,7 @@ export async function setSubscriptionStatus(
     .where(eq(schema.subscriptions.id, subscriptionId));
   if (!before) notFound();
 
-  // Free is not paid: the money was never owed, so recording a payment date
-  // against it would invent a receipt.
-  const next = {
-    paid: { paidAt: new Date(), isFree: false },
-    unpaid: { paidAt: null, isFree: false },
-    free: { paidAt: null, isFree: true },
-  }[status];
+  const next = subscriptionStateFor(status, before);
 
   await db.update(schema.subscriptions).set(next)
     .where(eq(schema.subscriptions.id, subscriptionId));

@@ -120,3 +120,28 @@ function needsSubscription(level: SchoolLevel, fyLabel: string): Entitlement {
       + "keeps at that level. Your one free book has already been opened.",
   };
 }
+
+export type SubscriptionStatus = "paid" | "unpaid" | "free";
+
+/**
+ * What the three states in the owner console actually write.
+ *
+ * The subtle one is paid-over-free: `isFree` is the record that the org's one
+ * free book was spent here, so payment must not clear it. Clearing it would
+ * make the allowance look unused and hand them a second free book.
+ */
+export function subscriptionStateFor(
+  status: SubscriptionStatus,
+  current: { isFree: boolean },
+): { paidAt: Date | null; isFree: boolean } {
+  switch (status) {
+    case "paid":
+      // Absorbed, not erased: still the free grant, now paid for.
+      return { paidAt: new Date(), isFree: current.isFree };
+    case "unpaid":
+      // Owed. A row that is owed is by definition not the free one.
+      return { paidAt: null, isFree: false };
+    case "free":
+      return { paidAt: null, isFree: true };
+  }
+}
