@@ -1,10 +1,23 @@
 import Link from "next/link";
 import { balancesAfter, buildLedger, formatKes } from "@/domain";
+import type { Txn, VoteEntry } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getTxns } from "@/server/queries";
 import { PaymentForm } from "./form";
 import { ReportShell } from "../report-shell";
 
+/** Every receipt and payment line, so the form can date the balances. */
+const voteEntries = (txns: Txn[]): VoteEntry[] =>
+  txns.flatMap((t) =>
+    t.kind === "contra"
+      ? []
+      : t.allocations.map((a) => ({
+        code: a.voteHeadCode,
+        date: t.date,
+        amount: a.amount,
+        isPayment: t.kind === "payment",
+      })),
+  );
 export default async function PaymentsPage({
   params,
 }: {
@@ -14,9 +27,7 @@ export default async function PaymentsPage({
   const { heads, fy, school, account } = await loadBook(accountId);
   const txns = await getTxns(fy.id);
 
-  const balances = Object.fromEntries(
-    buildLedger(txns, heads).map((l) => [l.code, l.cr - l.dr]),
-  );
+  const entries = voteEntries(txns);
   const payments = txns
     .filter((t) => t.kind === "payment")
     .sort((a, b) => a.date.localeCompare(b.date));
@@ -48,7 +59,7 @@ export default async function PaymentsPage({
       <PaymentForm
         accountId={accountId}
         heads={heads}
-        balances={balances}
+        entries={entries}
         cashInHand={balancesAfter({ cash: fy.openingCash, bank: fy.openingBank }, txns).cash}
       />
 

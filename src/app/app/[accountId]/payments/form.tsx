@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
-import { formatKes, toCents, type VoteHead } from "@/domain";
+import {
+  formatKes, toCents, voteBalancesAsAt, type VoteEntry, type VoteHead,
+} from "@/domain";
 import { amendPayment, postPayment } from "./actions";
 
 /** A posted payment reopened for amendment. */
@@ -22,15 +24,20 @@ const num = (v: string) => {
 };
 
 export function PaymentForm({
-  accountId, heads, balances, cashInHand, payment,
+  accountId, heads, entries, cashInHand, payment,
 }: {
   accountId: string;
   heads: VoteHead[];
-  balances: Record<string, number>;
+  /**
+   * Every receipt and payment on these votes, so the balances can be shown
+   * as they stood on the date being entered rather than at year end.
+   */
+  entries: VoteEntry[];
   cashInHand: number;
   payment?: PaymentDraft;
 }) {
   const [error, action, pending] = useActionState(payment ? amendPayment : postPayment, null);
+  const [date, setDate] = useState(payment?.date ?? new Date().toISOString().slice(0, 10));
   const [amounts, setAmounts] = useState<Record<string, string>>(payment?.amounts ?? {});
   const [method, setMethod] = useState(payment?.method ?? "bank");
 
@@ -38,6 +45,10 @@ export function PaymentForm({
   // The payment is the sum of its lines, never a figure typed separately, so
   // the allocations cannot fail to equal what was paid. Rule 2.
   const total = heads.reduce((a, h) => a + charged(h.code), 0);
+
+  // Judged on the date being entered, not the year: a vote funded in June
+  // did not fund a payment made in October.
+  const balances = voteBalancesAsAt(entries, date);
   const overdrawn = heads.filter((h) => charged(h.code) > (balances[h.code] ?? 0));
 
   // Capitation is banked, so paying cash without drawing it first sends cash
@@ -59,7 +70,7 @@ export function PaymentForm({
 
       <div className="grid-4">
         <label className="field">Date
-          <input name="date" type="date" defaultValue={payment?.date ?? new Date().toISOString().slice(0, 10)} required />
+          <input name="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
         </label>
         <label className="field">Voucher no.
           {/* Derived from the date across the whole year, so it is shown, not
@@ -95,7 +106,7 @@ export function PaymentForm({
             <tr>
               <th>Vote head</th>
               <th className="n">Amount</th>
-              <th className="n">On the vote now</th>
+              <th className="n">On the vote at that date</th>
               <th className="n">If you post this</th>
             </tr>
           </thead>
