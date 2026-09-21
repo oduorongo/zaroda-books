@@ -27,7 +27,7 @@ export function OpeningBalances({
           : `Opening balances brought forward into FY ${fyLabel}`}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr) auto", gap: "1.25rem", alignItems: "end", marginTop: ".9rem" }}>
+      <div className="field-row" style={{ marginTop: ".9rem" }}>
         <label className="field">Cash in hand (KES)
           <input name="openingCash" className="mono" inputMode="decimal"
             defaultValue={openingCash} placeholder="0" />

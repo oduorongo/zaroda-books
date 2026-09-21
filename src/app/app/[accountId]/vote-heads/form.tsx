@@ -9,7 +9,7 @@ export function AddVoteHeadForm({ accountId }: { accountId: string }) {
   return (
     <form action={action} className="card" style={{ maxWidth: 820 }}>
       <input type="hidden" name="accountId" value={accountId} />
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,.35fr) minmax(0,1fr) auto", gap: "1.25rem", alignItems: "end" }}>
+      <div className="field-row narrow-first">
         <label className="field">Code
           <input name="code" className="mono" placeholder="SEC" maxLength={6} required
             style={{ textTransform: "uppercase" }} />

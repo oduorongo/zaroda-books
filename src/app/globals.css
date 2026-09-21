@@ -391,3 +391,47 @@ a:hover { color: var(--gold); }
 @media (max-width: 720px) {
   .legal { padding: 2rem 1rem 3rem; }
 }
+
+/* "What comes out" on the landing page. The split was an inline style, so no
+   media query could reach it — on a phone it stayed two columns and wrapped
+   the headings a word at a time. */
+.outputs-split {
+  display: grid;
+  grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+  gap: 4rem;
+  align-items: start;
+}
+.output-row {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 1.25rem; padding: 1.1rem 1.5rem; border-bottom: 1px solid var(--rule-soft);
+}
+.output-name { font-family: var(--font-heading), Georgia, serif; font-size: 1rem; font-weight: 600; }
+.output-note { color: var(--muted); font-size: .82rem; margin-top: .2rem; }
+.output-tag {
+  font-size: .69rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--gold); white-space: nowrap;
+}
+
+@media (max-width: 860px) {
+  .outputs-split { grid-template-columns: minmax(0, 1fr); gap: 1.75rem; }
+  /* The tag goes above the name rather than beside it: side by side it left
+     the heading about eight characters of width. */
+  .output-row { flex-direction: column; align-items: flex-start; gap: .35rem; padding: 1rem 1.15rem; }
+  .output-tag { order: -1; }
+}
+
+/* A row of fields with a button at the end. Inline grids here could not be
+   collapsed by a media query, so on a phone the boxes were a few characters
+   wide — on forms a bursar fills in from a handset. */
+.field-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 1.25rem;
+  align-items: end;
+}
+.field-row.narrow-first { grid-template-columns: minmax(0, .35fr) minmax(0, 1fr) auto; }
+
+@media (max-width: 720px) {
+  .field-row, .field-row.narrow-first { grid-template-columns: minmax(0, 1fr); gap: .9rem; }
+  .field-row .btn { width: 100%; }
+}

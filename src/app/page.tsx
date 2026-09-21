@@ -103,7 +103,7 @@ export default function Home() {
       </section>
 
       <section id="books" className="wrap" style={{ padding: "4.75rem 2.5rem 6rem" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,.9fr) minmax(0,1.1fr)", gap: "4rem", alignItems: "start" }}>
+        <div className="outputs-split">
           <div>
             <h2 style={{ fontSize: "2rem", margin: "0 0 .75rem" }}>What comes out</h2>
             <p style={{ color: "var(--muted)", fontSize: "1.05rem", lineHeight: 1.6, margin: 0 }}>
@@ -113,12 +113,12 @@ export default function Home() {
           </div>
           <div className="card" style={{ padding: 0 }}>
             {outputs.map((o) => (
-              <div key={o.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1.25rem", padding: "1.1rem 1.5rem", borderBottom: "1px solid var(--rule-soft)" }}>
+              <div key={o.name} className="output-row">
                 <div>
-                  <div style={{ fontFamily: "var(--font-heading)", fontSize: "1rem", fontWeight: 600 }}>{o.name}</div>
-                  <div style={{ color: "var(--muted)", fontSize: ".82rem", marginTop: ".2rem" }}>{o.note}</div>
+                  <div className="output-name">{o.name}</div>
+                  <div className="output-note">{o.note}</div>
                 </div>
-                <div className="mono" style={{ fontSize: ".69rem", letterSpacing: ".14em", textTransform: "uppercase", color: "var(--gold)", whiteSpace: "nowrap" }}>{o.tag}</div>
+                <div className="mono output-tag">{o.tag}</div>
               </div>
             ))}
           </div>
