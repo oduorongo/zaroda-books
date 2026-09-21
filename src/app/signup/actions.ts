@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { hashPassword, startSession } from "@/server/auth";
 import { isSubCountyOf } from "@/domain";
+import { notifyNewTenant } from "@/server/notify";
 
 export async function signup(_prev: string | null, form: FormData): Promise<string | null> {
   const name = String(form.get("name") ?? "").trim();
@@ -31,6 +32,18 @@ export async function signup(_prev: string | null, form: FormData): Promise<stri
     email, name, passwordHash: hashPassword(password),
   }).returning();
   await db.insert(schema.memberships).values({ orgId: org.id, userId: user.id, role: "owner" });
+
+  // Before the redirect, because redirect() throws to unwind. Awaited, but
+  // notifyOwner swallows its own failures: a signup must not fail because we
+  // could not send ourselves a note.
+  await notifyNewTenant({
+    orgId: org.id,
+    orgName: org.name,
+    personName: name,
+    email,
+    county,
+    subCounty,
+  });
 
   await startSession(user.id);
   redirect("/app");

@@ -381,6 +381,7 @@ export async function gatewayStatus() {
     emailFrom: process.env.RESEND_FROM ?? null,
     emailConfigured: emailConfigured(),
     emailRedirectedTo: emailRedirectedTo(),
+    notifyEmail: process.env.ADMIN_NOTIFY_EMAIL?.trim() || null,
   };
 }
 

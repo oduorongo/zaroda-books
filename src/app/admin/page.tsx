@@ -99,6 +99,14 @@ export default async function AdminPage() {
               <td className="n mono" style={{ fontSize: ".78rem" }}>{gateway.callbackUrl}</td>
             </tr>
             <tr>
+              <td>New signups notified to</td>
+              <td className="n mono">
+                {gateway.notifyEmail ?? (
+                  <span style={{ color: "var(--alarm)" }}>nobody — set ADMIN_NOTIFY_EMAIL</span>
+                )}
+              </td>
+            </tr>
+            <tr>
               <td>Email sender</td>
               <td className="n mono">
                 {gateway.emailConfigured
