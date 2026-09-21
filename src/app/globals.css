@@ -378,3 +378,16 @@ a:hover { color: var(--gold); }
   /* Never split a signature away from the line it belongs to. */
   .voucher-signatures { break-inside: avoid; page-break-inside: avoid; gap: 3rem; }
 }
+
+/* Privacy policy and terms: a reading column, not a dashboard. */
+.legal { max-width: 46rem; padding: 3rem 2.5rem 5rem; }
+.legal h1 { font-size: 2rem; margin-bottom: .4rem; }
+.legal h2 { font-size: 1.15rem; margin: 2.5rem 0 .8rem; }
+.legal p { line-height: 1.75; margin: 0 0 1rem; }
+.legal ul { line-height: 1.75; margin: 0 0 1rem; padding-left: 1.2rem; }
+.legal li { margin-bottom: .4rem; }
+.legal table { margin: 0 0 1.25rem; }
+.legal td { vertical-align: top; line-height: 1.6; }
+@media (max-width: 720px) {
+  .legal { padding: 2rem 1rem 3rem; }
+}

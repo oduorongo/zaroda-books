@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { parseTumaCallback } from "@/domain";
+import { recordProblem } from "@/server/problems";
 import {
   findPaymentByMerchantRequest, markPaymentFailed, markPaymentSucceeded,
 } from "@/server/billing";
@@ -21,13 +22,21 @@ export async function POST(request: Request) {
   const parsed = parseTumaCallback(body);
 
   if (!parsed.merchantRequestId) {
-    console.warn("Tuma callback with no merchant_request_id:", JSON.stringify(body).slice(0, 500));
+    await recordProblem({
+      area: "payment",
+      message: "A Tuma callback named no payment, so nothing could be credited.",
+      detail: body,
+    });
     return NextResponse.json({ received: true });
   }
 
   const payment = await findPaymentByMerchantRequest(parsed.merchantRequestId);
   if (!payment) {
-    console.warn("Tuma callback for unknown merchant_request_id:", parsed.merchantRequestId);
+    await recordProblem({
+      area: "payment",
+      message: "A Tuma callback named a payment we have no record of.",
+      detail: { merchantRequestId: parsed.merchantRequestId, body },
+    });
     return NextResponse.json({ received: true });
   }
 

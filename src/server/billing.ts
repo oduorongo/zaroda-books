@@ -9,6 +9,7 @@ import {
   checkPaymentStatus, initiateStkPush, tumaCallbackUrl, tumaConfigured,
 } from "@/server/tuma";
 import { createBook } from "@/server/books";
+import { recordProblem } from "@/server/problems";
 import type { AccountType } from "@/domain";
 
 /**
@@ -164,7 +165,15 @@ export async function markPaymentSucceeded(
         .set({ createdAccountId: account.id })
         .where(eq(schema.subscriptionPayments.id, payment.id));
     } catch (err) {
-      console.error("Paid, but the book could not be opened:", err);
+      // The money arrived and the subscription is open, so this is not a
+      // failed payment — but somebody has paid and has no book, which
+      // needs a person today.
+      await recordProblem({
+        area: "book",
+        message: "A subscription was paid but the book could not be opened.",
+        detail: err,
+        orgId: payment.orgId,
+      });
     }
   }
 

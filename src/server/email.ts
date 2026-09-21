@@ -1,4 +1,5 @@
 import "server-only";
+import { recordProblem } from "@/server/problems";
 
 /**
  * Email through Resend's HTTPS API, as ZARODA SMS does it.
@@ -50,12 +51,20 @@ export async function sendEmail(input: {
 
     if (!resp.ok) {
       const body = await resp.text().catch(() => "");
-      console.error("Resend rejected an email:", resp.status, body.slice(0, 300));
+      await recordProblem({
+        area: "email",
+        message: `Resend refused an email to ${input.to} (${resp.status}).`,
+        detail: body.slice(0, 500),
+      });
       return { ok: false, detail: `The email could not be sent (${resp.status}).` };
     }
     return { ok: true };
   } catch (err) {
-    console.error("Resend unreachable:", err);
+    await recordProblem({
+      area: "email",
+      message: `The email service could not be reached, sending to ${input.to}.`,
+      detail: err,
+    });
     return { ok: false, detail: "The email service could not be reached." };
   }
 }

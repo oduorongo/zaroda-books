@@ -2,9 +2,13 @@ import Link from "next/link";
 import { logout } from "../login/actions";
 import { Logo } from "../logo";
 import { requirePlatformAdmin } from "@/server/platform";
+import { countUnseen } from "@/server/problems";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const admin = await requirePlatformAdmin();
+  // In the header rather than only on its own page: a count nobody passes
+  // is a count nobody reads.
+  const problems = await countUnseen();
 
   return (
     <div>
@@ -26,6 +30,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <Link href="/admin" style={{ color: "var(--paper)" }}>Tenants</Link>
             <Link href="/admin/coverage" style={{ color: "var(--on-dark)" }}>Coverage</Link>
             <Link href="/admin/auditors" style={{ color: "var(--on-dark)" }}>Auditors</Link>
+            <Link
+              href="/admin/problems"
+              style={{
+                color: problems > 0 ? "var(--gold-bright)" : "var(--on-dark)",
+                fontWeight: problems > 0 ? 700 : 400,
+              }}
+            >
+              {problems > 0 ? `Problems (${problems})` : "Problems"}
+            </Link>
             <Link href="/app" style={{ color: "var(--on-dark)" }}>My own books</Link>
             <span style={{ color: "var(--on-dark-dim)" }}>{admin.email}</span>
             <form action={logout}>

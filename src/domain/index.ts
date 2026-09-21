@@ -8,6 +8,7 @@ export * from "./book-scope";
 export * from "./permissions";
 export * from "./password-reset";
 export * from "./session";
+export * from "./login-throttle";
 export * from "./voucher-numbers";
 export * from "./tuma";
 export * from "./csv";

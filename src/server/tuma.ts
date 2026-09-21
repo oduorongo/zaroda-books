@@ -1,4 +1,5 @@
 import "server-only";
+import { recordProblem } from "@/server/problems";
 
 /**
  * Tuma (https://tuma.co.ke) payment gateway client — M-Pesa STK push for the
@@ -111,7 +112,11 @@ export async function initiateStkPush(opts: {
         // about the person trying to pay, so they get told to reach us and we
         // get the real reason in the log and in the stored raw response.
         if (/sandbox/i.test(text)) {
-          console.error("Tuma refused a live-priced payment — account is still in sandbox:", text);
+          await recordProblem({
+            area: "gateway",
+            message: "Tuma refused a payment: the account is still in sandbox.",
+            detail: text,
+          });
           return {
             ok: false,
             raw: data,

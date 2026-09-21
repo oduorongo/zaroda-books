@@ -350,3 +350,43 @@ export const sessions = pgTable("sessions", {
   userAgent: text("user_agent"),
   ip: text("ip"),
 }, (t) => [index("sessions_user_idx").on(t.userId)]);
+
+/**
+ * Failed password attempts, for the login throttle.
+ *
+ * Only failures are kept, and only for as long as the window needs them: a
+ * log of who signed in successfully from where is a surveillance record this
+ * product has no reason to hold.
+ */
+export const loginFailures = pgTable("login_failures", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull(),
+  ip: text("ip"),
+  at: timestamp("at").defaultNow().notNull(),
+}, (t) => [
+  index("login_failures_email_idx").on(t.email, t.at),
+  index("login_failures_ip_idx").on(t.ip, t.at),
+]);
+
+/**
+ * Things that went wrong and that somebody needs to know about.
+ *
+ * Until now these went to console.error, which on Vercel means a log nobody
+ * reads. The one that matters most — a tenant paid and their book could not
+ * be opened — would have been invisible until they complained.
+ *
+ * Deliberately not a general application log. Only failures a person has to
+ * act on, so the list stays short enough to be read.
+ */
+export const problems = pgTable("problems", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  at: timestamp("at").defaultNow().notNull(),
+  /** "payment", "email", "gateway" — coarse, so like things group together. */
+  area: text("area").notNull(),
+  message: text("message").notNull(),
+  detail: text("detail"),
+  /** The tenant affected, where there is one. */
+  orgId: uuid("org_id").references(() => orgs.id),
+  seenAt: timestamp("seen_at"),
+  seenBy: uuid("seen_by").references(() => users.id),
+}, (t) => [index("problems_at_idx").on(t.at)]);
