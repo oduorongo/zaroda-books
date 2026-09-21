@@ -1,5 +1,6 @@
 import "server-only";
 import { recordProblem } from "@/server/problems";
+import { resolveRecipient } from "@/domain";
 
 /**
  * Email through Resend's HTTPS API, as ZARODA SMS does it.
@@ -31,6 +32,12 @@ export async function sendEmail(input: {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return { ok: false, detail: "Email is not configured (RESEND_API_KEY missing)." };
 
+  // Every message may be diverted to one address — see email-recipient.ts.
+  const { to: recipient, redirectedFrom } = resolveRecipient(
+    input.to,
+    process.env.EMAIL_REDIRECT_TO,
+  );
+
   // Resend's shared sender works without verifying a domain, which is what
   // makes this testable before the DNS records are in place.
   const from = process.env.RESEND_FROM || "Zaroda Books <onboarding@resend.dev>";
@@ -41,10 +48,14 @@ export async function sendEmail(input: {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
         from,
-        to: [input.to],
-        subject: input.subject,
-        html: input.html,
-        text: input.text,
+        to: [recipient],
+        // Marked in the subject as well as the body: a diverted password
+        // reset must never be mistaken for one's own.
+        subject: redirectedFrom ? `[for ${redirectedFrom}] ${input.subject}` : input.subject,
+        html: redirectedFrom ? redirectedNotice(redirectedFrom) + input.html : input.html,
+        text: redirectedFrom
+          ? `[Diverted. This was addressed to ${redirectedFrom}.]\n\n${input.text}`
+          : input.text,
       }),
       signal: AbortSignal.timeout(10_000),
     });
@@ -53,7 +64,7 @@ export async function sendEmail(input: {
       const body = await resp.text().catch(() => "");
       await recordProblem({
         area: "email",
-        message: `Resend refused an email to ${input.to} (${resp.status}).`,
+        message: `Resend refused an email to ${recipient} (${resp.status}).`,
         detail: body.slice(0, 500),
       });
       return { ok: false, detail: `The email could not be sent (${resp.status}).` };
@@ -62,12 +73,24 @@ export async function sendEmail(input: {
   } catch (err) {
     await recordProblem({
       area: "email",
-      message: `The email service could not be reached, sending to ${input.to}.`,
+      message: `The email service could not be reached, sending to ${recipient}.`,
       detail: err,
     });
     return { ok: false, detail: "The email service could not be reached." };
   }
 }
+
+const redirectedNotice = (intended: string) =>
+  `<div style="background:#a32b18;color:#fff;padding:12px 16px;font-family:Segoe UI,Helvetica,Arial,sans-serif;font-size:14px">`
+  + `<strong>Diverted.</strong> This was addressed to ${intended}. `
+  + "EMAIL_REDIRECT_TO is set, so no real recipient received it."
+  + `</div>`;
+
+/** For the owner console: whether mail is being diverted, and where to. */
+export const emailRedirectedTo = (): string | null => {
+  const { to, redirectedFrom } = resolveRecipient("someone@example.com", process.env.EMAIL_REDIRECT_TO);
+  return redirectedFrom ? to : null;
+};
 
 /** The house style: navy band, one clear action, plain text alongside. */
 export function emailLayout(opts: {

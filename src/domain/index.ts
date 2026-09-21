@@ -9,6 +9,7 @@ export * from "./permissions";
 export * from "./password-reset";
 export * from "./session";
 export * from "./login-throttle";
+export * from "./email-recipient";
 export * from "./voucher-numbers";
 export * from "./tuma";
 export * from "./csv";

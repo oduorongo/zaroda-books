@@ -50,6 +50,19 @@ export default async function AdminPage() {
         />
       </div>
 
+      {gateway.emailRedirectedTo && (
+        <div className="card" style={{ marginBottom: "1.25rem", borderLeft: "4px solid var(--alarm)" }}>
+          <div className="eyebrow" style={{ color: "var(--alarm)" }}>All email is being diverted</div>
+          <p style={{ margin: ".5rem 0 0", lineHeight: 1.6 }}>
+            Every message the system sends is going to{" "}
+            <strong className="mono">{gateway.emailRedirectedTo}</strong> instead of the person
+            it names — including password reset links, which are working keys to an account.
+            Remove <span className="mono">EMAIL_REDIRECT_TO</span> before any tenant relies on
+            email.
+          </p>
+        </div>
+      )}
+
       <div className="card" style={{ marginBottom: "1.25rem" }}>
         <div className="eyebrow" style={{ color: "var(--gold)", marginBottom: ".75rem" }}>
           M-Pesa gateway — as this server sees it
@@ -84,6 +97,14 @@ export default async function AdminPage() {
             <tr>
               <td>Callback URL</td>
               <td className="n mono" style={{ fontSize: ".78rem" }}>{gateway.callbackUrl}</td>
+            </tr>
+            <tr>
+              <td>Email sender</td>
+              <td className="n mono">
+                {gateway.emailConfigured
+                  ? (gateway.emailFrom ?? "onboarding@resend.dev (Resend shared sender)")
+                  : <span style={{ color: "var(--alarm)" }}>not configured</span>}
+              </td>
             </tr>
           </tbody>
         </table>

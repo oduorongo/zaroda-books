@@ -9,6 +9,7 @@ import {
 
 export type { SubscriptionStatus };
 import { tumaCallbackUrl } from "@/server/tuma";
+import { emailConfigured, emailRedirectedTo } from "@/server/email";
 import { getCurrentUser, isPlatformAdmin } from "@/server/auth";
 
 /**
@@ -377,6 +378,9 @@ export async function gatewayStatus() {
     testAmountApplies: isTest,
     primaryWouldCharge: cents,
     callbackUrl: tumaCallbackUrl(),
+    emailFrom: process.env.RESEND_FROM ?? null,
+    emailConfigured: emailConfigured(),
+    emailRedirectedTo: emailRedirectedTo(),
   };
 }
 
