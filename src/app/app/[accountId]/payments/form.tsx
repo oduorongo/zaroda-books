@@ -95,8 +95,8 @@ export function PaymentForm({
             <tr>
               <th>Vote head</th>
               <th className="n">Amount</th>
-              <th className="n">On the vote</th>
-              <th className="n">Left after</th>
+              <th className="n">On the vote now</th>
+              <th className="n">If you post this</th>
             </tr>
           </thead>
           <tbody>
@@ -116,7 +116,14 @@ export function PaymentForm({
                   </td>
                   <td className="n" style={{ color: "var(--muted)" }}>{formatKes(available)}</td>
                   <td className="n" style={line > available ? { color: "var(--alarm)" } : undefined}>
-                    {line ? formatKes(available - line) : "—"}
+                    {/* A bare negative here was read as the vote's actual balance.
+                        Saying "overdrawn by" names it for what it is: what this
+                        payment would do, not what the books currently say. */}
+                    {!line
+                      ? "—"
+                      : line > available
+                        ? `Overdrawn by ${formatKes(line - available)}`
+                        : formatKes(available - line)}
                   </td>
                 </tr>
               );
