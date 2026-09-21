@@ -1,13 +1,13 @@
 import "server-only";
-import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
-import { cookies } from "next/headers";
+import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { cookies, headers } from "next/headers";
 import { db, schema } from "@/db";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import type { AuditScope, BookScope } from "@/domain";
+import { SESSION_DAYS, sessionIsUsable, shouldTouchSession } from "@/domain";
 
 const COOKIE = "zb_session";
 const VIEW_AS_COOKIE = "zb_view_as";
-const MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 const VIEW_AS_MAX_AGE_SECONDS = 60 * 60 * 2;
 
 function secret() {
@@ -31,35 +31,93 @@ export function verifyPassword(password: string, stored: string): boolean {
 
 const sign = (payload: string) => createHmac("sha256", secret()).update(payload).digest("hex");
 
+/**
+ * SHA-256, not scrypt: the token is 32 random bytes we chose, so there is
+ * nothing to brute force and no reason to verify it slowly on every page.
+ */
+const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
+
+/**
+ * Opens a session: a random token in the cookie, its hash in the database.
+ * Storing the hash means a leaked database cannot be used to impersonate
+ * anyone, and the row is what makes the session revocable.
+ */
 export async function startSession(userId: string) {
-  const expires = Date.now() + MAX_AGE_SECONDS * 1000;
-  const payload = `${userId}.${expires}`;
-  (await cookies()).set(COOKIE, `${payload}.${sign(payload)}`, {
+  const token = randomBytes(32).toString("base64url");
+  const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
+
+  const h = await headers();
+  await db.insert(schema.sessions).values({
+    userId,
+    tokenHash: hashToken(token),
+    expiresAt,
+    lastSeenAt: new Date(),
+    userAgent: h.get("user-agent")?.slice(0, 300) ?? null,
+    ip: h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+  });
+
+  (await cookies()).set(COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: MAX_AGE_SECONDS,
+    maxAge: SESSION_DAYS * 24 * 60 * 60,
   });
 }
-
+/** Signing out revokes the row too, so the cookie cannot be replayed. */
 export async function endSession() {
-  (await cookies()).delete(COOKIE);
+  const jar = await cookies();
+  const token = jar.get(COOKIE)?.value;
+  if (token) {
+    await db.update(schema.sessions).set({ revokedAt: new Date() })
+      .where(eq(schema.sessions.tokenHash, hashToken(token)));
+  }
+  jar.delete(COOKIE);
 }
-
 async function sessionUserId(): Promise<string | null> {
-  const raw = (await cookies()).get(COOKIE)?.value;
-  if (!raw) return null;
-  const [userId, expires, signature] = raw.split(".");
-  if (!userId || !expires || !signature) return null;
+  const token = (await cookies()).get(COOKIE)?.value;
+  if (!token) return null;
 
-  const expected = Buffer.from(sign(`${userId}.${expires}`), "hex");
-  const actual = Buffer.from(signature, "hex");
-  if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return null;
-  if (Number(expires) < Date.now()) return null;
-  return userId;
+  const [session] = await db.select().from(schema.sessions)
+    .where(eq(schema.sessions.tokenHash, hashToken(token)));
+  if (!sessionIsUsable(session)) return null;
+
+  // Kept roughly current rather than exactly: see shouldTouchSession.
+  if (shouldTouchSession(session.lastSeenAt)) {
+    await db.update(schema.sessions).set({ lastSeenAt: new Date() })
+      .where(eq(schema.sessions.id, session.id));
+  }
+  return session.userId;
 }
 
+/** Every session but this one — or every one, when no token is given. */
+export async function revokeSessions(userId: string, exceptToken?: string) {
+  const rows = await db.select().from(schema.sessions)
+    .where(and(eq(schema.sessions.userId, userId), isNull(schema.sessions.revokedAt)));
+  const keep = exceptToken ? hashToken(exceptToken) : null;
+  for (const row of rows) {
+    if (row.tokenHash === keep) continue;
+    await db.update(schema.sessions).set({ revokedAt: new Date() })
+      .where(eq(schema.sessions.id, row.id));
+  }
+}
+
+/** The devices a person is signed in on, newest first. */
+export async function listSessions(userId: string) {
+  const token = (await cookies()).get(COOKIE)?.value;
+  const current = token ? hashToken(token) : null;
+  const rows = await db.select().from(schema.sessions)
+    .where(and(eq(schema.sessions.userId, userId), isNull(schema.sessions.revokedAt)))
+    .orderBy(desc(schema.sessions.createdAt));
+  return rows
+    .filter((r) => sessionIsUsable(r))
+    .map((r) => ({ ...r, isCurrent: r.tokenHash === current }));
+}
+
+export async function revokeSession(userId: string, sessionId: string) {
+  await db.update(schema.sessions).set({ revokedAt: new Date() })
+    .where(and(eq(schema.sessions.id, sessionId), eq(schema.sessions.userId, userId)));
+}
 /** Is this user Zaroda Solutions? Read from the table, never from a cookie. */
 export async function isPlatformAdmin(userId: string): Promise<boolean> {
   const [row] = await db

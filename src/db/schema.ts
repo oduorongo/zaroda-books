@@ -326,3 +326,27 @@ export const passwordResets = pgTable("password_resets", {
   usedAt: timestamp("used_at"),
   requestedIp: text("requested_ip"),
 }, (t) => [index("password_resets_user_idx").on(t.userId)]);
+
+/**
+ * One row per signed-in device.
+ *
+ * A session used to be a signed cookie and nothing more, which meant it could
+ * not be taken back: a lost phone stayed signed in for thirty days, and
+ * changing a password shut nobody out. The cookie now carries a random token
+ * whose hash is here, so a session can be revoked the moment it needs to be.
+ *
+ * The token is stored hashed, like a password and for the same reason.
+ */
+export const sessions = pgTable("sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  tokenHash: text("token_hash").notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastSeenAt: timestamp("last_seen_at"),
+  expiresAt: timestamp("expires_at").notNull(),
+  revokedAt: timestamp("revoked_at"),
+  // Enough to recognise a device in a list, never enough to identify a person
+  // beyond what their own browser already announces.
+  userAgent: text("user_agent"),
+  ip: text("ip"),
+}, (t) => [index("sessions_user_idx").on(t.userId)]);

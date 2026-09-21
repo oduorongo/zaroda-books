@@ -3,7 +3,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { resetIsUsable } from "@/domain";
-import { hashPassword } from "@/server/auth";
+import { hashPassword, revokeSessions } from "@/server/auth";
 import { emailLayout, sendEmail } from "@/server/email";
 
 const VALID_MINUTES = 60;
@@ -68,10 +68,11 @@ export async function resetForToken(token: string) {
 }
 
 /**
- * Sets the new password and spends the link. The session cookie is not
- * invalidated here — there is no server-side session store to invalidate —
- * which is worth knowing: a thief already signed in stays signed in for the
- * rest of the cookie's life.
+ * Sets the new password, spends the link, and signs out every device.
+ *
+ * Signing the others out is the point of a reset as often as the new password
+ * is: somebody resetting because their phone was taken needs whoever has it
+ * shut out, not merely a second password in circulation.
  */
 export async function completePasswordReset(token: string, password: string) {
   const row = await resetForToken(token);
@@ -84,4 +85,6 @@ export async function completePasswordReset(token: string, password: string) {
   await db.update(schema.passwordResets)
     .set({ usedAt: new Date() })
     .where(eq(schema.passwordResets.id, row.id));
+
+  await revokeSessions(row.userId);
 }
