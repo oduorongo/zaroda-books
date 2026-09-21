@@ -380,6 +380,10 @@ export async function gatewayStatus() {
     callbackUrl: tumaCallbackUrl(),
     emailFrom: process.env.RESEND_FROM ?? null,
     emailConfigured: emailConfigured(),
+    // Length and last four, as for the Tuma key: enough to spot a value that
+    // was truncated on its way into the environment, and no more.
+    emailKeyLength: process.env.RESEND_API_KEY?.length ?? 0,
+    emailKeyEnds: process.env.RESEND_API_KEY?.slice(-4) ?? null,
     emailRedirectedTo: emailRedirectedTo(),
     notifyEmail: process.env.ADMIN_NOTIFY_EMAIL?.trim() || null,
   };
