@@ -43,6 +43,9 @@ export const memberships = pgTable("memberships", {
    * would hand them every other school's books.
    */
   schoolId: uuid("school_id").references(() => schools.id),
+  // Which books a person lands in when they belong to several: the oldest.
+  // Without an order it would differ between page loads.
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => [unique().on(t.orgId, t.userId)]);
 
 export const schools = pgTable("schools", {

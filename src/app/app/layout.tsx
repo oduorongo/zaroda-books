@@ -1,13 +1,14 @@
 import { redirect } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { getCurrentUser, isPlatformAdmin } from "@/server/auth";
+import { getCurrentUser, isPlatformAdmin, myOrgs } from "@/server/auth";
 import { getOrgBooks } from "@/server/queries";
 import { logout } from "../login/actions";
 import { Logo } from "../logo";
 import { BookSwitcher } from "./book-switcher";
 import { SideNav } from "./side-nav";
 import { ViewAsBanner } from "./view-as-banner";
+import { OrgSwitcher } from "./org-switcher";
 
 /** "Jane Atieno Ochieng" becomes JO: the first name and the last, never the middle. */
 const initials = (name: string) => {
@@ -22,9 +23,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const [books, admin] = await Promise.all([
+  const [books, admin, orgs] = await Promise.all([
     getOrgBooks(user.orgId, user.bookScope),
     isPlatformAdmin(user.id),
+    myOrgs(user.id),
   ]);
 
   return (
@@ -46,6 +48,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             sizes="268px"
           />
         </div>
+
+        {/* Only when there is a choice to make. */}
+        {orgs.length > 1 && !user.viewingAs && (
+          <OrgSwitcher orgs={orgs} current={user.orgId} />
+        )}
 
         <div>
           <div className="eyebrow" style={{ color: "var(--on-dark-dim)", marginBottom: ".5rem" }}>School</div>

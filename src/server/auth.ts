@@ -4,10 +4,12 @@ import { cookies, headers } from "next/headers";
 import { db, schema } from "@/db";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import type { AuditScope, BookScope } from "@/domain";
-import { SESSION_DAYS, sessionIsUsable, shouldTouchSession } from "@/domain";
+import { SESSION_DAYS, chooseMembership, sessionIsUsable, shouldTouchSession } from "@/domain";
 
 const COOKIE = "zb_session";
 const VIEW_AS_COOKIE = "zb_view_as";
+/** Which books, for somebody who belongs to more than one set. */
+const ORG_COOKIE = "zb_org";
 const VIEW_AS_MAX_AGE_SECONDS = 60 * 60 * 2;
 
 function secret() {
@@ -219,10 +221,14 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     }
   }
 
-  const [membership] = await db
+  const memberships = await db
     .select()
     .from(schema.memberships)
     .where(eq(schema.memberships.userId, userId));
+
+  // A freelancer may keep their own practice and also be invited to a school.
+  // The cookie only selects among what they already hold — see choose-org.ts.
+  const membership = chooseMembership(memberships, (await cookies()).get(ORG_COOKIE)?.value);
   if (!membership) return null;
 
   return {
@@ -247,4 +253,28 @@ export async function auditorScope(userId: string): Promise<AuditScope | null> {
     .from(schema.auditors)
     .where(and(eq(schema.auditors.userId, userId), isNull(schema.auditors.revokedAt)));
   return row ?? null;
+}
+
+/** Every set of books this person belongs to, for the switcher. */
+export async function myOrgs(userId: string) {
+  return db
+    .select({ orgId: schema.orgs.id, name: schema.orgs.name, role: schema.memberships.role })
+    .from(schema.memberships)
+    .innerJoin(schema.orgs, eq(schema.orgs.id, schema.memberships.orgId))
+    .where(eq(schema.memberships.userId, userId))
+    .orderBy(schema.memberships.createdAt);
+}
+
+/**
+ * Remembers which books to open. Not a grant: getCurrentUser only honours
+ * it if the person is a member, so setting it to anything else does nothing.
+ */
+export async function chooseOrg(orgId: string) {
+  (await cookies()).set(ORG_COOKIE, orgId, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: SESSION_DAYS * 24 * 60 * 60,
+  });
 }

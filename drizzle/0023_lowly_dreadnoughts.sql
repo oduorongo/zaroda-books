@@ -1,0 +1,1 @@
+ALTER TABLE "memberships" ADD COLUMN "created_at" timestamp DEFAULT now() NOT NULL;

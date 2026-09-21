@@ -197,15 +197,6 @@ export async function acceptInvite(code: string) {
   if (mine.some((m) => m.orgId === invite.orgId)) {
     throw new Error("You are already on these books.");
   }
-  // One person, one set of books. getCurrentUser resolves a single membership,
-  // so a second one would put them in whichever the database returned first.
-  // Refused plainly rather than left to chance until there is a way to switch.
-  if (mine.length > 0) {
-    throw new Error(
-      "This account already keeps another set of books. Sign up with a different email "
-      + "to join these, or ask the owner to invite that address instead.",
-    );
-  }
 
   await db.insert(schema.memberships).values({
     orgId: invite.orgId, userId: user.id, role: invite.role, schoolId: invite.schoolId,
