@@ -157,7 +157,7 @@ export default function PrivacyPage() {
         <li>hand it over in a form you can take elsewhere</li>
       </ul>
       <p>
-        Write to <a href="mailto:support@zarodasolutions.app">support@zarodasolutions.app</a>. We will
+        Write to <a href="mailto:support@zarodabooks.com">support@zarodabooks.com</a>. We will
         answer within thirty days. If you are not satisfied you may complain to the Office of the
         Data Protection Commissioner at <a href="https://www.odpc.go.ke">odpc.go.ke</a>.
       </p>
@@ -198,7 +198,7 @@ export default function PrivacyPage() {
       <h2>Contact</h2>
       <p>
         Zaroda Solutions<br />
-        <a href="mailto:support@zarodasolutions.app">support@zarodasolutions.app</a><br />
+        <a href="mailto:support@zarodabooks.com">support@zarodabooks.com</a><br />
         0724 282 065 · WhatsApp 0781 230 805
       </p>
     </>

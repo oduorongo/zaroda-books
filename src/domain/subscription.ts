@@ -102,7 +102,7 @@ export function bookEntitlement(input: {
         allowed: false,
         reason:
           "These books are on hold. Reach us on WhatsApp 0781 230 805 or "
-          + "support@zarodasolutions.app and we will sort it out. Nothing you have "
+          + "support@zarodabooks.com and we will sort it out. Nothing you have "
           + "entered is lost.",
       };
     }

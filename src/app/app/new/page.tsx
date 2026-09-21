@@ -40,7 +40,7 @@ function Entitlement({
         <p style={{ margin: ".5rem 0 0", fontSize: ".9rem", lineHeight: 1.6, color: "var(--muted)" }}>
           No new book can be opened until that is lifted. Nothing you have entered is lost.
           Reach us on <a href="https://wa.me/254781230805">WhatsApp 0781 230 805</a> or{" "}
-          <a href="mailto:support@zarodasolutions.app">support@zarodasolutions.app</a>.
+          <a href="mailto:support@zarodabooks.com">support@zarodabooks.com</a>.
         </p>
       </div>
     );

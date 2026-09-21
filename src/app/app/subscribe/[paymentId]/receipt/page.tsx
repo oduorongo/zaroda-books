@@ -53,7 +53,7 @@ export default async function ReceiptPage({
             <Logo height={54} variant="lockup" />
             <div className="note" style={{ marginTop: ".6rem", lineHeight: 1.6 }}>
               Zaroda Solutions<br />
-              support@zarodasolutions.app · 0724 282 065
+              support@zarodabooks.com · 0724 282 065
             </div>
           </div>
           <div style={{ textAlign: "right" }}>
