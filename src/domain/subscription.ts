@@ -71,8 +71,6 @@ export function bookEntitlement(input: {
   freeAllowanceUsed: boolean;
   /** Whether Zaroda has reviewed this org. Gates the free school, nothing else. */
   orgApproved: boolean;
-  /** Books the school already keeps at this level and year. */
-  booksAlreadyOpen: number;
   level: SchoolLevel;
   fyLabel: string;
   schoolId: string;
@@ -84,9 +82,12 @@ export function bookEntitlement(input: {
     // The free grant is one book, not a whole level. Paying absorbs it: the
     // subscription then covers every account at that level, the free one
     // included, so nobody is left with a book outside what they bought.
-    const freeAndSpent = input.subscription.isFree
-      && input.subscription.paidAt === null
-      && input.booksAlreadyOpen > 0;
+    //
+    // A row with isFree && !paidAt can only exist because the free book was
+    // already granted — the database allows at most one such row per org
+    // (subscriptions_one_free_per_org), so the row's mere existence is the
+    // whole proof, and does not need a second, racy count of open books.
+    const freeAndSpent = input.subscription.isFree && input.subscription.paidAt === null;
     if (freeAndSpent) return needsSubscription(input.level, input.fyLabel);
 
     return { allowed: true, bindTo: decision.bindTo, grantFree: false };
@@ -114,13 +115,19 @@ export function bookEntitlement(input: {
 
 /** One wording for the one reason a book is refused on money. */
 function needsSubscription(level: SchoolLevel, fyLabel: string): Entitlement {
-  return {
-    allowed: false,
-    reason:
-      `Opening this ${level} book for ${fyLabel} needs a subscription: `
-      + `KSh ${priceLabel(level)} for the year, covering every account this school `
-      + "keeps at that level. Your one free book has already been opened.",
-  };
+  return { allowed: false, reason: needsSubscriptionMessage(level, fyLabel) };
+}
+
+/**
+ * Exported so the server can raise the same message when a race for the free
+ * grant is caught at the database's unique index rather than at this check.
+ */
+export function needsSubscriptionMessage(level: SchoolLevel, fyLabel: string): string {
+  return (
+    `Opening this ${level} book for ${fyLabel} needs a subscription: `
+    + `KSh ${priceLabel(level)} for the year, covering every account this school `
+    + "keeps at that level. Your one free book has already been opened."
+  );
 }
 
 export type SubscriptionStatus = "paid" | "unpaid" | "free";

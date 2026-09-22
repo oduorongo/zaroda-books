@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "subscriptions_one_free_per_org" ON "subscriptions" USING btree ("org_id") WHERE "subscriptions"."is_free" = true;

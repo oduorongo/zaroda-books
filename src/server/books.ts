@@ -4,7 +4,7 @@ import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { db } from "../db/index.ts";
 import * as schema from "../db/schema.ts";
 import { chartFor } from "../domain/vote-heads.ts";
-import { bookEntitlement, schoolNameKey } from "../domain/subscription.ts";
+import { bookEntitlement, needsSubscriptionMessage, schoolNameKey } from "../domain/subscription.ts";
 import type { AccountType, SchoolLevel } from "../domain/vote-heads.ts";
 
 export type { SchoolLevel };
@@ -414,7 +414,7 @@ async function claimEntitlement(input: {
   fyLabel: string;
   schoolId: string;
 }) {
-  const [[existing], used, [org], [books]] = await Promise.all([
+  const [[existing], used, [org]] = await Promise.all([
     db
       .select()
       .from(schema.subscriptions)
@@ -428,23 +428,12 @@ async function claimEntitlement(input: {
       .select({ approvedAt: schema.orgs.approvedAt })
       .from(schema.orgs)
       .where(eq(schema.orgs.id, input.orgId)),
-    // Books this school already keeps at this level and year. The free grant
-    // is one book, so the second one is where the subscription is asked for.
-    db
-      .select({ n: sql`count(*)::int` })
-      .from(schema.accounts)
-      .innerJoin(schema.financialYears, eq(schema.financialYears.accountId, schema.accounts.id))
-      .where(and(
-        eq(schema.accounts.schoolId, input.schoolId),
-        eq(schema.financialYears.label, input.fyLabel),
-      )),
   ]);
 
   const decision = bookEntitlement({
     subscription: existing,
     freeAllowanceUsed: used,
     orgApproved: Boolean(org?.approvedAt),
-    booksAlreadyOpen: Number(books?.n ?? 0),
     level: input.level,
     fyLabel: input.fyLabel,
     schoolId: input.schoolId,
@@ -460,14 +449,25 @@ async function claimEntitlement(input: {
     return;
   }
 
-  await db.insert(schema.subscriptions).values({
-    orgId: input.orgId,
-    level: input.level,
-    fyLabel: input.fyLabel,
-    schoolId: decision.bindTo,
-    boundAt: new Date(),
-    isFree: decision.grantFree,
-  });
+  try {
+    await db.insert(schema.subscriptions).values({
+      orgId: input.orgId,
+      level: input.level,
+      fyLabel: input.fyLabel,
+      schoolId: decision.bindTo,
+      boundAt: new Date(),
+      isFree: decision.grantFree,
+    });
+  } catch (err) {
+    // The read above can be stale under two requests racing for the same
+    // free grant; subscriptions_one_free_per_org is what actually stops the
+    // second one, so a unique violation here means the allowance is spent,
+    // not a server fault.
+    if (decision.grantFree && String(err).includes("subscriptions_one_free_per_org")) {
+      throw new Error(needsSubscriptionMessage(input.level, input.fyLabel));
+    }
+    throw err;
+  }
 }
 
 /**

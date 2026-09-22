@@ -1,7 +1,8 @@
 import {
-  pgTable, uuid, text, integer, bigint, date, timestamp, boolean, unique, index,
+  pgTable, uuid, text, integer, bigint, date, timestamp, boolean, unique, uniqueIndex, index,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 /** A firm or a school group. Freelance accountants get one org, many schools. */
 export const orgs = pgTable("orgs", {
@@ -87,7 +88,17 @@ export const subscriptions = pgTable("subscriptions", {
    */
   isFree: boolean("is_free").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-}, (t) => [unique("subscriptions_org_level_fy").on(t.orgId, t.level, t.fyLabel)]);
+}, (t) => [
+  unique("subscriptions_org_level_fy").on(t.orgId, t.level, t.fyLabel),
+  /**
+   * At most one free row per org, ever — enforced by the database rather than
+   * by a read-then-write check in application code. Two book-creation
+   * requests racing for the free grant used to both be able to read "not
+   * used yet" before either had written its row; with this in place the
+   * second INSERT is rejected outright, whatever order the requests land in.
+   */
+  uniqueIndex("subscriptions_one_free_per_org").on(t.orgId).where(sql`${t.isFree} = true`),
+]);
 
 /** One row per bank account / vote book: SIMBA, GPA, Operations, Boarding... */
 export const accounts = pgTable("accounts", {

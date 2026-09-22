@@ -5,7 +5,6 @@ const args = (over: Partial<Parameters<typeof bookEntitlement>[0]> = {}) => ({
   subscription: undefined,
   freeAllowanceUsed: false,
   orgApproved: true,
-  booksAlreadyOpen: 0,
   level: "primary" as const,
   fyLabel: "2025/26",
   schoolId: "school-a",
@@ -25,7 +24,6 @@ describe("the free grant is one book, not a whole level", () => {
     const d = bookEntitlement(args({
       subscription: { schoolId: "school-a", paidAt: null, isFree: true },
       freeAllowanceUsed: true,
-      booksAlreadyOpen: 1,
     }));
     expect(d.allowed).toBe(false);
   });
@@ -34,7 +32,6 @@ describe("the free grant is one book, not a whole level", () => {
     const d = bookEntitlement(args({
       subscription: { schoolId: "school-a", paidAt: null, isFree: true },
       freeAllowanceUsed: true,
-      booksAlreadyOpen: 1,
       level: "senior",
     }));
     if (d.allowed) throw new Error("expected a refusal");
@@ -47,7 +44,6 @@ describe("the free grant is one book, not a whole level", () => {
     expect(bookEntitlement(args({
       subscription: { schoolId: "school-a", paidAt: new Date(), isFree: true },
       freeAllowanceUsed: true,
-      booksAlreadyOpen: 3,
     }))).toEqual({ allowed: true, bindTo: null, grantFree: false });
   });
 
@@ -55,7 +51,6 @@ describe("the free grant is one book, not a whole level", () => {
     expect(bookEntitlement(args({
       subscription: { schoolId: "school-a", paidAt: new Date(), isFree: false },
       freeAllowanceUsed: true,
-      booksAlreadyOpen: 7,
     })).allowed).toBe(true);
   });
 
@@ -63,7 +58,6 @@ describe("the free grant is one book, not a whole level", () => {
     expect(bookEntitlement(args({
       subscription: { schoolId: "school-a", paidAt: null, isFree: false },
       freeAllowanceUsed: true,
-      booksAlreadyOpen: 2,
     })).allowed).toBe(true);
   });
 
