@@ -81,6 +81,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <form action={logout}>
             <button type="submit" className="btn-link">Sign out</button>
           </form>
+          <a
+            href="https://zarodasolutions.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ fontSize: ".78rem", color: "var(--on-dark-dim)" }}
+          >
+            Zaroda School
+          </a>
         </div>
       </nav>
 
