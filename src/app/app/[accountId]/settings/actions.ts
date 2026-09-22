@@ -4,7 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { loadBook } from "@/server/book-context";
 import { isSubCountyOf } from "@/domain";
-import { archiveBook, changeFinancialYear, saveSchool, saveSchoolLocation } from "@/server/books";
+import {
+  archiveBook, changeAccountType, changeFinancialYear, saveSchool, saveSchoolLocation,
+} from "@/server/books";
+import type { AccountType } from "@/domain";
 
 export async function changeFinancialYearAction(
   _prev: string | null,
@@ -26,6 +29,28 @@ export async function changeFinancialYearAction(
 
   revalidatePath(`/app/${accountId}`, "layout");
   return `Saved. This book now runs for ${fyLabel}.`;
+}
+
+export async function changeAccountTypeAction(
+  _prev: string | null,
+  form: FormData,
+): Promise<string | null> {
+  const accountId = String(form.get("accountId") ?? "");
+  const { user } = await loadBook(accountId, { write: true, require: "financialYear.change" });
+
+  const accountType = String(form.get("accountType") ?? "") as AccountType;
+  if (!accountType) return "Choose the account type.";
+
+  try {
+    await changeAccountType({
+      accountId, userId: user.id, orgId: user.orgId, accountType,
+    });
+  } catch (e) {
+    return e instanceof Error ? e.message : "The account type could not be changed.";
+  }
+
+  revalidatePath("/app", "layout");
+  return "Saved. The vote heads have been rebuilt for this account.";
 }
 
 export async function archiveBookAction(

@@ -1,8 +1,11 @@
-import { financialYearInProgress, financialYearLabels } from "@/domain";
+import {
+  accountTypesFor, financialYearInProgress, financialYearLabels, type AccountType,
+} from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { auditorsOverOrg } from "@/server/audit";
 import { describeAuditScope } from "@/domain";
 import { getTxns } from "@/server/queries";
+import { AccountTypeForm } from "./account-type-form";
 import { FinancialYearForm } from "./form";
 import { ArchiveForm } from "./archive-form";
 import { SchoolForm } from "./school-form";
@@ -49,6 +52,14 @@ export default async function SettingsPage({
         accountId={accountId}
         current={fy.label}
         years={years}
+        entries={entries}
+      />
+
+      <h2>Account type</h2>
+      <AccountTypeForm
+        accountId={accountId}
+        current={account.type as AccountType}
+        options={accountTypesFor(school.level)}
         entries={entries}
       />
 

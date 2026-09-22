@@ -1,6 +1,6 @@
 // No "server-only" here: the seed script imports this too, so the books are
 // opened the same way whether they come from the UI or from a seed.
-import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { db } from "../db/index.ts";
 import * as schema from "../db/schema.ts";
 import { chartFor } from "../domain/vote-heads.ts";
@@ -190,6 +190,128 @@ export async function changeFinancialYear(input: {
     }),
   ] as const;
   await db.batch(writes as unknown as Parameters<typeof db.batch>[0]);
+}
+
+/**
+ * Changes what a book is charged with — Operations to Tuition, and so on —
+ * for a school of the same level. Only while the book is empty: the vote
+ * heads belong to the account type, and a posted entry names one of them, so
+ * changing type under posted entries would leave an entry pointing at a vote
+ * head that no longer exists.
+ *
+ * Refused if the school already keeps a book of the type being moved to —
+ * moving into it would silently merge two books under one, which is not
+ * what "change the type" means.
+ */
+export async function changeAccountType(input: {
+  accountId: string;
+  userId: string;
+  orgId: string;
+  accountType: AccountType;
+}) {
+  const [row] = await db
+    .select({ account: schema.accounts, school: schema.schools })
+    .from(schema.accounts)
+    .innerJoin(schema.schools, eq(schema.accounts.schoolId, schema.schools.id))
+    .where(and(
+      eq(schema.accounts.id, input.accountId),
+      eq(schema.schools.orgId, input.orgId),
+    ));
+  if (!row) throw new Error("Book not found.");
+  const { account, school } = row;
+  if (account.type === input.accountType) return;
+
+  const chart = chartFor(school.level as SchoolLevel, input.accountType);
+  if (!chart) throw new Error(`A ${school.level} school has no ${input.accountType} account.`);
+
+  const [fy] = await db
+    .select()
+    .from(schema.financialYears)
+    .where(eq(schema.financialYears.accountId, input.accountId));
+  if (!fy) throw new Error("This book has no financial year.");
+
+  const periodIds = (
+    await db.select({ id: schema.periods.id }).from(schema.periods)
+      .where(eq(schema.periods.financialYearId, fy.id))
+  ).map((p) => p.id);
+
+  const [{ count } = { count: 0 }] = periodIds.length
+    ? await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(schema.transactions)
+      .where(inArray(schema.transactions.periodId, periodIds))
+    : [{ count: 0 }];
+
+  if (count > 0) {
+    throw new Error(
+      `This book already has ${count} entr${count === 1 ? "y" : "ies"} posted. `
+      + "The account type fixes which vote heads exist, so it can only be changed "
+      + "while the book is empty. Delete the entries first, or open a new book.",
+    );
+  }
+
+  const [already] = await db
+    .select({ id: schema.accounts.id })
+    .from(schema.accounts)
+    .where(and(
+      eq(schema.accounts.schoolId, school.id),
+      eq(schema.accounts.type, input.accountType),
+      isNull(schema.accounts.archivedAt),
+    ));
+  if (already) {
+    throw new Error(
+      `${school.name} already keeps a ${chart.label} book. Two books of the same type on one `
+      + "school would be indistinguishable — archive the other one first if this should replace it.",
+    );
+  }
+
+  const voteHeadIds = (
+    await db.select({ id: schema.voteHeads.id }).from(schema.voteHeads)
+      .where(eq(schema.voteHeads.accountId, input.accountId))
+  ).map((h) => h.id);
+
+  const newHeads = chart.heads.map((h) => ({
+    accountId: input.accountId, code: h.code, name: h.name, order: h.order,
+  }));
+
+  const writes = [
+    db.update(schema.accounts)
+      .set({ type: input.accountType, name: chart.label })
+      .where(eq(schema.accounts.id, input.accountId)),
+    ...(voteHeadIds.length
+      ? [
+        db.delete(schema.voteHeadRates).where(inArray(schema.voteHeadRates.voteHeadId, voteHeadIds)),
+        db.delete(schema.voteHeads).where(eq(schema.voteHeads.accountId, input.accountId)),
+      ]
+      : []),
+    db.insert(schema.voteHeads).values(newHeads),
+    db.insert(schema.auditLog).values({
+      orgId: input.orgId,
+      userId: input.userId,
+      action: "update",
+      entity: "account",
+      entityId: input.accountId,
+      before: JSON.stringify({ type: account.type, name: account.name }),
+      after: JSON.stringify({ type: input.accountType, name: chart.label }),
+    }),
+  ] as const;
+  await db.batch(writes as unknown as Parameters<typeof db.batch>[0]);
+
+  // The rates ride on the vote head IDs just inserted, which batch() does not
+  // hand back — so they are seeded in a second pass, the same as createBook
+  // does when opening a book for the first time.
+  const inserted = await db.select().from(schema.voteHeads)
+    .where(eq(schema.voteHeads.accountId, input.accountId));
+  const idByCode = new Map(inserted.map((h) => [h.code, h.id]));
+  const rates = chart.heads
+    .filter((h) => h.perLearner || h.flat)
+    .map((h) => ({
+      financialYearId: fy.id,
+      voteHeadId: idByCode.get(h.code)!,
+      perLearner: h.perLearner ?? 0,
+      flatAmount: h.flat ?? 0,
+    }));
+  if (rates.length) await db.insert(schema.voteHeadRates).values(rates);
 }
 
 /**
