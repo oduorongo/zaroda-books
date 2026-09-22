@@ -95,7 +95,12 @@ export function ReceiptForm({
       {receipt && <input type="hidden" name="transactionId" value={receipt.id} />}
 
       <div className={capitation ? "grid-4" : "grid-3"}>
-        <label className="field">Date
+        {/* The date the money was received. Everything downstream — which
+            month this posts into, the cash book, the ledger — is organised
+            around it, so it stays a plain required field rather than being
+            folded into the banking date below, which is a separate, later
+            event. */}
+        <label className="field">Date received
           <input name="date" type="date" value={date} required
             onChange={(e) => {
               setDate(e.target.value);
@@ -130,13 +135,16 @@ export function ReceiptForm({
             onChange={(e) => setBanked(e.target.checked)} />
           Banked
         </label>
-        <label className="field" style={{ margin: 0 }}>Banked on
+        {/* Defaults to the date received and only needs touching when the
+            deposit happened on a later day, so it reads as a footnote to
+            "Banked" rather than a second date of equal weight. */}
+        <label className="field" style={{ margin: 0 }}>Date banked, if later
           <input name="bankedOn" type="date" value={bankedOn} min={date} disabled={!banked}
             onChange={(e) => setBankedOn(e.target.value)} />
         </label>
         <p className="note" style={{ flex: "1 1 18rem", margin: 0 }}>
           {banked
-            ? "The receipt is entered in cash and a contra banks it on the date shown. Untick it only if the money stayed in the cash box."
+            ? "Same day as received unless changed above. A contra moves it from cash to bank on that date. Untick Banked only if the money stayed in the cash box."
             : "The money stays in cash. Bank it later from Cash and bank."}
         </p>
       </div>
