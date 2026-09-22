@@ -250,18 +250,25 @@ export async function changeAccountType(input: {
     );
   }
 
+  // Scoped to this book's own financial year: an account of the target type
+  // in a different year is a different year's book, not a collision — every
+  // account carries all its years via in-place label updates, so the same
+  // school legitimately holds one of each type per year.
   const [already] = await db
     .select({ id: schema.accounts.id })
     .from(schema.accounts)
+    .innerJoin(schema.financialYears, eq(schema.financialYears.accountId, schema.accounts.id))
     .where(and(
       eq(schema.accounts.schoolId, school.id),
       eq(schema.accounts.type, input.accountType),
       isNull(schema.accounts.archivedAt),
+      eq(schema.financialYears.label, fy.label),
     ));
   if (already) {
     throw new Error(
-      `${school.name} already keeps a ${chart.label} book. Two books of the same type on one `
-      + "school would be indistinguishable — archive the other one first if this should replace it.",
+      `${school.name} already keeps a ${chart.label} book for ${fy.label}. Two books of the same `
+      + "type on one school in one year would be indistinguishable — archive the other one first "
+      + "if this should replace it.",
     );
   }
 
