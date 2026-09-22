@@ -2,8 +2,33 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { db, schema } from "@/db";
 import { and, eq } from "drizzle-orm";
-import { bankingContraFor, validateTransaction } from "@/domain";
+import { bankingContraFor, cashAvailableAsAt, validateTransaction } from "@/domain";
 import type { NewTxn, Txn } from "@/domain";
+import { getTxns } from "./queries";
+
+/** Cash a transaction takes out of the box: a payment's cash leg, or a contra drawing cash to bank. */
+function cashOut(t: NewTxn | Txn): bigint | number {
+  if (t.kind === "payment") return t.cash;
+  if (t.kind === "contra" && t.from === "cash") return t.amount;
+  return 0;
+}
+
+async function assertCashAvailable(
+  financialYearId: string,
+  openingCash: number,
+  t: NewTxn,
+  excludingId?: string,
+) {
+  const out = cashOut(t);
+  if (!out || Number(out) <= 0) return;
+  const txns = await getTxns(financialYearId);
+  const available = cashAvailableAsAt(openingCash, txns, t.date, excludingId);
+  if (Number(out) > available) {
+    throw new Error(
+      "Not enough cash in hand for this amount as at this date. Draw cash from the bank first.",
+    );
+  }
+}
 
 /** The circular figures behind each allocation line, by vote head code. */
 export type LineRates = Record<string, { perLearner: number; flatAmount: number }>;
@@ -37,6 +62,12 @@ export async function createTransaction(input: {
   const candidate = { ...input.txn, id } as Txn;
   const errors = validateTransaction(candidate, heads.map((h) => h.code));
   if (errors.length) throw new Error(errors.join(" "));
+
+  const fy = await db.query.financialYears.findFirst({
+    where: eq(schema.financialYears.id, period.financialYearId),
+  });
+  if (!fy) throw new Error("Financial year not found.");
+  await assertCashAvailable(fy.id, fy.openingCash, input.txn);
 
   const t = input.txn;
   const row = {
@@ -180,6 +211,12 @@ export async function updateTransaction(input: {
   const candidate = { ...input.txn, id } as Txn;
   const errors = validateTransaction(candidate, heads.map((h) => h.code));
   if (errors.length) throw new Error(errors.join(" "));
+
+  const fy = await db.query.financialYears.findFirst({
+    where: eq(schema.financialYears.id, from.financialYearId),
+  });
+  if (!fy) throw new Error("Financial year not found.");
+  await assertCashAvailable(fy.id, fy.openingCash, input.txn, id);
 
   const t = input.txn;
   const row = {

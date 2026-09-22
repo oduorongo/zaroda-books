@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { balancesAfter } from "../balances";
+import { balancesAfter, cashAvailableAsAt } from "../balances";
 import { toCents } from "../money";
 import type { Txn } from "../types";
 
@@ -61,5 +61,40 @@ describe("balancesAfter", () => {
     const start = { cash: toCents(100), bank: toCents(900) };
     balancesAfter(start, [receipt, payment]);
     expect(start).toEqual({ cash: toCents(100), bank: toCents(900) });
+  });
+});
+
+describe("cashAvailableAsAt", () => {
+  const bankWithdrawal: Txn = {
+    id: "w", date: "2025-10-05", kind: "contra", particulars: "cash drawn",
+    from: "bank", to: "cash", amount: toCents(200),
+  };
+
+  it("counts only what had happened by that date, like voteBalancesAsAt", () => {
+    // The payment on the 9th is judged against the day, not the year: the
+    // receipt on the 3rd counts, the withdrawal on the 5th counts, but
+    // nothing after the 9th does.
+    expect(cashAvailableAsAt(opening.cash, [receipt, bankWithdrawal, payment], "2025-10-09"))
+      .toBe(toCents(100 + 50 + 200 - 20));
+  });
+
+  it("excludes entries that fall after the date", () => {
+    expect(cashAvailableAsAt(opening.cash, [receipt, bankWithdrawal, payment], "2025-10-04"))
+      .toBe(toCents(100 + 50));
+  });
+
+  it("includes an entry on the day itself", () => {
+    expect(cashAvailableAsAt(opening.cash, [receipt], "2025-10-03")).toBe(toCents(150));
+  });
+
+  it("excludes a transaction by id, so amending it does not count it twice", () => {
+    expect(cashAvailableAsAt(opening.cash, [receipt, payment], "2025-10-09", "payment-excl", ))
+      .toBe(toCents(100 + 50 - 20));
+    expect(cashAvailableAsAt(opening.cash, [receipt, payment], "2025-10-09", "p"))
+      .toBe(toCents(100 + 50));
+  });
+
+  it("is nil beyond opening for a date before anything happened", () => {
+    expect(cashAvailableAsAt(opening.cash, [receipt], "2025-10-01")).toBe(opening.cash);
   });
 });

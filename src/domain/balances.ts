@@ -1,3 +1,4 @@
+import type { Cents } from "./money";
 import type { Balances, Txn } from "./types";
 
 /**
@@ -18,4 +19,20 @@ export function balancesAfter(opening: Balances, txns: Txn[]): Balances {
     }
   }
   return { cash, bank };
+}
+
+/**
+ * Cash on hand as at a date, the same "on the day counts, later doesn't" rule
+ * as `voteBalancesAsAt` — a payment is judged against what the cash box held
+ * that day, not the year's total. `excludingId` leaves out a transaction's
+ * own prior version when amending it.
+ */
+export function cashAvailableAsAt(
+  openingCash: Cents,
+  txns: Txn[],
+  asAt: string,
+  excludingId?: string,
+): Cents {
+  const upTo = txns.filter((t) => t.date <= asAt && t.id !== excludingId);
+  return balancesAfter({ cash: openingCash, bank: 0 }, upTo).cash;
 }
