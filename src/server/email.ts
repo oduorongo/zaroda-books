@@ -42,12 +42,18 @@ export async function sendEmail(input: {
   // makes this testable before the DNS records are in place.
   const from = process.env.RESEND_FROM || "Zaroda Books <onboarding@resend.dev>";
 
+  // Sending happens from whichever domain is verified with Resend, which need
+  // not be the one people should write back to. Replies go to the address the
+  // site advertises and that forwards to a real inbox.
+  const replyTo = process.env.RESEND_REPLY_TO || "support@zarodabooks.com";
+
   try {
     const resp = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
         from,
+        reply_to: replyTo,
         to: [recipient],
         // Marked in the subject as well as the body: a diverted password
         // reset must never be mistaken for one's own.
