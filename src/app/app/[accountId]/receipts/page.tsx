@@ -55,7 +55,7 @@ export default async function ReceiptsPage({
       {capitation && seesCapitationLetter(user.position) && !user.readOnly && (
         <p className="no-print" style={{ margin: "0 0 1.1rem" }}>
           <Link href={`/app/${accountId}/capitation-letter`}>
-            Capitation letter to the Ministry for a term →
+            Capitation letter →
           </Link>
         </p>
       )}

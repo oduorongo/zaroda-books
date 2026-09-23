@@ -33,10 +33,10 @@ export function LetterDetailsForm({ accountId, details, books, locked }: {
 
       <div className="eyebrow">The school</div>
       <div className="grid-2">
-        {field("Postal address", "postalAddress", "P.O. BOX 88-40400")}
-        {field("Town", "town", "SUNA - MIGORI")}
+        {field("Postal address", "postalAddress", "P.O. BOX 250-50100")}
+        {field("Town", "town", "KAKAMEGA")}
       </div>
-      {field("Short name for the letter body (optional)", "shortName", "Manyonge JS")}
+      {field("Short name for the letter body (optional)", "shortName", "Mwangaza JS")}
 
       <div className="eyebrow">Sub-County Director of Education</div>
       <p className="note" style={{ margin: 0 }}>
@@ -45,14 +45,14 @@ export function LetterDetailsForm({ accountId, details, books, locked }: {
           : "The school has no sub-county yet. The owner of these books sets it in Book settings."}
       </p>
       <div className="grid-2">
-        {field("Postal address", "scdeAddress", "P.O. BOX 46 – 40400")}
-        {field("Town", "scdeTown", "SUNA – MIGORI")}
+        {field("Postal address", "scdeAddress", "P.O. BOX 12-50100")}
+        {field("Town", "scdeTown", "KAKAMEGA")}
       </div>
 
       <div className="eyebrow">Signed by</div>
       <div className="grid-2">
-        {field("Name", "signatoryName", "Kennedy Akang'o")}
-        {field("Title", "signatoryTitle", "AG. Principal")}
+        {field("Name", "signatoryName", "Jane Wanjiru")}
+        {field("Title", "signatoryTitle", "Principal")}
       </div>
 
       <div className="eyebrow">Bank accounts</div>
@@ -65,10 +65,10 @@ export function LetterDetailsForm({ accountId, details, books, locked }: {
               <input name={`number-${b.id}`} defaultValue={b.number} disabled={locked} />
             </label>
             <label className="field">Bank
-              <input name={`bankName-${b.id}`} defaultValue={b.bankName} placeholder="Kenya Commercial Bank (KCB)" disabled={locked} />
+              <input name={`bankName-${b.id}`} defaultValue={b.bankName} placeholder="Equity Bank" disabled={locked} />
             </label>
             <label className="field">Branch
-              <input name={`bankBranch-${b.id}`} defaultValue={b.bankBranch} placeholder="Migori" disabled={locked} />
+              <input name={`bankBranch-${b.id}`} defaultValue={b.bankBranch} placeholder="Kakamega" disabled={locked} />
             </label>
           </div>
         </div>

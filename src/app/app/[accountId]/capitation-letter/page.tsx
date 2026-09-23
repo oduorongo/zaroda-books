@@ -45,7 +45,8 @@ export default async function CapitationLetterPage({
         <h1>Capitation letter</h1>
         <p className="sub">
           {school.name}. The letter to the Principal Secretary confirming the capitation received
-          for a term. Tick the receipts it covers; the amounts and total are taken from them.
+          for a term. One letter covers all of the school's capitation accounts together. Tick the
+          receipts it covers; each account's amount and the total are taken from them.
         </p>
 
         <details className="card" style={{ marginBottom: "1.35rem" }} open={!details.postalAddress}>
