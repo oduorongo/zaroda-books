@@ -34,6 +34,7 @@ const someone = (over: Record<string, unknown> = {}) => ({
   readOnly: false,
   bookScope: { kind: "org" },
   auditing: false,
+  position: null,
   ...over,
 });
 

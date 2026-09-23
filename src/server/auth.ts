@@ -3,7 +3,7 @@ import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from
 import { cookies, headers } from "next/headers";
 import { db, schema } from "@/db";
 import { and, desc, eq, isNull } from "drizzle-orm";
-import type { AuditScope, BookScope } from "@/domain";
+import type { AuditScope, BookScope, Position } from "@/domain";
 import { SESSION_DAYS, chooseMembership, sessionIsUsable, shouldTouchSession } from "@/domain";
 
 const COOKIE = "zb_session";
@@ -182,6 +182,8 @@ export interface CurrentUser {
   bookScope: BookScope;
   /** True while a Ministry auditor is reading, for wording and for logging. */
   auditing: boolean;
+  /** Null in a view-as session: what the person sees there is not theirs. */
+  position: Position | null;
 }
 
 /** The signed-in user and the org that scopes every query they may run. */
@@ -216,6 +218,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
             ? { kind: "org" }
             : { kind: "area", county: scope.county, subCounty: scope.subCounty },
           auditing: !admin && Boolean(scope),
+          position: null,
         };
       }
     }
@@ -243,6 +246,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       ? { kind: "school", schoolId: membership.schoolId }
       : { kind: "org" },
     auditing: false,
+    position: account.position,
   };
 }
 

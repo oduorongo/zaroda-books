@@ -36,6 +36,7 @@ const signedIn = (over: Partial<{ role: Role; readOnly: boolean }> = {}) => ({
   readOnly: false,
   bookScope: { kind: "org" as const },
   auditing: false,
+  position: null,
   ...over,
 });
 

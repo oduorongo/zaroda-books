@@ -16,6 +16,7 @@ const EXPECTED: Record<Action, Role[]> = {
   "book.create": ["owner"],
   "subscription.pay": ["owner"],
   "people.manage": ["owner"],
+  "letter.edit": ["owner", "accountant", "bursar"],
 };
 
 describe("can", () => {

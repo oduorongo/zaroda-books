@@ -2,13 +2,14 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import type { SchoolLevel } from "@/domain";
+import { POSITIONS, type Position, type SchoolLevel } from "@/domain";
 import { startViewAs } from "@/server/auth";
 import {
   createSubscription,
   requirePlatformAdmin,
   setOrgApproved,
   setSubscriptionStatus,
+  setUserPosition,
   type SubscriptionStatus,
   unbindSubscription,
 } from "@/server/platform";
@@ -57,6 +58,19 @@ export async function unbindAction(_prev: string | null, form: FormData): Promis
       String(form.get("subscriptionId") ?? ""),
       String(form.get("reason") ?? ""),
     );
+  } catch (e) {
+    return message(e);
+  }
+  revalidatePath(`/admin/${orgId}`);
+  return null;
+}
+
+export async function setPositionAction(_prev: string | null, form: FormData): Promise<string | null> {
+  const orgId = String(form.get("orgId") ?? "");
+  const position = String(form.get("position") ?? "");
+  if (position && !POSITIONS.includes(position as Position)) return "Choose a role.";
+  try {
+    await setUserPosition(orgId, String(form.get("userId") ?? ""), (position || null) as Position | null);
   } catch (e) {
     return message(e);
   }

@@ -26,7 +26,8 @@ export type Action =
   | "book.archive"
   | "book.create"
   | "subscription.pay"
-  | "people.manage";
+  | "people.manage"
+  | "letter.edit";
 
 const MATRIX: Record<Action, readonly Role[]> = {
   // The daily work of a bursar.
@@ -55,6 +56,10 @@ const MATRIX: Record<Action, readonly Role[]> = {
   "book.create": ["owner"],
   "subscription.pay": ["owner"],
   "people.manage": ["owner"],
+
+  // The addresses, signatory and bank details the capitation letter reuses.
+  // Whoever posts the receipts keeps them up to date.
+  "letter.edit": ["owner", "accountant", "bursar"],
 };
 
 /** Unknown roles are refused: a permission check must never default open. */

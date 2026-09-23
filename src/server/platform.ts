@@ -4,7 +4,7 @@ import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import {
   LEVEL_PRICE, auditorCanSee, chargeAmount, revenue, subscriptionStateFor,
-  type SchoolLevel, type SubscriptionStatus,
+  type Position, type SchoolLevel, type SubscriptionStatus,
 } from "@/domain";
 
 export type { SubscriptionStatus };
@@ -297,6 +297,30 @@ export async function setOrgApproved(orgId: string, approved: boolean) {
     entityId: orgId,
     before: JSON.stringify({ approvedAt: before.approvedAt }),
     after: JSON.stringify({ approvedAt }),
+  });
+}
+
+/**
+ * Sets what a person is. Only here, so a bursar cannot call themselves a head
+ * of institution, or an auditor a bursar, to see what their position hides.
+ * Logged against the org the change was made from.
+ */
+export async function setUserPosition(orgId: string, userId: string, position: Position | null) {
+  const admin = await requirePlatformAdmin();
+
+  const [before] = await db.select().from(schema.users).where(eq(schema.users.id, userId));
+  if (!before) notFound();
+
+  await db.update(schema.users).set({ position }).where(eq(schema.users.id, userId));
+
+  await db.insert(schema.auditLog).values({
+    orgId,
+    userId: admin.id,
+    action: "user.position",
+    entity: "user",
+    entityId: userId,
+    before: JSON.stringify({ position: before.position }),
+    after: JSON.stringify({ position }),
   });
 }
 

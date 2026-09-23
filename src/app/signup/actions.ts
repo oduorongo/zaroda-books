@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { hashPassword, startSession } from "@/server/auth";
-import { isSubCountyOf } from "@/domain";
+import { POSITIONS, isSubCountyOf, type Position } from "@/domain";
 import { notifyNewTenant } from "@/server/notify";
 
 export async function signup(_prev: string | null, form: FormData): Promise<string | null> {
@@ -12,12 +12,14 @@ export async function signup(_prev: string | null, form: FormData): Promise<stri
   const practice = String(form.get("practice") ?? "").trim();
   const email = String(form.get("email") ?? "").trim().toLowerCase();
   const password = String(form.get("password") ?? "");
+  const position = String(form.get("position") ?? "") as Position;
 
   const county = String(form.get("county") ?? "").trim();
   const subCounty = String(form.get("subCounty") ?? "").trim();
 
   if (!name || !email || !password) return "Fill in your name, email and password.";
   if (password.length < 10) return "The password must be at least 10 characters.";
+  if (!POSITIONS.includes(position)) return "Choose your role.";
   // Checked as a pair, not as two fields: the browser can be made to post any
   // combination, and a mismatched one would land in the coverage figures.
   if (!isSubCountyOf(county, subCounty)) return "Choose your county and sub-county.";
@@ -36,7 +38,7 @@ export async function signup(_prev: string | null, form: FormData): Promise<stri
     })
     .returning();
   const [user] = await db.insert(schema.users).values({
-    email, name, passwordHash: hashPassword(password),
+    email, name, passwordHash: hashPassword(password), position,
   }).returning();
   await db.insert(schema.memberships).values({ orgId: org.id, userId: user.id, role: "owner" });
 

@@ -29,6 +29,9 @@ export const users = pgTable("users", {
   phone: text("phone"),
   name: text("name").notNull(),
   passwordHash: text("password_hash").notNull(),
+  // Chosen at signup, changed only from the console. Null for accounts made
+  // before it was asked. See src/domain/positions.ts.
+  position: text("position", { enum: ["hoi", "bursar", "auditor", "freelancer"] }),
 });
 
 export const memberships = pgTable("memberships", {
@@ -108,11 +111,32 @@ export const accounts = pgTable("accounts", {
   name: text("name").notNull(),
   bankName: text("bank_name"),
   bankAccountNo: text("bank_account_no"),
+  bankBranch: text("bank_branch"),
   // An archived book is hidden from the app but keeps every entry, so a year
   // an auditor asks for later still exists, and so a book that has been opened
   // stays counted however the subscription is billed.
   archivedAt: timestamp("archived_at"),
   archivedBy: uuid("archived_by").references(() => users.id),
+});
+
+/**
+ * The addresses and signatory the capitation letter carries, saved once per
+ * school. Blank Ministry fields fall back to LETTER_DEFAULTS.
+ */
+export const letterDetails = pgTable("letter_details", {
+  schoolId: uuid("school_id").primaryKey().references(() => schools.id),
+  shortName: text("short_name"),
+  postalAddress: text("postal_address"),
+  town: text("town"),
+  scdeAddress: text("scde_address"),
+  scdeTown: text("scde_town"),
+  ministryName: text("ministry_name"),
+  ministryAddress: text("ministry_address"),
+  ministryEmail: text("ministry_email"),
+  signatoryName: text("signatory_name"),
+  signatoryTitle: text("signatory_title"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  updatedBy: uuid("updated_by").references(() => users.id),
 });
 
 export const voteHeads = pgTable("vote_heads", {

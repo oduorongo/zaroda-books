@@ -1,9 +1,9 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { LEVEL_OPTIONS } from "@/domain";
+import { LEVEL_OPTIONS, POSITIONS, POSITION_LABEL, type Position } from "@/domain";
 import {
-  createSubscriptionAction, setApprovedAction, setStatusAction, unbindAction,
+  createSubscriptionAction, setApprovedAction, setPositionAction, setStatusAction, unbindAction,
 } from "./actions";
 
 /**
@@ -26,6 +26,29 @@ export function StatusPicker({ orgId, subscriptionId, status }: {
         <option value="paid">Paid</option>
         <option value="unpaid">Unpaid</option>
         <option value="free">Free school</option>
+      </select>
+      <button type="submit" className="btn-link" style={{ fontSize: ".82rem" }} disabled={pending}>
+        {pending ? "Saving…" : "Set"}
+      </button>
+      {error && <span className="error"> {error}</span>}
+    </form>
+  );
+}
+
+/** Blank is kept as a choice: an account from before positions existed has none. */
+export function PositionPicker({ orgId, userId, position }: {
+  orgId: string;
+  userId: string;
+  position: Position | null;
+}) {
+  const [error, action, pending] = useActionState(setPositionAction, null);
+  return (
+    <form action={action} style={{ display: "flex", gap: ".4rem", alignItems: "center" }}>
+      <input type="hidden" name="orgId" value={orgId} />
+      <input type="hidden" name="userId" value={userId} />
+      <select name="position" defaultValue={position ?? ""} style={{ padding: ".35rem .45rem", fontSize: ".8rem" }}>
+        <option value="">Not set</option>
+        {POSITIONS.map((p) => <option key={p} value={p}>{POSITION_LABEL[p]}</option>)}
       </select>
       <button type="submit" className="btn-link" style={{ fontSize: ".82rem" }} disabled={pending}>
         {pending ? "Saving…" : "Set"}

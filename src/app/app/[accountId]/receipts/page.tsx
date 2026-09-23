@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { buildLedger, flatOnlyHeadCodes, formatKes, isCapitationAccount, toKes } from "@/domain";
+import {
+  buildLedger, flatOnlyHeadCodes, formatKes, isCapitationAccount, seesCapitationLetter, toKes,
+} from "@/domain";
 import type { AccountType } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getTxns } from "@/server/queries";
@@ -13,7 +15,7 @@ export default async function ReceiptsPage({
   params: Promise<{ accountId: string }>;
 }) {
   const { accountId } = await params;
-  const { heads, fy, school, account } = await loadBook(accountId);
+  const { user, heads, fy, school, account } = await loadBook(accountId);
   // Boarding, lunch and the like take money from parents, not the Ministry:
   // no enrolment to derive, nothing to acknowledge.
   const capitation = isCapitationAccount(school.level, account.type as AccountType);
@@ -49,6 +51,14 @@ export default async function ReceiptsPage({
         openingCash={fy.openingCash ? String(toKes(fy.openingCash)) : ""}
         openingBank={fy.openingBank ? String(toKes(fy.openingBank)) : ""}
       />
+
+      {capitation && seesCapitationLetter(user.position) && !user.readOnly && (
+        <p className="no-print" style={{ margin: "0 0 1.1rem" }}>
+          <Link href={`/app/${accountId}/capitation-letter`}>
+            Capitation letter to the Ministry for a term →
+          </Link>
+        </p>
+      )}
 
       <ReceiptForm accountId={accountId} heads={heads} flatOnly={flatOnly} capitation={capitation} />
 

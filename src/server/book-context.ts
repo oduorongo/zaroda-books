@@ -34,6 +34,7 @@ const WHAT: Record<Action, string> = {
   "book.create": "open a book",
   "subscription.pay": "pay the subscription",
   "people.manage": "manage who has access",
+  "letter.edit": "change the letter details",
 };
 
 /**

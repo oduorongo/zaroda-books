@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { AuthLayout } from "../auth-layout";
 import { PasswordField } from "../password-field";
 import { CountyPicker } from "../county-picker";
+import { POSITIONS, POSITION_LABEL } from "@/domain";
 import { signup } from "./actions";
 
 export default function SignupPage() {
@@ -25,6 +26,12 @@ export default function SignupPage() {
             <input name="practice" placeholder="Ochieng &amp; Associates" />
           </label>
         </div>
+        <label className="field">Your role
+          <select name="position" defaultValue="" required>
+            <option value="" disabled>Choose…</option>
+            {POSITIONS.map((p) => <option key={p} value={p}>{POSITION_LABEL[p]}</option>)}
+          </select>
+        </label>
         <CountyPicker required />
         <label className="field">Email address
           <input name="email" type="email" placeholder="you@school.ac.ke" autoComplete="email" required />

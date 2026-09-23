@@ -5,7 +5,7 @@ import {
 import { getTenant } from "@/server/platform";
 import { viewAsAction } from "./actions";
 import {
-  ApproveButton, NewSubscriptionForm, StatusPicker, UnbindForm,
+  ApproveButton, NewSubscriptionForm, PositionPicker, StatusPicker, UnbindForm,
 } from "./subscription-forms";
 
 const stamp = (d: Date | null) =>
@@ -49,7 +49,7 @@ export default async function TenantPage({ params }: { params: Promise<{ orgId: 
       <div className="card" style={{ marginBottom: "1.35rem" }}>
         <div className="eyebrow" style={{ color: "var(--gold)", marginBottom: ".75rem" }}>People</div>
         <table>
-          <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Role</th></tr></thead>
+          <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Access</th><th>Role</th></tr></thead>
           <tbody>
             {members.map((m) => (
               <tr key={m.user.id}>
@@ -57,6 +57,7 @@ export default async function TenantPage({ params }: { params: Promise<{ orgId: 
                 <td>{m.user.email}</td>
                 <td>{m.user.phone ?? "—"}</td>
                 <td>{m.role}</td>
+                <td><PositionPicker orgId={org.id} userId={m.user.id} position={m.user.position} /></td>
               </tr>
             ))}
           </tbody>
