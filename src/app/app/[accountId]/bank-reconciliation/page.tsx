@@ -78,6 +78,14 @@ export default async function Page({ params, searchParams }: {
               </tbody>
             </table>
 
+            {/* With nothing ticked, the statement is expected to still read the
+                opening balance, and the difference means nothing yet. */}
+            {txns.length > 0 && outstanding.size === txns.length && (
+              <p className="note" style={{ marginTop: "1rem", color: "var(--alarm)" }}>
+                No entry is ticked as shown yet, so all {txns.length} are treated as not on the
+                statement. Tick them off below before reading the difference.
+              </p>
+            )}
             <p className={`verdict ${r.reconciled ? "ok" : "off"}`}>
               {r.reconciled
                 ? "The book agrees with the statement. This month can be closed."
@@ -91,8 +99,9 @@ export default async function Page({ params, searchParams }: {
 
           <h2>Tick each entry off against the statement</h2>
           <p className="note" style={{ marginTop: "-.75rem", marginBottom: "1.25rem" }}>
-            Untick anything the bank has not shown yet. What is left unticked becomes a reconciling
-            item above — nothing is assumed on your behalf.
+            Every entry starts as ☐ outstanding. Click it to mark it ☑ shown once you find it on the
+            bank statement. Whatever is left outstanding is listed above as a deposit not yet
+            credited or a cheque not yet presented — nothing is ticked on your behalf.
           </p>
 
           <div className="card">
