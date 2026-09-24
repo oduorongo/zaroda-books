@@ -23,6 +23,8 @@ export interface Payment extends Base {
   kind: "payment";
   vrNo?: string;
   chequeNo?: string;
+  /** Printed on the voucher only: "Being payment for ...". */
+  narration?: string;
   cash: Cents;
   bank: Cents;
   allocations: Allocation[];

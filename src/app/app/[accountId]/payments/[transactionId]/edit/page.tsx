@@ -64,6 +64,7 @@ export default async function AmendPaymentPage({
           vrNo: payment.vrNo,
           chequeNo: payment.chequeNo,
           particulars: payment.particulars,
+          narration: payment.narration,
           method: payment.method,
           amounts: Object.fromEntries(
             heads.map((h) => [h.code, payment.amounts[h.code] ? String(toKes(payment.amounts[h.code])) : ""]),

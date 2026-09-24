@@ -9,6 +9,7 @@ import { getPeriodForDate } from "@/server/periods";
 import { getPaymentForEdit } from "@/server/queries";
 import { createTransaction, deleteTransaction, updateTransaction } from "@/server/transactions";
 import { resequenceVouchers } from "@/server/voucher-numbers";
+import { NARRATION_STEM } from "./narration";
 
 /**
  * What the payment form hears back. A posted payment is named so the bursar
@@ -25,6 +26,7 @@ interface ReadResult {
   vrNo: string;
   chequeNo: string;
   particulars: string;
+  narration: string;
   method: string;
   total: number;
   allocations: Allocation[];
@@ -37,7 +39,7 @@ interface ReadResult {
  */
 function readPaymentForm(form: FormData, heads: VoteHead[]): ReadResult {
   const empty = {
-    date: "", vrNo: "", chequeNo: "", particulars: "", method: "bank",
+    date: "", vrNo: "", chequeNo: "", particulars: "", narration: "", method: "bank",
     total: 0, allocations: [] as Allocation[],
   };
 
@@ -46,6 +48,9 @@ function readPaymentForm(form: FormData, heads: VoteHead[]): ReadResult {
   const vrNo = "";
   const chequeNo = String(form.get("chequeNo") ?? "").trim();
   const particulars = String(form.get("particulars") ?? "").trim();
+  // The box opens on the stem; left at the stem alone, there is no narration.
+  const typed = String(form.get("narration") ?? "").trim();
+  const narration = typed.toLowerCase() === NARRATION_STEM.trim().toLowerCase() ? "" : typed;
   const method = String(form.get("method") ?? "");
 
   if (!date) return { ...empty, error: "Enter the date of the payment." };
@@ -72,7 +77,7 @@ function readPaymentForm(form: FormData, heads: VoteHead[]): ReadResult {
   }
 
   const total = allocations.reduce((a, x) => a + x.amount, 0);
-  return { date, vrNo, chequeNo, particulars, method, total, allocations };
+  return { date, vrNo, chequeNo, particulars, narration, method, total, allocations };
 }
 
 export async function postPayment(
@@ -100,6 +105,7 @@ export async function postPayment(
         // Assigned by the sequence below, never typed.
         vrNo: undefined,
         chequeNo: p.chequeNo || undefined,
+        narration: p.narration || undefined,
         cash: p.method === "cash" ? p.total : 0,
         bank: p.method === "bank" ? p.total : 0,
         allocations: p.allocations,
@@ -140,6 +146,7 @@ export async function amendPayment(
         // Assigned by the sequence below, never typed.
         vrNo: undefined,
         chequeNo: p.chequeNo || undefined,
+        narration: p.narration || undefined,
         cash: p.method === "cash" ? p.total : 0,
         bank: p.method === "bank" ? p.total : 0,
         allocations: p.allocations,

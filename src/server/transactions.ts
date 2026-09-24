@@ -104,6 +104,7 @@ export async function createTransaction(input: {
     particulars: t.particulars,
     receiptNo: t.kind === "receipt" ? t.receiptNo : undefined,
     vrNo: t.kind === "payment" ? t.vrNo : undefined,
+    narration: t.kind === "payment" ? t.narration : undefined,
     chequeNo: t.kind !== "receipt" ? t.chequeNo : undefined,
     // A contra has no cash/bank pair of its own — the moved amount is stored in
     // both columns, alongside contraFrom/contraTo. See src/db/seed.ts.
@@ -253,6 +254,7 @@ export async function updateTransaction(input: {
     particulars: t.particulars,
     receiptNo: t.kind === "receipt" ? t.receiptNo ?? null : null,
     vrNo: t.kind === "payment" ? t.vrNo ?? null : null,
+    narration: t.kind === "payment" ? t.narration ?? null : null,
     chequeNo: t.kind !== "receipt" ? t.chequeNo ?? null : null,
     cash: t.kind === "contra" ? t.amount : t.cash,
     bank: t.kind === "contra" ? t.amount : t.bank,

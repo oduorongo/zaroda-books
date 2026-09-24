@@ -6,6 +6,7 @@ import {
   cashAsAt, formatKes, parseAmount, type EntryDates, voteBalancesAsAt, type CashMove, type VoteEntry, type VoteHead,
 } from "@/domain";
 import { amendPayment, postPayment } from "./actions";
+import { NARRATION_STEM } from "./narration";
 
 /** A posted payment reopened for amendment. */
 export interface PaymentDraft {
@@ -14,6 +15,7 @@ export interface PaymentDraft {
   vrNo: string;
   chequeNo: string;
   particulars: string;
+  narration: string;
   method: string;
   amounts: Record<string, string>;
 }
@@ -45,6 +47,7 @@ export function PaymentForm({
   const [method, setMethod] = useState(payment?.method ?? "");
   const [particulars, setParticulars] = useState(payment?.particulars ?? "");
   const [chequeNo, setChequeNo] = useState(payment?.chequeNo ?? "");
+  const [narration, setNarration] = useState(payment ? payment.narration || NARRATION_STEM : NARRATION_STEM);
   const payee = useRef<HTMLInputElement>(null);
 
   // Posted: clear for the next voucher. The date stays — vouchers are entered
@@ -56,6 +59,7 @@ export function PaymentForm({
     setMethod("");
     setParticulars("");
     setChequeNo("");
+    setNarration(NARRATION_STEM);
     payee.current?.focus();
   }, [posted]);
 
@@ -144,6 +148,11 @@ export function PaymentForm({
       <label className="field" style={{ marginTop: "1.25rem" }}>Payee / paid to
         <input name="particulars" placeholder="Text Book Centre — exercise books" required ref={payee}
           value={particulars} onChange={(e) => setParticulars(e.target.value)} />
+      </label>
+
+      <label className="field" style={{ marginTop: "1.25rem" }}>Narration <span className="note">(optional — printed on the voucher)</span>
+        <input name="narration" placeholder={`${NARRATION_STEM}the purchase of exams`}
+          value={narration} onChange={(e) => setNarration(e.target.value)} />
       </label>
 
       <div className="eyebrow" style={{ margin: "1.75rem 0 .6rem" }}>Charged to</div>

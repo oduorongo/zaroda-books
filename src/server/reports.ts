@@ -384,6 +384,7 @@ export async function paymentVoucherDoc(
           ["Voucher no.", txn.vrNo ?? "—"],
           ["Cheque no.", txn.chequeNo ?? "—"],
           ["Payee / paid to", txn.particulars],
+          ...(txn.narration ? [["Narration", txn.narration]] : []),
           ["Paid from", txn.cash > 0 ? "Cash" : "Bank"],
           ["Amount paid", csvAmount(total)],
         ],

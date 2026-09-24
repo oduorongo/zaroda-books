@@ -193,6 +193,8 @@ export const transactions = pgTable("transactions", {
   particulars: text("particulars").notNull(),
   receiptNo: text("receipt_no"),
   vrNo: text("vr_no"),
+  // What a payment was for, printed on the voucher: "Being payment for ...".
+  narration: text("narration"),
   chequeNo: text("cheque_no"),
   cash: bigint("cash", { mode: "number" }).notNull().default(0),
   bank: bigint("bank", { mode: "number" }).notNull().default(0),

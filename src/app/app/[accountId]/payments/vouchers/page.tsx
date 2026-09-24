@@ -66,6 +66,7 @@ export default async function VoucherBookPage({
                 <tr><td>Date paid</td><td className="n">{txn.date}</td></tr>
                 <tr><td>Cheque no.</td><td className="n">{txn.chequeNo ?? "—"}</td></tr>
                 <tr><td>Payee / paid to</td><td className="n">{txn.particulars}</td></tr>
+                {txn.narration && <tr><td>Narration</td><td className="n">{txn.narration}</td></tr>}
                 <tr><td>Paid from</td><td className="n">{txn.cash > 0 ? "Cash" : "Bank"}</td></tr>
                 <tr><td>Amount paid</td><td className="n">{formatKes(total)}</td></tr>
               </tbody>

@@ -187,6 +187,7 @@ export async function getTxns(financialYearId: string): Promise<Txn[]> {
     return {
       id: t.id, date: t.date, particulars: t.particulars,
       kind: "payment", vrNo: t.vrNo ?? undefined, chequeNo: t.chequeNo ?? undefined,
+      narration: t.narration ?? undefined,
       cash: t.cash, bank: t.bank, allocations,
     };
   });
@@ -278,6 +279,7 @@ export async function getPaymentForEdit(transactionId: string, accountId: string
     vrNo: txn.vrNo ?? "",
     chequeNo: txn.chequeNo ?? "",
     particulars: txn.particulars,
+    narration: txn.narration ?? "",
     method: txn.cash > 0 ? "cash" : "bank",
     amounts: Object.fromEntries(lines.map((l) => [l.code, l.amount])),
   };
