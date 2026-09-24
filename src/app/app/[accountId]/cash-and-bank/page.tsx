@@ -1,6 +1,7 @@
+import Link from "next/link";
 import { balancesAfter, formatKes } from "@/domain";
 import { loadBook } from "@/server/book-context";
-import { getTxns } from "@/server/queries";
+import { getReceiptBankings, getTxns } from "@/server/queries";
 import { TransferForm } from "./form";
 
 export default async function CashAndBankPage({
@@ -10,7 +11,7 @@ export default async function CashAndBankPage({
 }) {
   const { accountId } = await params;
   const { fy, school, account } = await loadBook(accountId);
-  const txns = await getTxns(fy.id);
+  const [txns, bankings] = await Promise.all([getTxns(fy.id), getReceiptBankings(fy.id)]);
 
   const balances = balancesAfter({ cash: fy.openingCash, bank: fy.openingBank }, txns);
   const transfers = txns
@@ -51,7 +52,7 @@ export default async function CashAndBankPage({
             <thead>
               <tr>
                 <th>Date</th><th>Particulars</th><th>Cheque no.</th>
-                <th>Direction</th><th className="n">Amount</th>
+                <th>Direction</th><th className="n">Amount</th><th className="no-print" />
               </tr>
             </thead>
             <tbody>
@@ -62,6 +63,16 @@ export default async function CashAndBankPage({
                   <td className="mono">{t.kind === "contra" ? t.chequeNo ?? "—" : "—"}</td>
                   <td>{t.kind === "contra" && t.from === "cash" ? "Cash to bank" : "Cash from bank"}</td>
                   <td className="n">{formatKes(t.kind === "contra" ? t.amount : 0)}</td>
+                  <td className="no-print" style={{ whiteSpace: "nowrap" }}>
+                    {/* A receipt's own banking follows the receipt, so it is amended there. */}
+                    {bankings.has(t.id) ? (
+                      <Link className="note" href={`/app/${accountId}/receipts/${bankings.get(t.id)!.receiptId}/edit`}>
+                        Banked with receipt {bankings.get(t.id)!.receiptNo}
+                      </Link>
+                    ) : (
+                      <Link href={`/app/${accountId}/cash-and-bank/${t.id}/edit`}>Amend</Link>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

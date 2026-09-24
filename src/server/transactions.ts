@@ -30,6 +30,32 @@ async function assertCashAvailable(
   }
 }
 
+/**
+ * Amending or removing a transfer changes the cash in hand from its date on,
+ * so every later day is checked, not just its own: drawing less cash from the
+ * bank must not strand a cash payment already made on the strength of it. A
+ * day already short before the change is left to its own entries.
+ */
+async function assertCashStaysCovered(
+  financialYearId: string,
+  openingCash: number,
+  id: string,
+  replacement?: Txn,
+) {
+  const txns = await getTxns(financialYearId);
+  const after = [...txns.filter((t) => t.id !== id), ...(replacement ? [replacement] : [])];
+  const dates = [...new Set(after.map((t) => t.date))].sort();
+  for (const date of dates) {
+    const now = cashAvailableAsAt(openingCash, after, date);
+    if (now < 0 && now < cashAvailableAsAt(openingCash, txns, date)) {
+      throw new Error(
+        `This would leave the cash box short on ${date}, where cash has already been paid out. ` +
+        "Amend or remove those cash payments first.",
+      );
+    }
+  }
+}
+
 /** The circular figures behind each allocation line, by vote head code. */
 export type LineRates = Record<string, { perLearner: number; flatAmount: number }>;
 
@@ -217,6 +243,7 @@ export async function updateTransaction(input: {
   });
   if (!fy) throw new Error("Financial year not found.");
   await assertCashAvailable(fy.id, fy.openingCash, input.txn, id);
+  if (existing.kind === "contra") await assertCashStaysCovered(fy.id, fy.openingCash, id, candidate);
 
   const t = input.txn;
   const row = {
@@ -315,6 +342,13 @@ export async function deleteTransaction(input: {
   if (!period) throw new Error("Period not found.");
   if (period.status === "closed") throw new Error("This month is closed. Reopen it to delete.");
   await assertInAccount(period.financialYearId, input.accountId);
+
+  if (existing.kind === "contra") {
+    const fy = await db.query.financialYears.findFirst({
+      where: eq(schema.financialYears.id, period.financialYearId),
+    });
+    await assertCashStaysCovered(period.financialYearId, fy!.openingCash, input.transactionId);
+  }
 
   const lines = await db
     .select({ code: schema.voteHeads.code, amount: schema.allocations.amount })

@@ -283,6 +283,69 @@ export async function getPaymentForEdit(transactionId: string, accountId: string
   };
 }
 
+/**
+ * One posted transfer between cash and bank, for amending. Only from this
+ * book's year: the route supplies the id, and nothing else ties the two.
+ */
+export async function getTransferForEdit(transactionId: string, financialYearId: string) {
+  const [row] = await db
+    .select({ txn: schema.transactions })
+    .from(schema.transactions)
+    .innerJoin(schema.periods, eq(schema.transactions.periodId, schema.periods.id))
+    .where(
+      and(
+        eq(schema.transactions.id, transactionId),
+        eq(schema.periods.financialYearId, financialYearId),
+      ),
+    );
+  const txn = row?.txn;
+  if (!txn || txn.kind !== "contra") return null;
+
+  return {
+    id: txn.id,
+    date: txn.date,
+    particulars: txn.particulars,
+    chequeNo: txn.chequeNo ?? "",
+    from: txn.contraFrom!,
+    amount: txn.cash,
+    bankedFrom: txn.bankedFrom,
+  };
+}
+
+/**
+ * The transfers a receipt made itself when it was posted as banked, keyed by
+ * the transfer. They follow their receipt, so they are amended through it.
+ */
+export async function getReceiptBankings(financialYearId: string) {
+  const periods = await db
+    .select({ id: schema.periods.id })
+    .from(schema.periods)
+    .where(eq(schema.periods.financialYearId, financialYearId));
+  if (periods.length === 0) return new Map<string, { receiptId: string; receiptNo: string }>();
+
+  const contras = await db
+    .select({ id: schema.transactions.id, receiptId: schema.transactions.bankedFrom })
+    .from(schema.transactions)
+    .where(
+      and(
+        inArray(schema.transactions.periodId, periods.map((p) => p.id)),
+        isNotNull(schema.transactions.bankedFrom),
+      ),
+    );
+  const receipts = contras.length
+    ? await db
+      .select({ id: schema.transactions.id, receiptNo: schema.transactions.receiptNo })
+      .from(schema.transactions)
+      .where(inArray(schema.transactions.id, contras.map((c) => c.receiptId!)))
+    : [];
+  const receiptNo = new Map(receipts.map((r) => [r.id, r.receiptNo ?? ""]));
+
+  return new Map(contras.map((c) => [c.id, {
+    receiptId: c.receiptId!,
+    receiptNo: receiptNo.get(c.receiptId!) ?? "",
+  }]));
+}
+
 /** The enrolment frozen on a capitation receipt when it was posted. */
 export async function getReceiptEnrolment(transactionId: string): Promise<number | null> {
   const [row] = await db

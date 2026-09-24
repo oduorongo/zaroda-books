@@ -2,18 +2,30 @@
 
 import { useActionState, useState } from "react";
 import { formatKes, toCents } from "@/domain";
-import { postTransfer } from "./actions";
+import { amendTransfer, deleteTransfer, postTransfer } from "./actions";
+
+/** A posted transfer reopened for amendment. */
+export interface TransferDraft {
+  id: string;
+  date: string;
+  direction: "to-bank" | "to-cash";
+  amount: string;
+  chequeNo: string;
+  particulars: string;
+}
 
 export function TransferForm({
-  accountId, cash, bank,
+  accountId, cash, bank, transfer,
 }: {
   accountId: string;
+  /** Balances with this transfer left out, when amending one. */
   cash: number;
   bank: number;
+  transfer?: TransferDraft;
 }) {
-  const [error, action, pending] = useActionState(postTransfer, null);
-  const [direction, setDirection] = useState("to-cash");
-  const [amount, setAmount] = useState("");
+  const [error, action, pending] = useActionState(transfer ? amendTransfer : postTransfer, null);
+  const [direction, setDirection] = useState<string>(transfer?.direction ?? "to-cash");
+  const [amount, setAmount] = useState(transfer?.amount ?? "");
 
   const asked = toCents(parseFloat(amount.replace(/[^0-9.]/g, "")) || 0);
   const available = direction === "to-bank" ? cash : bank;
@@ -28,10 +40,12 @@ export function TransferForm({
   return (
     <form action={action} className="card">
       <input type="hidden" name="accountId" value={accountId} />
+      {transfer && <input type="hidden" name="transactionId" value={transfer.id} />}
 
       <div className="grid-4">
         <label className="field">Date
-          <input name="date" type="date" defaultValue={new Date().toISOString().slice(0, 10)} required />
+          <input name="date" type="date" required
+            defaultValue={transfer?.date ?? new Date().toISOString().slice(0, 10)} />
         </label>
         <label className="field">Direction
           <select name="direction" value={direction} onChange={(e) => setDirection(e.target.value)}>
@@ -44,21 +58,50 @@ export function TransferForm({
             value={amount} onChange={(e) => setAmount(e.target.value)} required />
         </label>
         <label className="field">Cheque no.
-          <input name="chequeNo" placeholder="001432" />
+          <input name="chequeNo" placeholder="001432" defaultValue={transfer?.chequeNo} />
         </label>
       </div>
 
       <label className="field" style={{ marginTop: "1.25rem" }}>Particulars
-        <input name="particulars"
+        <input name="particulars" defaultValue={transfer?.particulars}
           placeholder={direction === "to-bank" ? "Banking" : "Cash drawn from bank"} />
       </label>
 
       <div style={{ display: "flex", alignItems: "center", gap: "1.1rem", marginTop: "1.4rem", flexWrap: "wrap" }}>
         <button type="submit" className="btn btn-primary" disabled={pending}>
-          {pending ? "Posting…" : "Post transfer"}
+          {pending ? "Saving…" : transfer ? "Save changes" : "Post transfer"}
         </button>
         <div className="note">{note}</div>
       </div>
+      {error && <p className="error">{error}</p>}
+    </form>
+  );
+}
+
+export function DeleteTransfer({
+  accountId, transactionId,
+}: {
+  accountId: string;
+  transactionId: string;
+}) {
+  const [error, action, pending] = useActionState(deleteTransfer, null);
+
+  return (
+    <form
+      action={action}
+      style={{ marginTop: "1.6rem" }}
+      onSubmit={(e) => {
+        if (!confirm("Delete this transfer? This cannot be undone.")) e.preventDefault();
+      }}
+    >
+      <input type="hidden" name="accountId" value={accountId} />
+      <input type="hidden" name="transactionId" value={transactionId} />
+      <button type="submit" className="btn" disabled={pending} style={{ color: "var(--alarm)" }}>
+        {pending ? "Deleting…" : "Delete this transfer"}
+      </button>
+      <span className="note" style={{ marginLeft: "1rem" }}>
+        For a transfer posted in error or entered twice. The deletion is written to the audit log.
+      </span>
       {error && <p className="error">{error}</p>}
     </form>
   );
