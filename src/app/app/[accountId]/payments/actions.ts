@@ -6,8 +6,18 @@ import { parseAmount } from "@/domain";
 import type { Allocation, VoteHead } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getPeriodForDate } from "@/server/periods";
+import { getPaymentForEdit } from "@/server/queries";
 import { createTransaction, deleteTransaction, updateTransaction } from "@/server/transactions";
 import { resequenceVouchers } from "@/server/voucher-numbers";
+
+/**
+ * What the payment form hears back. A posted payment is named so the bursar
+ * sees it went through and can go straight on to the next voucher.
+ */
+export type PaymentState = {
+  error?: string;
+  posted?: { id: string; vrNo: string; total: number; payee: string };
+} | null;
 
 interface ReadResult {
   error?: string;
@@ -36,9 +46,12 @@ function readPaymentForm(form: FormData, heads: VoteHead[]): ReadResult {
   const vrNo = "";
   const chequeNo = String(form.get("chequeNo") ?? "").trim();
   const particulars = String(form.get("particulars") ?? "").trim();
-  const method = String(form.get("method") ?? "bank");
+  const method = String(form.get("method") ?? "");
 
   if (!date) return { ...empty, error: "Enter the date of the payment." };
+  // Chosen every time, never defaulted: a cash payment posted as bank puts
+  // both columns of the cash book wrong.
+  if (method !== "cash" && method !== "bank") return { ...empty, error: "Choose whether this was paid by cash or bank." };
   // Required now that the voucher number is derived: it used to stand in as the
   // particulars, and a voucher with no description of the spend is not a voucher.
   if (!particulars) return { ...empty, error: "Say what the payment was for." };
@@ -63,18 +76,19 @@ function readPaymentForm(form: FormData, heads: VoteHead[]): ReadResult {
 }
 
 export async function postPayment(
-  _prev: string | null,
+  _prev: PaymentState,
   form: FormData,
-): Promise<string | null> {
+): Promise<PaymentState> {
   const accountId = String(form.get("accountId") ?? "");
   const { user, heads, fy } = await loadBook(accountId, { write: true, require: "entry.post" });
 
   const p = readPaymentForm(form, heads);
-  if (p.error) return p.error;
+  if (p.error) return { error: p.error };
 
+  let id: string;
   try {
     const period = await getPeriodForDate(fy.id, p.date);
-    await createTransaction({
+    id = await createTransaction({
       periodId: period.id,
       accountId,
       userId: user.id,
@@ -93,23 +107,25 @@ export async function postPayment(
     });
     await resequenceVouchers({ financialYearId: fy.id, orgId: user.orgId, userId: user.id });
   } catch (e) {
-    return e instanceof Error ? e.message : "The payment could not be posted.";
+    return { error: e instanceof Error ? e.message : "The payment could not be posted." };
   }
 
   revalidatePath(`/app/${accountId}/payments`);
-  return null;
+  // Read back after resequencing: an earlier-dated payment renumbers the rest.
+  const saved = await getPaymentForEdit(id, accountId);
+  return { posted: { id, vrNo: saved?.vrNo ?? "", total: p.total, payee: p.particulars } };
 }
 
 export async function amendPayment(
-  _prev: string | null,
+  _prev: PaymentState,
   form: FormData,
-): Promise<string | null> {
+): Promise<PaymentState> {
   const accountId = String(form.get("accountId") ?? "");
   const transactionId = String(form.get("transactionId") ?? "");
   const { user, heads, fy } = await loadBook(accountId, { write: true, require: "entry.amend" });
 
   const p = readPaymentForm(form, heads);
-  if (p.error) return p.error;
+  if (p.error) return { error: p.error };
 
   try {
     await updateTransaction({
@@ -131,7 +147,7 @@ export async function amendPayment(
     });
     await resequenceVouchers({ financialYearId: fy.id, orgId: user.orgId, userId: user.id });
   } catch (e) {
-    return e instanceof Error ? e.message : "The amendment could not be saved.";
+    return { error: e instanceof Error ? e.message : "The amendment could not be saved." };
   }
 
   revalidatePath(`/app/${accountId}`, "layout");

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { balancesAfter, buildLedger, toKes } from "@/domain";
+import { cashMoves, buildLedger, toKes } from "@/domain";
 import type { Txn, VoteEntry } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getPaymentForEdit, getTxns } from "@/server/queries";
@@ -55,7 +55,8 @@ export default async function AmendPaymentPage({
         accountId={accountId}
         heads={heads}
         entries={entries}
-        cashInHand={balancesAfter({ cash: fy.openingCash, bank: fy.openingBank }, others).cash}
+        openingCash={fy.openingCash}
+        cashMoves={cashMoves(others)}
         payment={{
           id: payment.id,
           date: payment.date,

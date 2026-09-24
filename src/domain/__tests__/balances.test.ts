@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { balancesAfter, cashAvailableAsAt } from "../balances";
+import { balancesAfter, cashAsAt, cashAvailableAsAt, cashMoves } from "../balances";
 import { toCents } from "../money";
 import type { Txn } from "../types";
 
@@ -96,5 +96,20 @@ describe("cashAvailableAsAt", () => {
 
   it("is nil beyond opening for a date before anything happened", () => {
     expect(cashAvailableAsAt(opening.cash, [receipt], "2025-10-01")).toBe(opening.cash);
+  });
+});
+
+describe("cashAsAt", () => {
+  // The payment form shows cash from the moves; the server refuses from the
+  // transactions. The two must never disagree on any date.
+  it("agrees with cashAvailableAsAt on every date", () => {
+    const draw: Txn = {
+      id: "c", date: "2025-10-05", kind: "contra", particulars: "draw",
+      from: "bank", to: "cash", amount: toCents(70),
+    };
+    const txns = [receipt, draw, payment];
+    for (const d of ["2025-10-01", "2025-10-03", "2025-10-05", "2025-10-09", "2025-10-31"]) {
+      expect(cashAsAt(opening.cash, cashMoves(txns), d)).toBe(cashAvailableAsAt(opening.cash, txns, d));
+    }
   });
 });

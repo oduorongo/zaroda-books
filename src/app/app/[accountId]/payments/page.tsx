@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { balancesAfter, buildLedger, formatKes } from "@/domain";
+import { cashMoves, buildLedger, formatKes } from "@/domain";
 import type { Txn, VoteEntry } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getTxns } from "@/server/queries";
@@ -60,7 +60,8 @@ export default async function PaymentsPage({
         accountId={accountId}
         heads={heads}
         entries={entries}
-        cashInHand={balancesAfter({ cash: fy.openingCash, bank: fy.openingBank }, txns).cash}
+        openingCash={fy.openingCash}
+        cashMoves={cashMoves(txns)}
       />
 
       <div className="card" style={{ marginTop: "1.6rem" }}>

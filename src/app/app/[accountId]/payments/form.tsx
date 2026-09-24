@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 import {
-  formatKes, parseAmount, voteBalancesAsAt, type VoteEntry, type VoteHead,
+  cashAsAt, formatKes, parseAmount, voteBalancesAsAt, type CashMove, type VoteEntry, type VoteHead,
 } from "@/domain";
 import { amendPayment, postPayment } from "./actions";
 
@@ -18,10 +18,8 @@ export interface PaymentDraft {
   amounts: Record<string, string>;
 }
 
-
-
 export function PaymentForm({
-  accountId, heads, entries, cashInHand, payment,
+  accountId, heads, entries, openingCash, cashMoves, payment,
 }: {
   accountId: string;
   heads: VoteHead[];
@@ -30,13 +28,43 @@ export function PaymentForm({
    * as they stood on the date being entered rather than at year end.
    */
   entries: VoteEntry[];
-  cashInHand: number;
+  /**
+   * The cash side of every other entry, so cash in hand is shown as at the
+   * payment's date — the date the server refuses by, not the year end.
+   */
+  openingCash: number;
+  cashMoves: CashMove[];
   payment?: PaymentDraft;
 }) {
-  const [error, action, pending] = useActionState(payment ? amendPayment : postPayment, null);
+  const [state, action, pending] = useActionState(payment ? amendPayment : postPayment, null);
   const [date, setDate] = useState(payment?.date ?? new Date().toISOString().slice(0, 10));
   const [amounts, setAmounts] = useState<Record<string, string>>(payment?.amounts ?? {});
-  const [method, setMethod] = useState(payment?.method ?? "bank");
+  // No default: chosen on every voucher, so a cash payment is never posted as bank by habit.
+  const [method, setMethod] = useState(payment?.method ?? "");
+  const [particulars, setParticulars] = useState(payment?.particulars ?? "");
+  const [chequeNo, setChequeNo] = useState(payment?.chequeNo ?? "");
+  const payee = useRef<HTMLInputElement>(null);
+
+  // Posted: clear for the next voucher. The date stays — vouchers are entered
+  // in batches from the same day.
+  const posted = state?.posted;
+  useEffect(() => {
+    if (!posted) return;
+    setAmounts({});
+    setMethod("");
+    setParticulars("");
+    setChequeNo("");
+    payee.current?.focus();
+  }, [posted]);
+
+  // Submitted by hand rather than through the form's action, which would
+  // reset the fields even when the save is refused and the figures are needed.
+  const submit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const data = new FormData(e.currentTarget);
+    startTransition(() => action(data));
+  };
+  const cashInHand = cashAsAt(openingCash, cashMoves, date);
 
   // One parser, shared with the server — see parse-amount.ts. Anything
   // unreadable counts as nothing here and is refused on save, rather than
@@ -67,7 +95,18 @@ export function PaymentForm({
       : `${formatKes(total)} across ${heads.filter((h) => charged(h.code) > 0).length} vote head(s).`;
 
   return (
-    <form action={action} className="card">
+    <form onSubmit={submit} className="card">
+      {posted && (
+        <p style={{ margin: "0 0 1.25rem", padding: ".75rem 1rem", borderRadius: 3, border: "1px solid var(--gold)", background: "var(--band)" }}>
+          VR {posted.vrNo} posted — {formatKes(posted.total)} to {posted.payee}.{" "}
+          <Link href={`/app/${accountId}/payments/${posted.id}/voucher`}>View voucher</Link>
+          {" · "}
+          <Link href={`/app/${accountId}/payments/${posted.id}/edit`}>Amend</Link>
+          <span className="note" style={{ display: "block", marginTop: ".25rem" }}>
+            Ready for the next payment.
+          </span>
+        </p>
+      )}
       <input type="hidden" name="accountId" value={accountId} />
       {payment && <input type="hidden" name="transactionId" value={payment.id} />}
 
@@ -85,13 +124,15 @@ export function PaymentForm({
               open to be filled in by habit. */}
           <input
             name="chequeNo"
-            placeholder={method === "cash" ? "Not used for cash" : "001432"}
-            defaultValue={payment?.chequeNo}
-            disabled={method === "cash"}
+            placeholder={method === "cash" ? "Not used for cash" : method ? "001432" : "Choose Paid by first"}
+            value={method === "cash" ? "" : chequeNo}
+            onChange={(e) => setChequeNo(e.target.value)}
+            disabled={method !== "bank"}
           />
         </label>
         <label className="field">Paid by
-          <select name="method" value={method} onChange={(e) => setMethod(e.target.value)}>
+          <select name="method" value={method} onChange={(e) => setMethod(e.target.value)} required>
+            <option value="" disabled>— choose —</option>
             <option value="bank">Bank</option>
             <option value="cash">Cash</option>
           </select>
@@ -99,7 +140,8 @@ export function PaymentForm({
       </div>
 
       <label className="field" style={{ marginTop: "1.25rem" }}>Payee / paid to
-        <input name="particulars" placeholder="Text Book Centre — exercise books" defaultValue={payment?.particulars} required />
+        <input name="particulars" placeholder="Text Book Centre — exercise books" required ref={payee}
+          value={particulars} onChange={(e) => setParticulars(e.target.value)} />
       </label>
 
       <div className="eyebrow" style={{ margin: "1.75rem 0 .6rem" }}>Charged to</div>
@@ -160,13 +202,13 @@ export function PaymentForm({
       </div>
       {shortOfCash && (
         <p className="note" style={{ marginTop: ".9rem", color: "var(--alarm)" }}>
-          Cash in hand is {formatKes(cashInHand)}, so this leaves it{" "}
+          Cash in hand on {date} is {formatKes(cashInHand)}, so this leaves it{" "}
           {formatKes(total - cashInHand)} short. Draw the cash from the bank first on the{" "}
           <Link href={`/app/${accountId}/cash-and-bank`}>cash and bank</Link> page — a month cannot
           be closed while cash in hand is negative.
         </p>
       )}
-      {error && <p className="error">{error}</p>}
+      {state?.error && <p className="error">{state.error}</p>}
     </form>
   );
 }
