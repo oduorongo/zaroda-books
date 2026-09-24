@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { cashMoves, buildLedger, formatKes } from "@/domain";
+import { cashMoves, entryDates, buildLedger, formatKes } from "@/domain";
 import type { Txn, VoteEntry } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getTxns } from "@/server/queries";
@@ -62,6 +62,7 @@ export default async function PaymentsPage({
         entries={entries}
         openingCash={fy.openingCash}
         cashMoves={cashMoves(txns)}
+        dates={entryDates(fy, txns.map((t) => t.date))}
       />
 
       <div className="card" style={{ marginTop: "1.6rem" }}>

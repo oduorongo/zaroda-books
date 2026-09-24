@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { balancesAfter, toKes } from "@/domain";
+import { balancesAfter, entryDates, toKes } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getTransferForEdit, getTxns } from "@/server/queries";
 import { DeleteTransfer, TransferForm } from "../../form";
@@ -42,6 +42,7 @@ export default async function AmendTransferPage({
         accountId={accountId}
         cash={balances.cash}
         bank={balances.bank}
+        dates={entryDates(fy, [])}
         transfer={{
           id: transfer.id,
           date: transfer.date,

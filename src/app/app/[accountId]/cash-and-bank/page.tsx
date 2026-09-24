@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { balancesAfter, formatKes } from "@/domain";
+import { balancesAfter, entryDates, formatKes } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getReceiptBankings, getTxns } from "@/server/queries";
 import { TransferForm } from "./form";
@@ -42,7 +42,8 @@ export default async function CashAndBankPage({
         </div>
       </div>
 
-      <TransferForm accountId={accountId} cash={balances.cash} bank={balances.bank} />
+      <TransferForm accountId={accountId} cash={balances.cash} bank={balances.bank}
+        dates={entryDates(fy, txns.map((t) => t.date))} />
 
       <div className="card" style={{ marginTop: "1.6rem" }}>
         <h2 style={{ marginTop: 0, fontSize: "1.05rem" }}>Transfers posted</h2>

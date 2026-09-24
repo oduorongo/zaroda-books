@@ -30,3 +30,30 @@ export function previousFinancialYear(label: string): string | null {
   const start = Number(match[1]) - 1;
   return `${start}/${String((start + 1) % 100).padStart(2, "0")}`;
 }
+
+/** The dates an entry form may offer, and the one it opens on. */
+export interface EntryDates {
+  from: string;
+  to: string;
+  start: string;
+}
+
+/** Today in Kenya. The server runs on UTC, which is yesterday until 3 a.m. */
+export const todayInKenya = (now: Date = new Date()): string =>
+  now.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" });
+
+/**
+ * A form opens on today when today is in the book's year. A book for an
+ * earlier year opens on its last entry instead — on a phone, the calendar
+ * otherwise opens on today and the bursar pages back month by month.
+ */
+export function entryDates(
+  fy: { startsOn: string; endsOn: string },
+  posted: string[],
+  today: string = todayInKenya(),
+): EntryDates {
+  const { startsOn: from, endsOn: to } = fy;
+  if (today >= from && today <= to) return { from, to, start: today };
+  const last = posted.filter((d) => d >= from && d <= to).sort().at(-1);
+  return { from, to, start: last ?? from };
+}

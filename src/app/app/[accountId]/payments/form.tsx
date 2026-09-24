@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 import {
-  cashAsAt, formatKes, parseAmount, voteBalancesAsAt, type CashMove, type VoteEntry, type VoteHead,
+  cashAsAt, formatKes, parseAmount, type EntryDates, voteBalancesAsAt, type CashMove, type VoteEntry, type VoteHead,
 } from "@/domain";
 import { amendPayment, postPayment } from "./actions";
 
@@ -19,7 +19,7 @@ export interface PaymentDraft {
 }
 
 export function PaymentForm({
-  accountId, heads, entries, openingCash, cashMoves, payment,
+  accountId, heads, entries, openingCash, cashMoves, dates, payment,
 }: {
   accountId: string;
   heads: VoteHead[];
@@ -34,10 +34,12 @@ export function PaymentForm({
    */
   openingCash: number;
   cashMoves: CashMove[];
+  /** The book's year, which the calendar is held to. */
+  dates: EntryDates;
   payment?: PaymentDraft;
 }) {
   const [state, action, pending] = useActionState(payment ? amendPayment : postPayment, null);
-  const [date, setDate] = useState(payment?.date ?? new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(payment?.date ?? dates.start);
   const [amounts, setAmounts] = useState<Record<string, string>>(payment?.amounts ?? {});
   // No default: chosen on every voucher, so a cash payment is never posted as bank by habit.
   const [method, setMethod] = useState(payment?.method ?? "");
@@ -112,7 +114,7 @@ export function PaymentForm({
 
       <div className="grid-4">
         <label className="field">Date
-          <input name="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+          <input name="date" type="date" min={dates.from} max={dates.to} value={date} onChange={(e) => setDate(e.target.value)} required />
         </label>
         <label className="field">Voucher no.
           {/* Derived from the date across the whole year, so it is shown, not

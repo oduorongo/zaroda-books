@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { formatKes, toCents } from "@/domain";
+import { formatKes, toCents, type EntryDates } from "@/domain";
 import { amendTransfer, deleteTransfer, postTransfer } from "./actions";
 
 /** A posted transfer reopened for amendment. */
@@ -15,17 +15,21 @@ export interface TransferDraft {
 }
 
 export function TransferForm({
-  accountId, cash, bank, transfer,
+  accountId, cash, bank, dates, transfer,
 }: {
   accountId: string;
   /** Balances with this transfer left out, when amending one. */
   cash: number;
   bank: number;
+  /** The book's year, which the calendar is held to. */
+  dates: EntryDates;
   transfer?: TransferDraft;
 }) {
   const [error, action, pending] = useActionState(transfer ? amendTransfer : postTransfer, null);
   const [direction, setDirection] = useState<string>(transfer?.direction ?? "to-cash");
   const [amount, setAmount] = useState(transfer?.amount ?? "");
+  // Held in state so it survives a save: the next transfer is usually the same day.
+  const [date, setDate] = useState(transfer?.date ?? dates.start);
 
   const asked = toCents(parseFloat(amount.replace(/[^0-9.]/g, "")) || 0);
   const available = direction === "to-bank" ? cash : bank;
@@ -44,8 +48,8 @@ export function TransferForm({
 
       <div className="grid-4">
         <label className="field">Date
-          <input name="date" type="date" required
-            defaultValue={transfer?.date ?? new Date().toISOString().slice(0, 10)} />
+          <input name="date" type="date" required min={dates.from} max={dates.to}
+            value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
         <label className="field">Direction
           <select name="direction" value={direction} onChange={(e) => setDirection(e.target.value)}>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { allocateCapitationFromAmount, enrolmentFit, formatKes, residualHeadCode, toCents, type VoteHead } from "@/domain";
+import { allocateCapitationFromAmount, enrolmentFit, formatKes, residualHeadCode, toCents, type EntryDates, type VoteHead } from "@/domain";
 import { amendReceipt, postReceipt } from "./actions";
 
 interface HeadEntry { rate: string; flat: string }
@@ -24,10 +24,12 @@ const num = (v: string) => {
 };
 
 export function ReceiptForm({
-  accountId, heads, receipt, flatOnly = [], capitation = true,
+  accountId, heads, dates, receipt, flatOnly = [], capitation = true,
 }: {
   accountId: string;
   heads: VoteHead[];
+  /** The book's year, which the calendar is held to. */
+  dates: EntryDates;
   receipt?: ReceiptDraft;
   /** Codes the circular funds per school: their rate box stays shut. */
   flatOnly?: string[];
@@ -40,11 +42,10 @@ export function ReceiptForm({
 }) {
   const [error, action, pending] = useActionState(receipt ? amendReceipt : postReceipt, null);
   const [amount, setAmount] = useState(receipt?.amount ?? "");
-  const today = new Date().toISOString().slice(0, 10);
-  const [date, setDate] = useState(receipt?.date ?? today);
+  const [date, setDate] = useState(receipt?.date ?? dates.start);
   // Every shilling arrives as cash and is banked, so the tick starts on.
   const [banked, setBanked] = useState(receipt ? receipt.bankedOn !== null : true);
-  const [bankedOn, setBankedOn] = useState(receipt?.bankedOn ?? receipt?.date ?? today);
+  const [bankedOn, setBankedOn] = useState(receipt?.bankedOn ?? receipt?.date ?? dates.start);
   // A new receipt starts blank. Only an amendment opens on figures, and they
   // are the ones that receipt was actually posted from.
   const [entries, setEntries] = useState<Record<string, HeadEntry>>(receipt?.entries ?? {});
@@ -101,7 +102,7 @@ export function ReceiptForm({
             folded into the banking date below, which is a separate, later
             event. */}
         <label className="field">Date received
-          <input name="date" type="date" value={date} required
+          <input name="date" type="date" min={dates.from} max={dates.to} value={date} required
             onChange={(e) => {
               setDate(e.target.value);
               // The banking follows the receipt unless it has been moved on purpose.
@@ -139,7 +140,7 @@ export function ReceiptForm({
             deposit happened on a later day, so it reads as a footnote to
             "Banked" rather than a second date of equal weight. */}
         <label className="field" style={{ margin: 0 }}>Date banked, if later
-          <input name="bankedOn" type="date" value={bankedOn} min={date} disabled={!banked}
+          <input name="bankedOn" type="date" value={bankedOn} min={date} max={dates.to} disabled={!banked}
             onChange={(e) => setBankedOn(e.target.value)} />
         </label>
         <p className="note" style={{ flex: "1 1 18rem", margin: 0 }}>

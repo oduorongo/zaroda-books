@@ -1,6 +1,6 @@
 import Link from "next/link";
 import {
-  buildLedger, flatOnlyHeadCodes, formatKes, isCapitationAccount, seesCapitationLetter, toKes,
+  buildLedger, entryDates, flatOnlyHeadCodes, formatKes, isCapitationAccount, seesCapitationLetter, toKes,
 } from "@/domain";
 import type { AccountType } from "@/domain";
 import { loadBook } from "@/server/book-context";
@@ -60,7 +60,8 @@ export default async function ReceiptsPage({
         </p>
       )}
 
-      <ReceiptForm accountId={accountId} heads={heads} flatOnly={flatOnly} capitation={capitation} />
+      <ReceiptForm accountId={accountId} heads={heads}
+        dates={entryDates(fy, txns.map((t) => t.date))} flatOnly={flatOnly} capitation={capitation} />
 
       <div className="grid-2" style={{ marginTop: "1.6rem", alignItems: "start" }}>
         <div className="card">

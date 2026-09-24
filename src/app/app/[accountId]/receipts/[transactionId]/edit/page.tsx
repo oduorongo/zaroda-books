@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { flatOnlyHeadCodes, toKes } from "@/domain";
+import { entryDates, flatOnlyHeadCodes, toKes } from "@/domain";
 import type { AccountType } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getReceiptForEdit } from "@/server/queries";
@@ -36,6 +36,7 @@ export default async function AmendReceiptPage({
       <ReceiptForm
         accountId={accountId}
         heads={heads}
+        dates={entryDates(fy, [])}
         flatOnly={flatOnlyHeadCodes(school.level, account.type as AccountType)}
         receipt={{
           id: receipt.id,
