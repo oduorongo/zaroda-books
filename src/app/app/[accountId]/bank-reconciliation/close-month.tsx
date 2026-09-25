@@ -5,7 +5,7 @@ import { useActionState } from "react";
 import { closeMonthAction, reopenMonthAction } from "./actions";
 
 export function CloseMonth({
-  accountId, month, monthName, closed, reconciled, closes, reopens, canClose, canReopen, nextYear,
+  accountId, month, monthName, closed, reconciled, closes, reopens, canClose, canReopen, nextYear, openQueries,
 }: {
   accountId: string;
   month: string;
@@ -20,6 +20,8 @@ export function CloseMonth({
   canReopen: boolean;
   /** Set on June once it is closed: where the next year's book is, or how to open it. */
   nextYear: { label: string; href: string; exists: boolean } | null;
+  /** Audit queries not yet closed — a warning, never a bar to closing. */
+  openQueries: number;
 }) {
   const [closeError, close, closing] = useActionState(closeMonthAction, null);
   const [reopenError, reopen, reopening] = useActionState(reopenMonthAction, null);
@@ -43,6 +45,12 @@ export function CloseMonth({
           <span className="note" style={{ marginLeft: "1rem" }}>
             Also closes the {closes.length - 1} open month{closes.length > 2 ? "s" : ""} before it, from {closes[0]}.
           </span>
+        )}
+        {openQueries > 0 && (
+          <p className="note" style={{ color: "var(--alarm)", marginTop: ".6rem" }}>
+            ⚑ {openQueries} audit quer{openQueries === 1 ? "y is" : "ies are"} still open on this book.{" "}
+            <Link href={`/app/${accountId}/queries`}>See the queries</Link>. You can still close.
+          </p>
         )}
         {closeError && <p className="error">{closeError}</p>}
       </form>

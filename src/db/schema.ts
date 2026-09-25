@@ -326,6 +326,37 @@ export const auditors = pgTable("auditors", {
 }, (t) => [index("auditors_user_idx").on(t.userId)]);
 
 /**
+ * A Ministry auditor's query on a book, raised on one entry or on the book as
+ * a whole. Never deleted: open is the school's turn, answered the auditor's,
+ * closed is what the audit settled. See src/domain/audit-query.ts.
+ */
+export const auditQueries = pgTable("audit_queries", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").references(() => orgs.id).notNull(),
+  accountId: uuid("account_id").references(() => accounts.id).notNull(),
+  // Null for a query on the book as a whole. Kept if the entry is deleted,
+  // so the query still says what it was about.
+  transactionId: uuid("transaction_id").references(() => transactions.id, { onDelete: "set null" }),
+  /** What the entry was when queried, e.g. "VR 23 · 2025-03-11 · KEPSHA · 41,000.00". */
+  subject: text("subject").notNull(),
+  status: text("status", { enum: ["open", "answered", "closed"] }).default("open").notNull(),
+  raisedBy: uuid("raised_by").references(() => users.id).notNull(),
+  raisedAt: timestamp("raised_at").defaultNow().notNull(),
+  closedBy: uuid("closed_by").references(() => users.id),
+  closedAt: timestamp("closed_at"),
+}, (t) => [index("audit_queries_account_idx").on(t.accountId, t.status)]);
+
+/** The conversation on a query, the auditor's first message included. */
+export const auditQueryMessages = pgTable("audit_query_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  queryId: uuid("query_id").references(() => auditQueries.id).notNull(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  fromAuditor: boolean("from_auditor").notNull(),
+  body: text("body").notNull(),
+  at: timestamp("at").defaultNow().notNull(),
+}, (t) => [index("audit_query_messages_query_idx").on(t.queryId, t.at)]);
+
+/**
  * An invitation to join an org with a given role.
  *
  * There is no email service yet, so the owner passes the code to the person

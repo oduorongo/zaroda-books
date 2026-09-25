@@ -10,6 +10,7 @@ import { ReportShell } from "../report-shell";
 import { StatementForm } from "./statement-form";
 import { ClearToggle } from "./clear-toggle";
 import { CloseMonth } from "./close-month";
+import { unsettledCount } from "@/server/audit-queries";
 
 export default async function Page({ params, searchParams }: {
   params: Promise<{ accountId: string }>;
@@ -175,6 +176,7 @@ export default async function Page({ params, searchParams }: {
         canClose={can(user.role, "period.close") && !user.readOnly}
         canReopen={can(user.role, "period.reopen") && !user.readOnly}
         nextYear={nextYear}
+        openQueries={await unsettledCount(accountId)}
       />
     </ReportShell>
   );

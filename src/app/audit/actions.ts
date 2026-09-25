@@ -16,5 +16,7 @@ export async function openSchoolAction(form: FormData) {
   const row = await beginAuditOf(schoolId);
   await startViewAs(row.org.id);
 
-  redirect(accountId ? `/app/${accountId}/cash-book` : "/app");
+  // Straight to the book's queries when opened from the auditor's query list.
+  const page = form.get("page") === "queries" ? "queries" : "cash-book";
+  redirect(accountId ? `/app/${accountId}/${page}` : "/app");
 }

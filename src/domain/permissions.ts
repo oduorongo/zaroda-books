@@ -27,7 +27,8 @@ export type Action =
   | "book.create"
   | "subscription.pay"
   | "people.manage"
-  | "letter.edit";
+  | "letter.edit"
+  | "auditQuery.answer";
 
 const MATRIX: Record<Action, readonly Role[]> = {
   // The daily work of a bursar.
@@ -60,6 +61,9 @@ const MATRIX: Record<Action, readonly Role[]> = {
   // The addresses, signatory and bank details the capitation letter reuses.
   // Whoever posts the receipts keeps them up to date.
   "letter.edit": ["owner", "accountant", "bursar"],
+
+  // Whoever keeps the books answers the auditor for them. A viewer only reads.
+  "auditQuery.answer": ["owner", "accountant", "bursar"],
 };
 
 /** Unknown roles are refused: a permission check must never default open. */

@@ -4,6 +4,7 @@ import {
 } from "@/domain";
 import type { AccountType } from "@/domain";
 import { loadBook } from "@/server/book-context";
+import { queriedEntries } from "@/server/audit-queries";
 import { getTxns } from "@/server/queries";
 import { ReceiptForm } from "./form";
 import { OpeningBalances } from "./opening-balances";
@@ -16,6 +17,7 @@ export default async function ReceiptsPage({
 }) {
   const { accountId } = await params;
   const { user, heads, fy, school, account } = await loadBook(accountId);
+  const queried = await queriedEntries(accountId);
   // Boarding, lunch and the like take money from parents, not the Ministry:
   // no enrolment to derive, nothing to acknowledge.
   const capitation = isCapitationAccount(school.level, account.type as AccountType);
@@ -98,7 +100,7 @@ export default async function ReceiptsPage({
           {receipts.map((r) => (
             <div key={r.id} style={{ display: "flex", justifyContent: "space-between", gap: "1rem", padding: ".75rem 0", borderBottom: "1px solid var(--rule-soft)" }}>
               <div style={{ fontSize: ".9rem" }}>
-                <div style={{ fontWeight: 500 }}>{r.particulars}</div>
+                <div style={{ fontWeight: 500 }}>{queried.has(r.id) && <span title="An audit query on this entry is not yet closed" style={{ color: "var(--alarm)" }}>⚑ </span>}{r.particulars}</div>
                 <div className="note">
                   {r.date}{r.kind === "receipt" && r.receiptNo ? ` · ${r.receiptNo}` : ""}
                 </div>
@@ -111,6 +113,9 @@ export default async function ReceiptsPage({
                   <Link className="note" href={`/app/${accountId}/receipts/${r.id}/acknowledgement`}>
                     Acknowledgement
                   </Link>
+                )}
+                {user.auditing && (
+                  <Link className="note no-print" href={`/app/${accountId}/queries?txn=${r.id}`} style={{ marginLeft: ".6rem" }}>Query</Link>
                 )}
               </div>
             </div>

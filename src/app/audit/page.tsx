@@ -1,4 +1,5 @@
-import { describeAuditScope } from "@/domain";
+import { describeAuditScope, QUERY_STATUS_LABEL } from "@/domain";
+import { queriesRaisedBy } from "@/server/audit-queries";
 import { auditTrail, requireAuditor, schoolsInScope } from "@/server/audit";
 import { Logo } from "../logo";
 import { logout } from "../login/actions";
@@ -11,9 +12,10 @@ const stamp = (d: Date) =>
 
 export default async function AuditPage() {
   const { user, scope } = await requireAuditor();
-  const [schools, trail] = await Promise.all([
+  const [schools, trail, queries] = await Promise.all([
     schoolsInScope(scope),
     auditTrail(user.id),
+    queriesRaisedBy(user.id),
   ]);
 
   return (
@@ -85,6 +87,41 @@ export default async function AuditPage() {
             <p className="note">
               No school in your area keeps books on Zaroda yet. A school appears here once its
               book keeper sets its county and sub-county.
+            </p>
+          )}
+        </div>
+
+        <div className="card" style={{ marginBottom: "1.6rem" }}>
+          <div className="eyebrow" style={{ color: "var(--gold)", marginBottom: ".75rem" }}>
+            Your queries
+          </div>
+          <table>
+            <thead><tr><th>Raised</th><th>School and book</th><th>Entry</th><th>Status</th><th /></tr></thead>
+            <tbody>
+              {queries.map(({ q, schoolId, school, account }) => (
+                <tr key={q.id}>
+                  <td>{stamp(q.raisedAt)}</td>
+                  <td>{school} — {account}</td>
+                  <td>{q.subject}</td>
+                  <td style={q.status === "answered" ? { fontWeight: 600, color: "var(--alarm)" } : undefined}>
+                    {q.status === "answered" ? "Answered — your turn" : QUERY_STATUS_LABEL[q.status]}
+                  </td>
+                  <td>
+                    <form action={openSchoolAction}>
+                      <input type="hidden" name="schoolId" value={schoolId} />
+                      <input type="hidden" name="accountId" value={q.accountId} />
+                      <input type="hidden" name="page" value="queries" />
+                      <button type="submit" className="btn-link" style={{ fontSize: ".82rem" }}>Open</button>
+                    </form>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {queries.length === 0 && (
+            <p className="note">
+              You have raised no queries. Open a school&apos;s book and use Query beside any receipt,
+              payment or transfer, or raise one on the book as a whole from its Audit queries page.
             </p>
           )}
         </div>

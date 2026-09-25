@@ -5,7 +5,8 @@ import { useParams, usePathname } from "next/navigation";
 
 const BOOKS = ["cash-book", "ledger", "trial-balance", "cash-flow", "bank-reconciliation"];
 
-export function SideNav() {
+/** Audit queries waiting on whoever is looking, per book. */
+export function SideNav({ queries = {} }: { queries?: Record<string, number> }) {
   const pathname = usePathname();
   const { accountId } = useParams<{ accountId?: string }>();
 
@@ -17,10 +18,11 @@ export function SideNav() {
         { no: "03", label: "Cash and bank", href: `/app/${accountId}/cash-and-bank` },
         { no: "04", label: "Payments", href: `/app/${accountId}/payments` },
         { no: "05", label: "Final books", href: `/app/${accountId}/cash-book` },
-        { no: "06", label: "Vote heads", href: `/app/${accountId}/vote-heads` },
-        { no: "07", label: "Book settings", href: `/app/${accountId}/settings` },
-        { no: "08", label: "People", href: "/app/people" },
-        { no: "09", label: "Subscription", href: "/app/subscribe" },
+        { no: "06", label: "Audit queries", href: `/app/${accountId}/queries`, count: queries[accountId] },
+        { no: "07", label: "Vote heads", href: `/app/${accountId}/vote-heads` },
+        { no: "08", label: "Book settings", href: `/app/${accountId}/settings` },
+        { no: "09", label: "People", href: "/app/people" },
+        { no: "10", label: "Subscription", href: "/app/subscribe" },
       ]
     : [
         { no: "01", label: "Create the book", href: "/app/new" },
@@ -39,6 +41,11 @@ export function SideNav() {
         <Link key={n.href} href={n.href} aria-current={current(n.href) ? "page" : undefined}>
           <span className="no">{n.no}</span>
           <span>{n.label}</span>
+          {"count" in n && n.count ? (
+            <span className="mono" style={{ marginLeft: "auto", background: "var(--gold-bright)", color: "var(--ink-deep)", borderRadius: 10, padding: "0 .45rem", fontSize: ".72rem", fontWeight: 700 }}>
+              {n.count}
+            </span>
+          ) : null}
         </Link>
       ))}
     </div>

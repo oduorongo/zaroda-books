@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatKes } from "@/domain";
 import { loadBook } from "@/server/book-context";
+import { queriedEntries } from "@/server/audit-queries";
 import { getTxns } from "@/server/queries";
 import { PdfButton } from "../../../pdf-button";
 import { PrintButton } from "../../../print-button";
@@ -14,7 +15,8 @@ export default async function VoucherPage({
   params: Promise<{ accountId: string; transactionId: string }>;
 }) {
   const { accountId, transactionId } = await params;
-  const { heads, fy, school, account } = await loadBook(accountId);
+  const { user, heads, fy, school, account } = await loadBook(accountId);
+  const queried = await queriedEntries(accountId);
 
   const txn = (await getTxns(fy.id)).find((t) => t.id === transactionId);
   if (!txn || txn.kind !== "payment") notFound();
@@ -29,6 +31,10 @@ export default async function VoucherPage({
         <Link href={`/app/${accountId}/payments`}>← Back to payments</Link>
         <span style={{ display: "flex", gap: "1.1rem", alignItems: "center" }}>
           <Link href={`/app/${accountId}/payments/${transactionId}/edit`}>Amend this payment</Link>
+          {queried.has(transactionId) && (
+            <Link href={`/app/${accountId}/queries`} style={{ color: "var(--alarm)" }}>⚑ Audit query open</Link>
+          )}
+          {user.auditing && <Link href={`/app/${accountId}/queries?txn=${transactionId}`}>Raise a query</Link>}
           <span className="report-actions">
             <PdfButton href={voucherExport} />
             <a className="btn btn-quiet" href={voucherExport} download>Download CSV</a>

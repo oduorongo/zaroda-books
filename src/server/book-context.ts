@@ -24,6 +24,7 @@ const WHAT: Record<Action, string> = {
   "entry.post": "post entries",
   "entry.amend": "amend an entry",
   "entry.delete": "delete an entry",
+  "auditQuery.answer": "answer an audit query",
   "period.close": "close a month",
   "period.reopen": "reopen a closed month",
   "voteHead.manage": "change the vote heads",

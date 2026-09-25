@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { balancesAfter, entryDates, formatKes } from "@/domain";
 import { loadBook } from "@/server/book-context";
+import { queriedEntries } from "@/server/audit-queries";
 import { getReceiptBankings, getTxns } from "@/server/queries";
 import { TransferForm } from "./form";
 
@@ -10,7 +11,8 @@ export default async function CashAndBankPage({
   params: Promise<{ accountId: string }>;
 }) {
   const { accountId } = await params;
-  const { fy, school, account } = await loadBook(accountId);
+  const { user, fy, school, account } = await loadBook(accountId);
+  const queried = await queriedEntries(accountId);
   const [txns, bankings] = await Promise.all([getTxns(fy.id), getReceiptBankings(fy.id)]);
 
   const balances = balancesAfter({ cash: fy.openingCash, bank: fy.openingBank }, txns);
@@ -60,7 +62,7 @@ export default async function CashAndBankPage({
               {transfers.map((t) => (
                 <tr key={t.id}>
                   <td className="mono" style={{ color: "var(--muted)" }}>{t.date}</td>
-                  <td>{t.particulars}</td>
+                  <td>{queried.has(t.id) && <span title="An audit query on this entry is not yet closed" style={{ color: "var(--alarm)" }}>⚑ </span>}{t.particulars}</td>
                   <td className="mono">{t.kind === "contra" ? t.chequeNo ?? "—" : "—"}</td>
                   <td>{t.kind === "contra" && t.from === "cash" ? "Cash to bank" : "Cash from bank"}</td>
                   <td className="n">{formatKes(t.kind === "contra" ? t.amount : 0)}</td>
@@ -73,6 +75,9 @@ export default async function CashAndBankPage({
                     ) : (
                       <Link href={`/app/${accountId}/cash-and-bank/${t.id}/edit`}>Amend</Link>
                     )}
+                    {user.auditing && (
+                  <Link className="note no-print" href={`/app/${accountId}/queries?txn=${t.id}`} style={{ marginLeft: ".6rem" }}>Query</Link>
+                )}
                   </td>
                 </tr>
               ))}

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cashMoves, entryDates, buildLedger, formatKes } from "@/domain";
 import type { Txn, VoteEntry } from "@/domain";
 import { loadBook } from "@/server/book-context";
+import { queriedEntries } from "@/server/audit-queries";
 import { getTxns } from "@/server/queries";
 import { PaymentForm } from "./form";
 import { ReportShell } from "../report-shell";
@@ -24,7 +25,8 @@ export default async function PaymentsPage({
   params: Promise<{ accountId: string }>;
 }) {
   const { accountId } = await params;
-  const { heads, fy, school, account } = await loadBook(accountId);
+  const { user, heads, fy, school, account } = await loadBook(accountId);
+  const queried = await queriedEntries(accountId);
   const txns = await getTxns(fy.id);
 
   const entries = voteEntries(txns);
@@ -79,7 +81,7 @@ export default async function PaymentsPage({
               <tr key={p.id}>
                 <td className="mono" style={{ color: "var(--muted)" }}>{p.date}</td>
                 <td className="mono">{p.kind === "payment" ? p.vrNo ?? "—" : "—"}</td>
-                <td>{p.particulars}</td>
+                <td>{queried.has(p.id) && <span title="An audit query on this entry is not yet closed" style={{ color: "var(--alarm)" }}>⚑ </span>}{p.particulars}</td>
                 <td>
                   {p.kind === "payment" && p.allocations.length
                     ? p.allocations.map((a) => (
@@ -93,6 +95,9 @@ export default async function PaymentsPage({
                 <td className="n">{p.kind === "payment" && p.bank ? formatKes(p.bank) : "—"}</td>
                 <td className="n">
                   <Link className="note" href={`/app/${accountId}/payments/${p.id}/voucher`}>View</Link>
+                  {user.auditing && (
+                  <Link className="note no-print" href={`/app/${accountId}/queries?txn=${p.id}`} style={{ marginLeft: ".6rem" }}>Query</Link>
+                )}
                 </td>
               </tr>
             ))}

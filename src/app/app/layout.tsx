@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getCurrentUser, isPlatformAdmin, myOrgs } from "@/server/auth";
 import { getOrgBooks } from "@/server/queries";
+import { waitingCounts } from "@/server/audit-queries";
 import { logout } from "../login/actions";
 import { Logo } from "../logo";
 import { BookSwitcher } from "./book-switcher";
@@ -67,7 +68,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </div>
 
-        <SideNav />
+        <SideNav queries={await waitingCounts(books.map((b) => b.account.id), user.auditing)} />
 
         <div className="sidebar-foot">
           <div className="who">
