@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { getCurrentUser, isPlatformAdmin, myOrgs } from "@/server/auth";
+import { auditorScope, getCurrentUser, isPlatformAdmin, myOrgs } from "@/server/auth";
+import { describeAuditScope } from "@/domain";
 import { getOrgBooks } from "@/server/queries";
 import { waitingCounts } from "@/server/audit-queries";
 import { logout } from "../login/actions";
@@ -24,10 +25,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const [books, admin, orgs] = await Promise.all([
+  const [books, admin, orgs, grant] = await Promise.all([
     getOrgBooks(user.orgId, user.bookScope),
     isPlatformAdmin(user.id),
     myOrgs(user.id),
+    auditorScope(user.id),
   ]);
 
   return (
@@ -51,6 +53,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
 
         {/* Only when there is a choice to make. */}
+        {/* An auditor keeps books of their own too; their audits are one click away. */}
+        {grant && (
+          <Link href="/audit" className="btn btn-quiet" style={{ display: "block", textAlign: "center", color: "var(--on-dark)" }}>
+            Audit — {describeAuditScope(grant)}
+          </Link>
+        )}
+
         {orgs.length > 1 && !user.viewingAs && (
           <OrgSwitcher orgs={orgs} current={user.orgId} />
         )}

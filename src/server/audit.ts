@@ -32,8 +32,11 @@ export interface AuditableSchool {
   lastPostedAt: Date | null;
 }
 
-/** Every school in the auditor's area, whoever keeps its books. */
-export async function schoolsInScope(scope: AuditScope): Promise<AuditableSchool[]> {
+/**
+ * The schools in the auditor's area that have sent them a closed year, and
+ * only the books sent. A school that has sent nothing does not appear.
+ */
+export async function schoolsInScope(scope: AuditScope & { id: string }): Promise<AuditableSchool[]> {
   const rows = await db
     .select({
       school: schema.schools,
@@ -62,7 +65,8 @@ export async function schoolsInScope(scope: AuditScope): Promise<AuditableSchool
       books: [],
       lastPostedAt: null,
     };
-    if (r.account) found.books.push({ accountId: r.account.id, name: r.account.name });
+    if (r.account?.auditSentTo !== scope.id) continue;
+    found.books.push({ accountId: r.account.id, name: r.account.name });
     by.set(r.school.id, found);
   }
   return [...by.values()];
@@ -84,6 +88,9 @@ export async function beginAuditOf(schoolId: string) {
     .innerJoin(schema.orgs, eq(schema.orgs.id, schema.schools.orgId))
     .where(eq(schema.schools.id, schoolId));
   if (!row || !auditorCanSee(scope, row.school)) notFound();
+  const [sent] = await db.select({ id: schema.accounts.id }).from(schema.accounts)
+    .where(and(eq(schema.accounts.schoolId, schoolId), eq(schema.accounts.auditSentTo, scope.id)));
+  if (!sent) notFound();
 
   await db.insert(schema.auditLog).values({
     orgId: row.org.id,
@@ -111,24 +118,4 @@ export async function auditTrail(userId: string) {
     .where(and(eq(schema.auditLog.userId, userId), eq(schema.auditLog.action, "audit.opened")))
     .orderBy(desc(schema.auditLog.at))
     .limit(25);
-}
-
-/**
- * The auditors who can currently read this org's books.
- *
- * Lives here rather than in platform.ts because a tenant page shows it, and
- * nothing under src/app/app/ may import the cross-tenant console module.
- * It reveals only who holds a grant over the org's own schools.
- */
-export async function auditorsOverOrg(orgId: string) {
-  const [grants, schools] = await Promise.all([
-    db
-      .select({ auditor: schema.auditors, name: schema.users.name, email: schema.users.email })
-      .from(schema.auditors)
-      .innerJoin(schema.users, eq(schema.users.id, schema.auditors.userId))
-      .where(isNull(schema.auditors.revokedAt)),
-    db.select().from(schema.schools).where(eq(schema.schools.orgId, orgId)),
-  ]);
-
-  return grants.filter((g) => schools.some((s) => auditorCanSee(g.auditor, s)));
 }

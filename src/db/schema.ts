@@ -117,6 +117,11 @@ export const accounts = pgTable("accounts", {
   // stays counted however the subscription is billed.
   archivedAt: timestamp("archived_at"),
   archivedBy: uuid("archived_by").references(() => users.id),
+  // The auditor's grant this closed year has been sent to. Only that auditor
+  // sees the book, and reopening a month takes it back (cleared to null).
+  auditSentTo: uuid("audit_sent_to").references((): AnyPgColumn => auditors.id),
+  auditSentAt: timestamp("audit_sent_at"),
+  auditSentBy: uuid("audit_sent_by").references(() => users.id),
 });
 
 /**

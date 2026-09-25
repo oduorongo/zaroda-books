@@ -71,7 +71,7 @@ export async function closeMonth(accountId: string, month: string) {
  * frozen on a balance brought down that can now change.
  */
 export async function reopenMonth(accountId: string, month: string, reason: string) {
-  const { user, fy } = await loadBook(accountId, { write: true, require: "period.reopen" });
+  const { user, fy, account } = await loadBook(accountId, { write: true, require: "period.reopen" });
   if (!reason.trim()) throw new Error("Say why the month is being reopened.");
 
   const periods = await periodsOf(fy.id);
@@ -95,6 +95,17 @@ export async function reopenMonth(accountId: string, month: string, reason: stri
       }),
       after: JSON.stringify({ month: p.month, reason: reason.trim(), reopenedWith: month }),
     })),
+    // A year sent for audit comes back from the auditor once it is reopened:
+    // they audit closed figures, not ones still being changed.
+    ...(account.auditSentTo ? [
+      db.update(schema.accounts).set({ auditSentTo: null, auditSentAt: null, auditSentBy: null })
+        .where(eq(schema.accounts.id, accountId)),
+      db.insert(schema.auditLog).values({
+        orgId: user.orgId, userId: user.id, action: "audit.withdrawn", entity: "account", entityId: accountId,
+        before: JSON.stringify({ auditSentTo: account.auditSentTo }),
+        after: JSON.stringify({ reason: `Reopened ${month}: ${reason.trim()}` }),
+      }),
+    ] : []),
   ];
   await db.batch(writes as unknown as Parameters<typeof db.batch>[0]);
 }

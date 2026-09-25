@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { monthsToClose, monthsToReopen } from "../period-order";
+import { monthsToClose, monthsToReopen, yearClosed } from "../period-order";
 
 const months = (...statuses: ("open" | "closed")[]) =>
   statuses.map((status, i) => ({ month: `2024-${String(7 + i).padStart(2, "0")}-01`, status }));
@@ -29,5 +29,15 @@ describe("monthsToReopen", () => {
 
   it("refuses a month that is open", () => {
     expect(monthsToReopen(months("open"), "2024-07-01").error).toMatch(/not closed/);
+  });
+});
+
+describe("yearClosed", () => {
+  it("is true once the last month of the year is closed", () => {
+    expect(yearClosed(months("closed", "closed", "closed"))).toBe(true);
+  });
+
+  it("is false while the last month is open", () => {
+    expect(yearClosed(months("closed", "closed", "open"))).toBe(false);
   });
 });

@@ -28,6 +28,10 @@ export function monthsToClose(periods: PeriodStatus[], month: string): Months {
   };
 }
 
+/** The year is closed when its last month is: months close in order. */
+export const yearClosed = (periods: PeriodStatus[]): boolean =>
+  inOrder(periods).at(-1)?.status === "closed";
+
 /** Latest first, the order they unwind in. */
 export function monthsToReopen(periods: PeriodStatus[], month: string): Months {
   const target = periods.find((p) => p.month === month);

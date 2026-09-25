@@ -34,7 +34,9 @@ async function auditorOver(accountId: string) {
   if (!user) throw new Error("Sign in first.");
   const scope = await auditorScope(user.id);
   const book = await bookOf(accountId);
-  if (!scope || !auditorCanSee(scope, book.school)) throw new Error("Only an auditor for this school can do that.");
+  if (!scope || !auditorCanSee(scope, book.school) || book.account.auditSentTo !== scope.id) {
+    throw new Error("Only the auditor this book was sent to can do that.");
+  }
   return { user, book };
 }
 
@@ -46,6 +48,7 @@ async function partyTo(query: typeof schema.auditQueries.$inferSelect) {
 
   const scope = await auditorScope(user.id);
   if (scope && auditorCanSee(scope, book.school) && user.auditing) {
+    if (book.account.auditSentTo !== scope.id) throw new Error("This book has been taken back by the school.");
     return { user, book, party: "auditor" as QueryParty };
   }
   if (user.readOnly || user.orgId !== query.orgId || !can(user.role, "auditQuery.answer")) {
@@ -244,7 +247,10 @@ export async function unsettledCount(accountId: string) {
 /** Everything an auditor has raised, newest first, for their audit page. */
 export async function queriesRaisedBy(userId: string) {
   return db
-    .select({ q: schema.auditQueries, schoolId: schema.schools.id, school: schema.schools.name, account: schema.accounts.name })
+    .select({
+      q: schema.auditQueries, schoolId: schema.schools.id, school: schema.schools.name,
+      account: schema.accounts.name, sentTo: schema.accounts.auditSentTo,
+    })
     .from(schema.auditQueries)
     .innerJoin(schema.accounts, eq(schema.accounts.id, schema.auditQueries.accountId))
     .innerJoin(schema.schools, eq(schema.schools.id, schema.accounts.schoolId))

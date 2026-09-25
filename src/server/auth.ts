@@ -216,7 +216,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
           // A platform admin sees the whole org; an auditor only their area.
           bookScope: admin || !scope
             ? { kind: "org" }
-            : { kind: "area", county: scope.county, subCounty: scope.subCounty },
+            : { kind: "area", grantId: scope.id, county: scope.county, subCounty: scope.subCounty },
           auditing: !admin && Boolean(scope),
           position: null,
         };
@@ -251,9 +251,9 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 }
 
 /** The live audit grant for a user, or null. Revoked grants never count. */
-export async function auditorScope(userId: string): Promise<AuditScope | null> {
+export async function auditorScope(userId: string): Promise<(AuditScope & { id: string }) | null> {
   const [row] = await db
-    .select({ county: schema.auditors.county, subCounty: schema.auditors.subCounty })
+    .select({ id: schema.auditors.id, county: schema.auditors.county, subCounty: schema.auditors.subCounty })
     .from(schema.auditors)
     .where(and(eq(schema.auditors.userId, userId), isNull(schema.auditors.revokedAt)));
   return row ?? null;

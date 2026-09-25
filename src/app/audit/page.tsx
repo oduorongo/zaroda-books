@@ -85,8 +85,8 @@ export default async function AuditPage() {
           </table>
           {schools.length === 0 && (
             <p className="note">
-              No school in your area keeps books on Zaroda yet. A school appears here once its
-              book keeper sets its county and sub-county.
+              No school has sent you its books yet. A school in your area appears here once it
+              closes a year and chooses you as its auditor, from the book&apos;s settings.
             </p>
           )}
         </div>
@@ -98,7 +98,7 @@ export default async function AuditPage() {
           <table>
             <thead><tr><th>Raised</th><th>School and book</th><th>Entry</th><th>Status</th><th /></tr></thead>
             <tbody>
-              {queries.map(({ q, schoolId, school, account }) => (
+              {queries.map(({ q, schoolId, school, account, sentTo }) => (
                 <tr key={q.id}>
                   <td>{stamp(q.raisedAt)}</td>
                   <td>{school} — {account}</td>
@@ -107,12 +107,15 @@ export default async function AuditPage() {
                     {q.status === "answered" ? "Answered — your turn" : QUERY_STATUS_LABEL[q.status]}
                   </td>
                   <td>
+                    {/* A book reopened by the school comes back from the auditor until re-sent. */}
+                    {sentTo !== scope.id ? <span className="note">Taken back by the school</span> : (
                     <form action={openSchoolAction}>
                       <input type="hidden" name="schoolId" value={schoolId} />
                       <input type="hidden" name="accountId" value={q.accountId} />
                       <input type="hidden" name="page" value="queries" />
                       <button type="submit" className="btn-link" style={{ fontSize: ".82rem" }}>Open</button>
                     </form>
+                    )}
                   </td>
                 </tr>
               ))}

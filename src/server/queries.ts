@@ -2,7 +2,7 @@ import "server-only";
 import { db, schema } from "@/db";
 import { and, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type { BookScope, Txn, VoteHead } from "@/domain";
-import { scopeAllows } from "@/domain";
+import { bookAllows } from "@/domain";
 
 export async function getAccountAndSchool(accountId: string) {
   const [row] = await db
@@ -40,7 +40,7 @@ export async function getOrgBooks(orgId: string, scope: BookScope) {
 
   // Filtered here rather than in SQL: the decision belongs in the domain,
   // where it is tested, not spread across a WHERE clause.
-  return scope ? rows.filter((r) => scopeAllows(scope, r.school)) : rows;
+  return scope ? rows.filter((r) => bookAllows(scope, r.school, r.account)) : rows;
 }
 
 /**
@@ -60,7 +60,7 @@ export async function getBookForOrg(accountId: string, orgId: string, scope?: Bo
     ));
   // An archived book is unreachable even by its own link, not merely unlisted.
   if (!row) throw new Error("Account not found.");
-  if (scope && !scopeAllows(scope, row.school)) throw new Error("Account not found.");
+  if (scope && !bookAllows(scope, row.school, row.account)) throw new Error("Account not found.");
   return row;
 }
 

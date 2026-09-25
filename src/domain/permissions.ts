@@ -28,7 +28,8 @@ export type Action =
   | "subscription.pay"
   | "people.manage"
   | "letter.edit"
-  | "auditQuery.answer";
+  | "auditQuery.answer"
+  | "book.sendForAudit";
 
 const MATRIX: Record<Action, readonly Role[]> = {
   // The daily work of a bursar.
@@ -64,6 +65,9 @@ const MATRIX: Record<Action, readonly Role[]> = {
 
   // Whoever keeps the books answers the auditor for them. A viewer only reads.
   "auditQuery.answer": ["owner", "accountant", "bursar"],
+
+  // Handing a closed year to the auditor is a sign-off, like closing it.
+  "book.sendForAudit": ["owner", "accountant"],
 };
 
 /** Unknown roles are refused: a permission check must never default open. */

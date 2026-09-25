@@ -71,6 +71,9 @@ export function CloseMonth({
               The new book opens with this year&apos;s closing cash and bank as its opening balances.
             </span>
           )}
+          <Link href={`/app/${accountId}/settings`} style={{ display: "block", marginTop: ".6rem" }}>
+            Send the books for audit →
+          </Link>
         </p>
       )}
 

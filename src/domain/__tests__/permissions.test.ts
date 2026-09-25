@@ -18,6 +18,7 @@ const EXPECTED: Record<Action, Role[]> = {
   "people.manage": ["owner"],
   "letter.edit": ["owner", "accountant", "bursar"],
   "auditQuery.answer": ["owner", "accountant", "bursar"],
+  "book.sendForAudit": ["owner", "accountant"],
 };
 
 describe("can", () => {

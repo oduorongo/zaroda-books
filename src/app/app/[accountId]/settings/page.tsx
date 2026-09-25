@@ -1,14 +1,16 @@
+import Link from "next/link";
 import {
-  accountTypesFor, financialYearInProgress, financialYearLabels, type AccountType,
+  accountTypesFor, can, financialYearInProgress, financialYearLabels, type AccountType,
 } from "@/domain";
 import { loadBook } from "@/server/book-context";
-import { auditorsOverOrg } from "@/server/audit";
+import { auditorsForSchool, auditStatus } from "@/server/audit-send";
 import { describeAuditScope } from "@/domain";
 import { getTxns } from "@/server/queries";
 import { AccountTypeForm } from "./account-type-form";
 import { FinancialYearForm } from "./form";
 import { ArchiveForm } from "./archive-form";
 import { SchoolForm } from "./school-form";
+import { SendForAudit } from "./send-audit";
 import { BackLink } from "../../back-link";
 
 export default async function SettingsPage({
@@ -18,7 +20,11 @@ export default async function SettingsPage({
 }) {
   const { accountId } = await params;
   const { user, fy, school, account } = await loadBook(accountId);
-  const auditors = await auditorsOverOrg(user.orgId);
+  const [auditors, audit] = await Promise.all([
+    auditorsForSchool(school),
+    auditStatus(fy.id, account.auditSentTo),
+  ]);
+  const sends = can(user.role, "book.sendForAudit") && !user.readOnly;
   const entries = (await getTxns(fy.id)).length;
 
   // The year the book is on may be older than the list a new book is offered,
@@ -63,28 +69,43 @@ export default async function SettingsPage({
         entries={entries}
       />
 
-      <h2>Archive this book</h2>
-      {auditors.length > 0 && (
-        <div className="card" style={{ maxWidth: 720, marginBottom: "1.6rem" }}>
-          <div className="eyebrow" style={{ color: "var(--gold)" }}>Who else can read these books</div>
-          <p className="note" style={{ margin: ".5rem 0 .9rem", lineHeight: 1.6 }}>
-            Ministry internal auditors hold a standing right to read the books of schools in
-            their area. They can change nothing, and every school they open is recorded in the
-            audit log below.
+      <h2>Send for audit</h2>
+      <div className="card" style={{ maxWidth: 720, marginBottom: "1.6rem" }}>
+        {audit.sentTo ? (
+          <p style={{ margin: 0 }}>
+            <strong>Sent to {audit.sentTo.name}</strong> ({describeAuditScope(audit.sentTo.grant)})
+            {account.auditSentAt ? ` on ${account.auditSentAt.toLocaleDateString("en-KE", { day: "numeric", month: "long", year: "numeric" })}` : ""}.
+            Only that auditor can read this book. Reopening any month takes it back.
           </p>
-          <table>
-            <thead><tr><th>Auditor</th><th>Area</th></tr></thead>
-            <tbody>
-              {auditors.map((a) => (
-                <tr key={a.auditor.id}>
-                  <td>{a.name}<div className="note">{a.email}</div></td>
-                  <td>{describeAuditScope(a.auditor)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+        ) : (
+          <p className="note" style={{ margin: 0, lineHeight: 1.6 }}>
+            No auditor can see this book. Once the year is closed up to June, send it to the
+            Ministry auditor covering {school.subCounty ? `${school.subCounty}, ` : ""}{school.county ?? "the school's county"}.
+            They can read it and raise queries, and change nothing.
+          </p>
+        )}
+        {!school.county ? (
+          <p className="note" style={{ marginTop: ".9rem" }}>
+            Set the school&apos;s county and sub-county above first: an auditor covers a place.
+          </p>
+        ) : !audit.yearClosed ? (
+          <p className="note" style={{ marginTop: ".9rem" }}>
+            The year is not closed yet. <Link href={`/app/${accountId}/bank-reconciliation`}>Close it up to June</Link> on the bank reconciliation.
+          </p>
+        ) : auditors.length === 0 ? (
+          <p className="note" style={{ marginTop: ".9rem" }}>No auditor covers this school&apos;s area yet.</p>
+        ) : sends ? (
+          <SendForAudit
+            accountId={accountId}
+            sentTo={account.auditSentTo}
+            auditors={auditors.map((a) => ({ grantId: a.grant.id, label: `${a.name} — ${describeAuditScope(a.grant)}` }))}
+          />
+        ) : (
+          <p className="note" style={{ marginTop: ".9rem" }}>The owner or accountant sends the books for audit.</p>
+        )}
+      </div>
+
+      <h2>Archive this book</h2>
 
       <ArchiveForm accountId={accountId} schoolName={school.name} entries={entries} />
     </>

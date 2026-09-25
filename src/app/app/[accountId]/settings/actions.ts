@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { loadBook } from "@/server/book-context";
+import { sendForAudit } from "@/server/audit-send";
 import { isSubCountyOf } from "@/domain";
 import {
   archiveBook, changeAccountType, changeFinancialYear, saveSchool, saveSchoolLocation,
@@ -107,4 +108,15 @@ export async function saveSchoolAction(
 
   revalidatePath("/app", "layout");
   return "Saved.";
+}
+
+export async function sendForAuditAction(_prev: string | null, form: FormData): Promise<string | null> {
+  const accountId = String(form.get("accountId") ?? "");
+  try {
+    await sendForAudit(accountId, String(form.get("grantId") ?? ""));
+  } catch (e) {
+    return e instanceof Error ? e.message : "The books could not be sent.";
+  }
+  revalidatePath(`/app/${accountId}`, "layout");
+  return null;
 }
