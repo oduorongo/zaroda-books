@@ -79,6 +79,19 @@ export const CIRCULARS: Circular[] = [
     },
   },
 
+  {
+    programme: "FPE", level: "primary", ref: "MOE.DBE/6/2/3/27", date: "2025-09-26",
+    term: "Disbursement to accounts 1 and 2",
+    note: "Same reference number as the circular of 25 July 2024. The tables are headed SIMBA 144.00 and GPA 186.00; the amounts are 146.20 and 137.80.",
+    accounts: {
+      TUITION: account({ TXB: 43.87, TXM: 4.39, EXB: 61.41, TGR: 21.93, STN: 14.60 }, {}, 146.20, 0),
+      OPERATIONS: account({
+        SSW: 38.58, RMI: 20.67, ACT: 15.15, LTT: 6.89, EWC: 12.40, TEL: 4.14,
+        ENV: 11.02, BOM: 16.54, CON: 2.76, SAT: 2.76, ASS: 6.89,
+      }, {}, 137.80, 0),
+    },
+  },
+
   // ---- Junior (FDJSE): a rate per learner, plus a basic allocation per school.
   {
     programme: "FDJSE", level: "junior", ref: "MOE.HQs/3/7/33(15)", date: "2024-01-26",
