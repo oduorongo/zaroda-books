@@ -7,7 +7,6 @@ import {
 import { BackLink } from "../../back-link";
 import { LetterDetailsForm } from "./details-form";
 import { LetterPdfButton } from "./letter-pdf-button";
-import { PoweredBy } from "../level-mark";
 
 export default async function CapitationLetterPage({
   params,
@@ -163,7 +162,6 @@ export default async function CapitationLetterPage({
             <p>Yours faithfully,</p>
             <div style={{ height: "4.5em" }} />
             {letter.signature.map((l) => <div key={l}>{l}</div>)}
-            <PoweredBy />
           </div>
         </>
       )}

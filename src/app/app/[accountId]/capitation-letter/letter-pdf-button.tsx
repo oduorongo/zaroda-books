@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { drawPoweredBy } from "../pdf-marks";
 import type { Letter } from "@/domain";
 
 /** A4, Times 12 pt, the school's address at the top right, as the Ministry receives them. */
@@ -93,7 +92,6 @@ export function LetterPdfButton({ href }: { href: string }) {
       // Room for the signature and the school stamp, which are never drawn.
       y += step * 4;
       letter.signature.forEach((l) => write(l));
-      drawPoweredBy(pdf);
 
       pdf.save(`${filename}.pdf`);
     } catch {
