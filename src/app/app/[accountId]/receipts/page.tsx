@@ -1,6 +1,6 @@
 import Link from "next/link";
 import {
-  buildLedger, entryDates, flatOnlyHeadCodes, formatKes, isCapitationAccount, seesCapitationLetter, toKes,
+  buildLedger, circularsFor, entryDates, flatOnlyHeadCodes, formatKes, isCapitationAccount, seesCapitationLetter, toKes,
 } from "@/domain";
 import type { AccountType } from "@/domain";
 import { loadBook } from "@/server/book-context";
@@ -61,7 +61,14 @@ export default async function ReceiptsPage({
       )}
 
       <ReceiptForm accountId={accountId} heads={heads}
-        dates={entryDates(fy, txns.map((t) => t.date))} flatOnly={flatOnly} capitation={capitation} />
+        dates={entryDates(fy, txns.map((t) => t.date))}
+        circulars={circularsFor(school.level, account.type as AccountType).map((c) => ({
+          key: `${c.ref}|${c.date}`,
+          label: `${c.programme} ${c.term} — ${c.ref}, ${c.date}`,
+          note: c.note,
+          figures: c.accounts[account.type as AccountType]!,
+        }))}
+        flatOnly={flatOnly} capitation={capitation} />
 
       <div className="grid-2" style={{ marginTop: "1.6rem", alignItems: "start" }}>
         <div className="card">
