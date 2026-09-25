@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { allocateCapitationFromAmount, circularForDate, enrolmentFit, formatKes, residualHeadCode, toCents, toKes, type CircularAccount, type EntryDates, type VoteHead } from "@/domain";
+import { allocateCapitationFromAmount, enrolmentFit, formatKes, residualHeadCode, toCents, toKes, type CircularAccount, type EntryDates, type VoteHead } from "@/domain";
 import { amendReceipt, postReceipt } from "./actions";
 
 interface HeadEntry { rate: string; flat: string }
@@ -40,7 +40,7 @@ export function ReceiptForm({
    */
   capitation?: boolean;
   /** This account's figures from each circular in the library, newest first. */
-  circulars?: { key: string; date: string; label: string; note?: string; figures: CircularAccount }[];
+  circulars?: { key: string; label: string; note?: string; figures: CircularAccount }[];
 }) {
   const [error, action, pending] = useActionState(receipt ? amendReceipt : postReceipt, null);
   const [amount, setAmount] = useState(receipt?.amount ?? "");
@@ -58,33 +58,24 @@ export function ReceiptForm({
     }]));
   };
 
-  // A new receipt opens on the circular in force on its date, figures typed
-  // in, and follows the date until the bursar chooses a circular or changes a
-  // figure. An amendment opens on the figures it was actually posted from.
-  const initial = !receipt && capitation ? circularForDate(circulars, dates.start) : undefined;
-  const [entries, setEntries] = useState<Record<string, HeadEntry>>(receipt?.entries ?? figuresOf(initial));
-  const [circularKey, setCircularKey] = useState(initial?.key ?? "");
-  const [following, setFollowing] = useState(!receipt);
+  // The bursar names the circular before anything else, and nothing is chosen
+  // for them: "" is not yet chosen, "none" is figures entered by hand, and
+  // "posted" is an amendment's own figures, as the receipt was posted.
+  const [entries, setEntries] = useState<Record<string, HeadEntry>>(receipt?.entries ?? {});
+  const [circularKey, setCircularKey] = useState(receipt ? "posted" : "");
   const chosenCircular = circulars.find((c) => c.key === circularKey);
+  const locked = capitation && circularKey === "";
 
-  const followDate = (received: string) => {
-    if (!following || !capitation) return;
-    const c = circularForDate(circulars, received);
-    setCircularKey(c?.key ?? "");
-    setEntries(figuresOf(c));
-  };
   const chooseCircular = (key: string) => {
-    setFollowing(false);
     setCircularKey(key);
     const c = circulars.find((x) => x.key === key);
     if (c) setEntries(figuresOf(c));
+    else if (key === "none") setEntries({});
   };
 
   const entry = (code: string) => entries[code] ?? { rate: "", flat: "" };
-  const set = (code: string, field: keyof HeadEntry, value: string) => {
-    setFollowing(false);
+  const set = (code: string, field: keyof HeadEntry, value: string) =>
     setEntries({ ...entries, [code]: { ...entry(code), [field]: value } });
-  };
 
   // The same domain function the server posts with, so the preview and the
   // posted split can never disagree.
@@ -127,6 +118,26 @@ export function ReceiptForm({
       <input type="hidden" name="accountId" value={accountId} />
       {receipt && <input type="hidden" name="transactionId" value={receipt.id} />}
 
+      {capitation && (
+        <label className="field no-print" style={{ marginBottom: "1.25rem" }}>Circular this money came under
+          <select value={circularKey} onChange={(e) => chooseCircular(e.target.value)} required>
+            <option value="" disabled>Choose the circular…</option>
+            {receipt && <option value="posted">Figures this receipt was posted with</option>}
+            {circulars.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+            <option value="none">No circular — I&apos;ll enter the figures</option>
+          </select>
+          <span className="note">
+            {chosenCircular
+              ? chosenCircular.note ?? "Figures filled in from the circular. Change any the Ministry changed."
+              : circularKey === "none"
+                ? "Enter each rate and flat amount from the circular."
+                : circularKey === "posted"
+                  ? "Change what is wrong, or choose a circular to start again from its figures."
+                  : "Choose it first: its rates and flat amounts are then filled in below."}
+          </span>
+        </label>
+      )}
+
       <div className={capitation ? "grid-4" : "grid-3"}>
         {/* The date the money was received. Everything downstream — which
             month this posts into, the cash book, the ledger — is organised
@@ -137,7 +148,6 @@ export function ReceiptForm({
           <input name="date" type="date" min={dates.from} max={dates.to} value={date} required
             onChange={(e) => {
               setDate(e.target.value);
-              followDate(e.target.value);
               // The banking follows the receipt unless it has been moved on purpose.
               if (bankedOn < e.target.value) setBankedOn(e.target.value);
             }} />
@@ -158,22 +168,6 @@ export function ReceiptForm({
           </div>
         )}
       </div>
-
-      {capitation && (
-        <label className="field no-print" style={{ marginTop: "1.25rem" }}>Circular
-          <select value={circularKey} onChange={(e) => chooseCircular(e.target.value)}>
-            <option value="">{circulars.length ? "No circular — I'll enter the figures" : "No circular held for this account — enter the figures"}</option>
-            {circulars.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
-          </select>
-          <span className="note">
-            {chosenCircular
-              ? `${following ? "Chosen from the date received; change it if the money came under another circular. " : ""}${chosenCircular.note ?? "Figures filled in from the circular. Change any the Ministry changed."}`
-              : circulars.length
-                ? "No circular was issued before this date. Choose one, or enter the figures."
-                : "Enter the figures from the circular."}
-          </span>
-        </label>
-      )}
 
       <label className="field" style={{ marginTop: "1.25rem" }}>Particulars
         <input name="particulars" placeholder="Capitation disbursement, Term 1" defaultValue={receipt?.particulars} />
@@ -222,7 +216,7 @@ export function ReceiptForm({
                     <input
                       name={`rate_${h.code}`} className="mono" inputMode="decimal"
                       placeholder={flatOnly.includes(h.code) ? "per school" : "—"}
-                      disabled={flatOnly.includes(h.code)}
+                      disabled={locked || flatOnly.includes(h.code)}
                       title={flatOnly.includes(h.code)
                         ? "The circular funds this head per school, not per learner."
                         : undefined}
@@ -235,6 +229,7 @@ export function ReceiptForm({
                     <input
                       name={`flat_${h.code}`} className="mono" inputMode="decimal" placeholder="—"
                       style={{ width: 118, textAlign: "right", padding: ".5rem .6rem" }}
+                      disabled={locked}
                       value={e.flat} onChange={(ev) => set(h.code, "flat", ev.target.value)}
                     />
                   </td>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CIRCULARS, circularForDate, circularsFor } from "../circulars";
+import { CIRCULARS, circularsFor } from "../circulars";
 import { chartFor } from "../vote-heads";
 
 const sum = (xs: Record<string, number>) => Object.values(xs).reduce((a, x) => a + x, 0);
@@ -45,19 +45,3 @@ describe("the circular library", () => {
   });
 });
 
-describe("circularForDate", () => {
-  const list = [{ date: "2026-01-06" }, { date: "2025-10-28" }, { date: "2025-01" }];
-
-  it("takes the latest circular issued on or before the receipt", () => {
-    expect(circularForDate(list, "2026-01-22")?.date).toBe("2026-01-06");
-    expect(circularForDate(list, "2025-12-01")?.date).toBe("2025-10-28");
-  });
-
-  it("counts a circular known only by its month as issued that month", () => {
-    expect(circularForDate(list, "2025-01-22")?.date).toBe("2025-01");
-  });
-
-  it("is nothing before the first circular", () => {
-    expect(circularForDate(list, "2024-12-31")).toBeUndefined();
-  });
-});
