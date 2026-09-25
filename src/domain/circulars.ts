@@ -187,3 +187,13 @@ export const circularsFor = (level: SchoolLevel, accountType: AccountType): Circ
   CIRCULARS
     .filter((c) => c.level === level && c.accounts[accountType])
     .sort((a, b) => b.date.localeCompare(a.date));
+
+/**
+ * The circular a receipt most likely came under: the latest issued on or
+ * before the day the money arrived. A circular known only by its month
+ * ("2025-01") sorts before every day of that month, so it counts as issued.
+ */
+export const circularForDate = <T extends { date: string }>(circulars: T[], received: string): T | undefined =>
+  circulars
+    .filter((c) => c.date <= received)
+    .sort((a, b) => b.date.localeCompare(a.date))[0];

@@ -39,6 +39,7 @@ export default async function AmendReceiptPage({
         dates={entryDates(fy, [])}
         circulars={circularsFor(school.level, account.type as AccountType).map((c) => ({
           key: `${c.ref}|${c.date}`,
+          date: c.date,
           label: `${c.programme} ${c.term} — ${c.ref}, ${c.date}`,
           note: c.note,
           figures: c.accounts[account.type as AccountType]!,

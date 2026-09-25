@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { allocateCapitationFromAmount, enrolmentFit, formatKes, residualHeadCode, toCents, toKes, type CircularAccount, type EntryDates, type VoteHead } from "@/domain";
+import { allocateCapitationFromAmount, circularForDate, enrolmentFit, formatKes, residualHeadCode, toCents, toKes, type CircularAccount, type EntryDates, type VoteHead } from "@/domain";
 import { amendReceipt, postReceipt } from "./actions";
 
 interface HeadEntry { rate: string; flat: string }
@@ -40,7 +40,7 @@ export function ReceiptForm({
    */
   capitation?: boolean;
   /** This account's figures from each circular in the library, newest first. */
-  circulars?: { key: string; label: string; note?: string; figures: CircularAccount }[];
+  circulars?: { key: string; date: string; label: string; note?: string; figures: CircularAccount }[];
 }) {
   const [error, action, pending] = useActionState(receipt ? amendReceipt : postReceipt, null);
   const [amount, setAmount] = useState(receipt?.amount ?? "");
@@ -48,27 +48,43 @@ export function ReceiptForm({
   // Every shilling arrives as cash and is banked, so the tick starts on.
   const [banked, setBanked] = useState(receipt ? receipt.bankedOn !== null : true);
   const [bankedOn, setBankedOn] = useState(receipt?.bankedOn ?? receipt?.date ?? dates.start);
-  // A new receipt starts blank. Only an amendment opens on figures, and they
-  // are the ones that receipt was actually posted from.
-  const [entries, setEntries] = useState<Record<string, HeadEntry>>(receipt?.entries ?? {});
-
-  // Choosing a circular types its figures in; any box can still be changed by hand.
-  const [circularKey, setCircularKey] = useState("");
-  const chosenCircular = circulars.find((c) => c.key === circularKey);
-  const useCircular = (key: string) => {
-    setCircularKey(key);
-    const c = circulars.find((x) => x.key === key);
-    if (!c) return;
+  // A circular's figures, as the boxes hold them.
+  const figuresOf = (c?: (typeof circulars)[number]): Record<string, HeadEntry> => {
+    if (!c) return {};
     const figure = (v?: number) => (v ? String(toKes(v)) : "");
-    setEntries(Object.fromEntries(heads.map((h) => [h.code, {
+    return Object.fromEntries(heads.map((h) => [h.code, {
       rate: figure(c.figures.perLearner[h.code]),
       flat: figure(c.figures.flat[h.code]),
-    }])));
+    }]));
+  };
+
+  // A new receipt opens on the circular in force on its date, figures typed
+  // in, and follows the date until the bursar chooses a circular or changes a
+  // figure. An amendment opens on the figures it was actually posted from.
+  const initial = !receipt && capitation ? circularForDate(circulars, dates.start) : undefined;
+  const [entries, setEntries] = useState<Record<string, HeadEntry>>(receipt?.entries ?? figuresOf(initial));
+  const [circularKey, setCircularKey] = useState(initial?.key ?? "");
+  const [following, setFollowing] = useState(!receipt);
+  const chosenCircular = circulars.find((c) => c.key === circularKey);
+
+  const followDate = (received: string) => {
+    if (!following || !capitation) return;
+    const c = circularForDate(circulars, received);
+    setCircularKey(c?.key ?? "");
+    setEntries(figuresOf(c));
+  };
+  const chooseCircular = (key: string) => {
+    setFollowing(false);
+    setCircularKey(key);
+    const c = circulars.find((x) => x.key === key);
+    if (c) setEntries(figuresOf(c));
   };
 
   const entry = (code: string) => entries[code] ?? { rate: "", flat: "" };
-  const set = (code: string, field: keyof HeadEntry, value: string) =>
+  const set = (code: string, field: keyof HeadEntry, value: string) => {
+    setFollowing(false);
     setEntries({ ...entries, [code]: { ...entry(code), [field]: value } });
+  };
 
   // The same domain function the server posts with, so the preview and the
   // posted split can never disagree.
@@ -121,6 +137,7 @@ export function ReceiptForm({
           <input name="date" type="date" min={dates.from} max={dates.to} value={date} required
             onChange={(e) => {
               setDate(e.target.value);
+              followDate(e.target.value);
               // The banking follows the receipt unless it has been moved on purpose.
               if (bankedOn < e.target.value) setBankedOn(e.target.value);
             }} />
@@ -141,6 +158,22 @@ export function ReceiptForm({
           </div>
         )}
       </div>
+
+      {capitation && (
+        <label className="field no-print" style={{ marginTop: "1.25rem" }}>Circular
+          <select value={circularKey} onChange={(e) => chooseCircular(e.target.value)}>
+            <option value="">{circulars.length ? "No circular — I'll enter the figures" : "No circular held for this account — enter the figures"}</option>
+            {circulars.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+          </select>
+          <span className="note">
+            {chosenCircular
+              ? `${following ? "Chosen from the date received; change it if the money came under another circular. " : ""}${chosenCircular.note ?? "Figures filled in from the circular. Change any the Ministry changed."}`
+              : circulars.length
+                ? "No circular was issued before this date. Choose one, or enter the figures."
+                : "Enter the figures from the circular."}
+          </span>
+        </label>
+      )}
 
       <label className="field" style={{ marginTop: "1.25rem" }}>Particulars
         <input name="particulars" placeholder="Capitation disbursement, Term 1" defaultValue={receipt?.particulars} />
@@ -165,20 +198,6 @@ export function ReceiptForm({
             : "The money stays in cash. Bank it later from Cash and bank."}
         </p>
       </div>
-
-      {capitation && (
-        <label className="field no-print" style={{ marginTop: "1.5rem" }}>Circular
-          <select value={circularKey} onChange={(e) => useCircular(e.target.value)}>
-            <option value="">{circulars.length ? "No circular — I'll enter the figures" : "No circular held for this account — enter the figures"}</option>
-            {circulars.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
-          </select>
-          <span className="note">
-            {chosenCircular
-              ? chosenCircular.note ?? "Figures filled in from the circular. Change any that the Ministry changed."
-              : "Choose the circular this money came under and its figures are filled in for you."}
-          </span>
-        </label>
-      )}
 
       <div className="eyebrow" style={{ margin: "1.75rem 0 .6rem" }}>Vote distribution per circular</div>
       <div style={{ overflowX: "auto" }}>
