@@ -41,26 +41,28 @@ export function PaymentForm({
   payment?: PaymentDraft;
 }) {
   const [state, action, pending] = useActionState(payment ? amendPayment : postPayment, null);
-  const [date, setDate] = useState(payment?.date ?? dates.start);
+  // Chosen on every voucher, never defaulted: a payment carried on the day
+  // before's date lands in the wrong place in the cash book.
+  const [date, setDate] = useState(payment?.date ?? "");
   const [amounts, setAmounts] = useState<Record<string, string>>(payment?.amounts ?? {});
   // No default: chosen on every voucher, so a cash payment is never posted as bank by habit.
   const [method, setMethod] = useState(payment?.method ?? "");
   const [particulars, setParticulars] = useState(payment?.particulars ?? "");
   const [chequeNo, setChequeNo] = useState(payment?.chequeNo ?? "");
   const [narration, setNarration] = useState(payment ? payment.narration || NARRATION_STEM : NARRATION_STEM);
-  const payee = useRef<HTMLInputElement>(null);
+  const dateBox = useRef<HTMLInputElement>(null);
 
-  // Posted: clear for the next voucher. The date stays — vouchers are entered
-  // in batches from the same day.
+  // Posted: clear everything for the next voucher, the date included.
   const posted = state?.posted;
   useEffect(() => {
     if (!posted) return;
+    setDate("");
     setAmounts({});
     setMethod("");
     setParticulars("");
     setChequeNo("");
     setNarration(NARRATION_STEM);
-    payee.current?.focus();
+    dateBox.current?.focus();
   }, [posted]);
 
   // Submitted by hand rather than through the form's action, which would
@@ -84,13 +86,15 @@ export function PaymentForm({
   // Judged on the date being entered, not the year: a vote funded in June
   // did not fund a payment made in October.
   const balances = voteBalancesAsAt(entries, date);
-  const overdrawn = heads.filter((h) => charged(h.code) > (balances[h.code] ?? 0));
+  const overdrawn = date ? heads.filter((h) => charged(h.code) > (balances[h.code] ?? 0)) : [];
 
   // Capitation is banked, so paying cash without drawing it first sends cash
   // in hand negative — and a month cannot close on a negative cash balance.
-  const shortOfCash = method === "cash" && total > cashInHand;
+  const shortOfCash = Boolean(date) && method === "cash" && total > cashInHand;
 
-  const note = unreadable.length
+  const note = !date
+    ? "Choose the date of the payment."
+    : unreadable.length
     ? `${unreadable.map((h) => h.code).join(", ")} cannot be read as a figure.`
     : !total
     ? "Enter an amount against each vote head this payment is charged to."
@@ -118,7 +122,7 @@ export function PaymentForm({
 
       <div className="grid-4">
         <label className="field">Date
-          <input name="date" type="date" min={dates.from} max={dates.to} value={date} onChange={(e) => setDate(e.target.value)} required />
+          <input name="date" type="date" ref={dateBox} min={dates.from} max={dates.to} value={date} onChange={(e) => setDate(e.target.value)} required />
         </label>
         <label className="field">Voucher no.
           {/* Derived from the date across the whole year, so it is shown, not
@@ -146,7 +150,7 @@ export function PaymentForm({
       </div>
 
       <label className="field" style={{ marginTop: "1.25rem" }}>Payee / paid to
-        <input name="particulars" placeholder="Text Book Centre — exercise books" required ref={payee}
+        <input name="particulars" placeholder="Text Book Centre — exercise books" required
           value={particulars} onChange={(e) => setParticulars(e.target.value)} />
       </label>
 
@@ -181,12 +185,12 @@ export function PaymentForm({
                       onChange={(e) => setAmounts({ ...amounts, [h.code]: e.target.value })}
                     />
                   </td>
-                  <td className="n" style={{ color: "var(--muted)" }}>{formatKes(available)}</td>
-                  <td className="n" style={line > available ? { color: "var(--alarm)" } : undefined}>
+                  <td className="n" style={{ color: "var(--muted)" }}>{date ? formatKes(available) : "—"}</td>
+                  <td className="n" style={date && line > available ? { color: "var(--alarm)" } : undefined}>
                     {/* A bare negative here was read as the vote's actual balance.
                         Saying "overdrawn by" names it for what it is: what this
                         payment would do, not what the books currently say. */}
-                    {!line
+                    {!line || !date
                       ? "—"
                       : line > available
                         ? `Overdrawn by ${formatKes(line - available)}`
