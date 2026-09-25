@@ -30,11 +30,13 @@ export async function getFirstAccount() {
 // school in the org, which is the one mistake this exists to prevent.
 export async function getOrgBooks(orgId: string, scope: BookScope) {
   const rows = await db
-    .select({ account: schema.accounts, school: schema.schools })
+    .select({ account: schema.accounts, school: schema.schools, fyLabel: schema.financialYears.label })
     .from(schema.accounts)
     .innerJoin(schema.schools, eq(schema.accounts.schoolId, schema.schools.id))
+    // A school keeps a book per year, so the year is what tells two apart.
+    .leftJoin(schema.financialYears, eq(schema.financialYears.accountId, schema.accounts.id))
     .where(and(eq(schema.schools.orgId, orgId), isNull(schema.accounts.archivedAt)))
-    .orderBy(schema.schools.name);
+    .orderBy(schema.schools.name, schema.accounts.name, desc(schema.financialYears.label));
 
   // Filtered here rather than in SQL: the decision belongs in the domain,
   // where it is tested, not spread across a WHERE clause.

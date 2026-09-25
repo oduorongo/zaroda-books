@@ -10,10 +10,13 @@ export function BookSwitcher({ books }: { books: { accountId: string; label: str
 
   return (
     <select
-      value={accountId ?? books[0].accountId}
+      value={accountId ?? ""}
       onChange={(e) => router.push(`/app/${e.target.value}/receipts`)}
       aria-label="School and book"
     >
+      {/* Nothing is open until a book is chosen: opening the first one on the
+          list put receipts into whichever school sorted first. */}
+      {!accountId && <option value="" disabled>Choose a book…</option>}
       {books.map((b) => (
         <option key={b.accountId} value={b.accountId}>{b.label}</option>
       ))}
