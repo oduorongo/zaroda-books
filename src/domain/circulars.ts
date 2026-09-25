@@ -173,6 +173,17 @@ export const CIRCULARS: Circular[] = [
     },
   },
   {
+    programme: "FDJSE", level: "junior", ref: "MOE.HQs/3/7/33(15)", date: "2026-04-22",
+    term: "Term 2 2026",
+    accounts: {
+      OPERATIONS: account(
+        { RMI: 751.93, ADM: 130, ACT: 100, LTT: 96, MED: 45 },
+        { TEL: 24902, EWC: 1550.26, INT: 1530.74, PER: 22017 }, 1122.93, 50000,
+      ),
+      TUITION: account({ LAB: 53.06, MFP: 103.12, ASS: 70.20, STN: 173.62 }, { TGR: 1145.54 }, 400, 1145.54),
+    },
+  },
+  {
     programme: "FDJSE", level: "junior", ref: "MOE.HQs/3/7/33(15)", date: "2026-08-19",
     term: "Term 3 2026",
     accounts: {
