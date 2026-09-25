@@ -1,4 +1,5 @@
-import { buildLedger, formatKes } from "@/domain";
+import { buildLedger, formatKes, isCapitationAccount } from "@/domain";
+import type { AccountType } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getEnrolmentInForce, getTxns, getVoteHeadRates } from "@/server/queries";
 import { AddVoteHeadForm } from "./form";
@@ -27,6 +28,10 @@ export default async function VoteHeadsPage({
   );
   const totalReceived = heads.reduce((a, h) => a + (received[h.code] ?? 0), 0);
 
+  // Infrastructure, boarding and lunch are funded per vote head: no rates, no
+  // enrolment, nothing due per learner — only what each head has received.
+  const capitation = isCapitationAccount(school.level, account.type as AccountType);
+
   return (
     <ReportShell
       title="Vote heads"
@@ -36,12 +41,15 @@ export default async function VoteHeadsPage({
         your own below — existing ones are never renumbered.
       </>}
       school={school.name} level={school.level} account={account.name} fyLabel={fy.label}
-      period={enrolment ? `${learners.toLocaleString("en-KE")} learners` : undefined}
+      period={capitation && enrolment ? `${learners.toLocaleString("en-KE")} learners` : undefined}
       csvHref={`/app/${accountId}/vote-heads/export`}
       landscape
     >
       <p className="note" style={{ marginTop: "-1rem", marginBottom: "1.5rem" }}>
-        {enrolment
+        {!capitation
+          ? "This account is funded per vote head, not per learner. Each head shows what the "
+            + "receipts have given it so far."
+          : enrolment
           ? `${learners.toLocaleString("en-KE")} learners, derived from the disbursement receipted on `
             + `${enrolment.date}${enrolment.receiptNo ? ` (${enrolment.receiptNo})` : ""}. `
             + "The amounts due are what the rates come to at that enrolment, not what was received."
@@ -55,10 +63,12 @@ export default async function VoteHeadsPage({
               <th style={{ width: "3rem" }}>#</th>
               <th>Code</th>
               <th>Name</th>
-              <th className="n">Rate per learner</th>
-              <th className="n">Flat amount</th>
-              <th className="n">Learners</th>
-              <th className="n">Due per disbursement</th>
+              {capitation && <>
+                <th className="n">Rate per learner</th>
+                <th className="n">Flat amount</th>
+                <th className="n">Learners</th>
+                <th className="n">Due per disbursement</th>
+              </>}
               <th className="n">Received to date</th>
             </tr>
           </thead>
@@ -70,19 +80,23 @@ export default async function VoteHeadsPage({
                   <td className="mono" style={{ color: "var(--muted)" }}>{h.order}</td>
                   <td><span className="code">{h.code}</span></td>
                   <td>{h.name}</td>
-                  <td className="n">{r?.perLearner ? formatKes(r.perLearner) : "—"}</td>
-                  <td className="n">{r?.flatAmount ? formatKes(r.flatAmount) : "—"}</td>
-                  <td className="n" style={{ color: "var(--muted)" }}>
-                    {r?.perLearner && learners ? learners.toLocaleString("en-KE") : "—"}
-                  </td>
-                  <td className="n">{due(h.code) ? formatKes(due(h.code)) : "—"}</td>
+                  {capitation && <>
+                    <td className="n">{r?.perLearner ? formatKes(r.perLearner) : "—"}</td>
+                    <td className="n">{r?.flatAmount ? formatKes(r.flatAmount) : "—"}</td>
+                    <td className="n" style={{ color: "var(--muted)" }}>
+                      {r?.perLearner && learners ? learners.toLocaleString("en-KE") : "—"}
+                    </td>
+                    <td className="n">{due(h.code) ? formatKes(due(h.code)) : "—"}</td>
+                  </>}
                   <td className="n">{received[h.code] ? formatKes(received[h.code]) : "—"}</td>
                 </tr>
               );
             })}
             <tr className="total">
-              <td colSpan={6}>Total due at {learners.toLocaleString("en-KE")} learners</td>
-              <td className="n">{formatKes(totalDue)}</td>
+              {capitation ? <>
+                <td colSpan={6}>Total due at {learners.toLocaleString("en-KE")} learners</td>
+                <td className="n">{formatKes(totalDue)}</td>
+              </> : <td colSpan={3}>Total</td>}
               <td className="n">{formatKes(totalReceived)}</td>
             </tr>
           </tbody>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { circularsFor, entryDates, flatOnlyHeadCodes, toKes } from "@/domain";
+import { circularsFor, entryDates, flatOnlyHeadCodes, isCapitationAccount, toKes } from "@/domain";
 import type { AccountType } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getReceiptForEdit } from "@/server/queries";
@@ -19,6 +19,7 @@ export default async function AmendReceiptPage({
   if (!receipt) notFound();
 
   const figure = (cents: number) => (cents ? String(toKes(cents)) : "");
+  const capitation = isCapitationAccount(school.level, account.type as AccountType);
 
   return (
     <>
@@ -29,8 +30,9 @@ export default async function AmendReceiptPage({
       <h1>Amend receipt</h1>
       <p className="sub">
         {school.name} — {account.name}, FY {fy.label}. The figures below are the ones this receipt
-        was posted from. Change what is wrong and save: the enrolment and the split are worked out
-        again from the amended figures, and the acknowledgement reprints.
+        was posted from. Change what is wrong and save: {capitation
+          ? "the enrolment and the split are worked out again from the amended figures, and the acknowledgement reprints."
+          : "the vote heads must still add up to the amount received."}
       </p>
 
       <ReceiptForm
@@ -44,6 +46,7 @@ export default async function AmendReceiptPage({
           figures: c.accounts[account.type as AccountType]!,
         }))}
         flatOnly={flatOnlyHeadCodes(school.level, account.type as AccountType)}
+        capitation={capitation}
         receipt={{
           id: receipt.id,
           date: receipt.date,
@@ -55,6 +58,7 @@ export default async function AmendReceiptPage({
             heads.map((h) => [h.code, {
               rate: figure(receipt.rates[h.code]?.perLearner ?? 0),
               flat: figure(receipt.rates[h.code]?.flatAmount ?? 0),
+              amount: figure(receipt.amounts[h.code] ?? 0),
             }]),
           ),
         }}

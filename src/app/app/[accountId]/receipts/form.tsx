@@ -4,7 +4,12 @@ import { useActionState, useState } from "react";
 import { allocateCapitationFromAmount, enrolmentFit, formatKes, residualHeadCode, toCents, toKes, type CircularAccount, type EntryDates, type VoteHead } from "@/domain";
 import { amendReceipt, postReceipt } from "./actions";
 
-interface HeadEntry { rate: string; flat: string }
+/**
+ * What the bursar types against one vote head: the circular's rate and flat
+ * amount on a capitation account, or the amount itself on an account funded
+ * per vote head (infrastructure, boarding, lunch).
+ */
+interface HeadEntry { rate: string; flat: string; amount?: string }
 
 /** A posted receipt reopened for amendment, with the figures it was worked from. */
 export interface ReceiptDraft {
@@ -88,9 +93,18 @@ export function ReceiptForm({
     .filter((f) => f.amount > 0);
   const basic = { voteHeadCode: residualHeadCode(rateList, flatList, heads.map((h) => h.code)) };
 
-  const { enrolment, allocations } = disbursed > 0 && (rateList.length || flatList.length)
-    ? allocateCapitationFromAmount(disbursed, rateList, basic, flatList)
-    : { enrolment: 0, allocations: [] };
+  // An account funded per vote head has no rates to split by: the bursar
+  // enters each head's amount, and they must add up to the amount received.
+  const { enrolment, allocations } = !capitation
+    ? {
+      enrolment: 0,
+      allocations: heads
+        .map((h) => ({ voteHeadCode: h.code, amount: toCents(num(entry(h.code).amount ?? "")) }))
+        .filter((a) => a.amount > 0),
+    }
+    : disbursed > 0 && (rateList.length || flatList.length)
+      ? allocateCapitationFromAmount(disbursed, rateList, basic, flatList)
+      : { enrolment: 0, allocations: [] };
   const byCode = Object.fromEntries(allocations.map((a) => [a.voteHeadCode, a.amount]));
   const distributed = allocations.reduce((a, x) => a + x.amount, 0);
   const flatTotal = flatList.reduce((a, f) => a + f.amount, 0);
@@ -98,12 +112,21 @@ export function ReceiptForm({
   // Whole cents times whole learners is exact, so any difference at all means
   // the amount, a rate or a flat disagrees with the others. Say so before it is
   // posted rather than rounding it into the residual vote unnoticed.
-  const fit = disbursed > 0 && (rateList.length || flatList.length)
+  const fit = capitation && disbursed > 0 && (rateList.length || flatList.length)
     ? enrolmentFit(disbursed, rateList, flatList)
     : null;
   const mismatch = fit && fit.difference !== 0 ? fit : null;
+  const left = disbursed - distributed;
 
-  const note = !disbursed
+  const note = !capitation
+    ? !disbursed
+      ? "Enter the amount received, then how much of it goes to each vote head."
+      : left > 0
+        ? `${formatKes(left)} of the amount received is not yet given to a vote head.`
+        : left < 0
+          ? `The vote heads come to ${formatKes(-left)} more than the amount received.`
+          : "The vote heads add up to the amount received."
+    : !disbursed
     ? "Enter the amount received, then the rates and any flat amounts from the circular."
     : !rateList.length && !flatList.length
       ? "Enter at least one rate per learner, or a flat amount."
@@ -170,7 +193,8 @@ export function ReceiptForm({
       </div>
 
       <label className="field" style={{ marginTop: "1.25rem" }}>Particulars
-        <input name="particulars" placeholder="Capitation disbursement, Term 1" defaultValue={receipt?.particulars} />
+        <input name="particulars" defaultValue={receipt?.particulars}
+          placeholder={capitation ? "Capitation disbursement, Term 1" : "Funds received"} />
       </label>
 
       <div style={{ display: "flex", alignItems: "center", gap: "1.25rem", marginTop: "1.25rem", flexWrap: "wrap" }}>
@@ -193,8 +217,36 @@ export function ReceiptForm({
         </p>
       </div>
 
-      <div className="eyebrow" style={{ margin: "1.75rem 0 .6rem" }}>Vote distribution per circular</div>
-      <div style={{ overflowX: "auto" }}>
+      <div className="eyebrow" style={{ margin: "1.75rem 0 .6rem" }}>
+        {capitation ? "Vote distribution per circular" : "Vote distribution"}
+      </div>
+      {!capitation && (
+        <table>
+          <thead>
+            <tr><th>Vote head</th><th className="n">Amount (KES)</th></tr>
+          </thead>
+          <tbody>
+            {heads.map((h) => (
+              <tr key={h.code}>
+                <td><span className="code" style={{ marginRight: ".6rem" }}>{h.code}</span>{h.name}</td>
+                <td className="n">
+                  <input
+                    name={`amount_${h.code}`} className="mono" inputMode="decimal" placeholder="—"
+                    style={{ width: 140, textAlign: "right", padding: ".5rem .6rem" }}
+                    value={entry(h.code).amount ?? ""}
+                    onChange={(ev) => set(h.code, "amount", ev.target.value)}
+                  />
+                </td>
+              </tr>
+            ))}
+            <tr className="total">
+              <td>Distributed</td>
+              <td className="n">{formatKes(distributed)}</td>
+            </tr>
+          </tbody>
+        </table>
+      )}
+      {capitation && <div style={{ overflowX: "auto" }}>
         <table>
           <thead>
             <tr>
@@ -246,7 +298,7 @@ export function ReceiptForm({
             </tr>
           </tbody>
         </table>
-      </div>
+      </div>}
 
       {mismatch && (
         <div style={{ marginTop: "1.25rem", padding: "1rem 1.1rem", borderRadius: 3, border: "1px solid var(--alarm)", background: "#fdf6f4" }}>
@@ -264,7 +316,7 @@ export function ReceiptForm({
       )}
 
       <div style={{ display: "flex", alignItems: "center", gap: "1.1rem", marginTop: "1.25rem", flexWrap: "wrap" }}>
-        <button type="submit" className="btn btn-primary" disabled={pending || !distributed}>
+        <button type="submit" className="btn btn-primary" disabled={pending || !distributed || (!capitation && left !== 0)}>
           {pending ? "Saving…" : receipt ? "Save changes" : "Post receipt"}
         </button>
         <div className="note">{note}</div>

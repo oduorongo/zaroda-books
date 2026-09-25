@@ -39,9 +39,12 @@ export default async function ReceiptsPage({
     <ReportShell
       title="Receipts"
       sub={<>
-        {school.name} — {account.name}, FY {fy.label}. Enter the amount received and the rates per
-        learner in force. The system derives the enrolment from the amount and the vote heads used,
-        then distributes the receipt so the split equals the amount received to the shilling.
+        {school.name} — {account.name}, FY {fy.label}. {capitation
+          ? "Enter the amount received and the rates per learner in force. The system derives the "
+            + "enrolment from the amount and the vote heads used, then distributes the receipt so the "
+            + "split equals the amount received to the shilling."
+          : "Enter the amount received and how much of it goes to each vote head. This account is "
+            + "funded per vote head, not per learner, so there is no enrolment."}
       </>}
       school={school.name} level={school.level} account={account.name} fyLabel={fy.label}
       csvHref={`/app/${accountId}/receipts/export`}

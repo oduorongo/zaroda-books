@@ -230,6 +230,7 @@ export async function getReceiptForEdit(transactionId: string, accountId: string
   const lines = await db
     .select({
       code: schema.voteHeads.code,
+      amount: schema.allocations.amount,
       perLearner: schema.allocations.perLearner,
       flatAmount: schema.allocations.flatAmount,
     })
@@ -260,6 +261,8 @@ export async function getReceiptForEdit(transactionId: string, accountId: string
         flatAmount: l.flatAmount ?? 0,
       }]),
     ) as Record<string, HeadRate>,
+    /** What each head was given — all an account funded per vote head has. */
+    amounts: Object.fromEntries(lines.map((l) => [l.code, l.amount])) as Record<string, number>,
   };
 }
 

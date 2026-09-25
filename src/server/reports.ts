@@ -1,8 +1,8 @@
 import "server-only";
-import type { SchoolLevel } from "@/domain";
+import type { AccountType, SchoolLevel } from "@/domain";
 import {
   balancesAfter, buildCashBook, buildCashFlow, buildLedger, buildTrialBalance,
-  csvAmount, toCsv,
+  csvAmount, isCapitationAccount, toCsv,
 } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import {
@@ -260,7 +260,22 @@ export async function reportDoc(
     ];
   }
 
-  if (report === "vote-heads") {
+  if (report === "vote-heads" && !isCapitationAccount(school.level, account.type as AccountType)) {
+    // Funded per vote head: no rates, no enrolment, only what each head received.
+    title = "Vote heads";
+    periodLabel = `FY ${fy.label}`;
+    const received = Object.fromEntries(
+      buildLedger(txns, heads).map((l) => [l.code, l.cr]),
+    );
+    sections = [{
+      columns: ["#", "Code", "Name", "Received to date"],
+      rows: heads.map((h) => [
+        h.order, h.code, h.name, received[h.code] ? csvAmount(received[h.code]) : "",
+      ]),
+      total: ["", "", "Total", csvAmount(heads.reduce((a, h) => a + (received[h.code] ?? 0), 0))],
+      note: "This account is funded per vote head, not per learner.",
+    }];
+  } else if (report === "vote-heads") {
     title = "Vote heads";
     const rates = await getVoteHeadRates(fy.id);
     const enrolment = await getEnrolmentInForce(fy.id);

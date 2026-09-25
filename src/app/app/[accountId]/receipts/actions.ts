@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { allocateCapitationFromAmount, flatOnlyHeadCodes, residualHeadCode, toCents } from "@/domain";
+import { allocateCapitationFromAmount, flatOnlyHeadCodes, isCapitationAccount, residualHeadCode, toCents } from "@/domain";
 import type { AccountType } from "@/domain";
 import type { Allocation, VoteHead } from "@/domain";
 import { loadBook } from "@/server/book-context";
@@ -37,7 +37,8 @@ interface ReadResult {
   receiptNo: string;
   particulars: string;
   amount: number;
-  enrolment: number;
+  /** Undefined on an account funded per vote head: there is no enrolment to derive. */
+  enrolment?: number;
   allocations: Allocation[];
   rates: LineRates;
   /** null when the money stays in the cash box rather than being banked. */
@@ -48,7 +49,12 @@ interface ReadResult {
  * Posting and amending read the same form and split it the same way, so a
  * receipt cannot mean one thing when posted and another when corrected.
  */
-function readReceiptForm(form: FormData, heads: VoteHead[], flatOnly: string[]): ReadResult {
+function readReceiptForm(
+  form: FormData,
+  heads: VoteHead[],
+  flatOnly: string[],
+  capitation: boolean,
+): ReadResult {
   const empty = {
     date: "", receiptNo: "", particulars: "", amount: 0,
     enrolment: 0, allocations: [] as Allocation[], rates: {} as LineRates,
@@ -63,6 +69,29 @@ function readReceiptForm(form: FormData, heads: VoteHead[], flatOnly: string[]):
   if (!date) return { ...empty, error: "Enter the date of the receipt." };
   if (!Number.isFinite(amount) || amount <= 0) {
     return { ...empty, error: "Enter the amount received." };
+  }
+
+  // The money is received in cash and banked; the tick comes off only for a
+  // receipt that stays in the cash box.
+  const banked = form.get("banked") !== null;
+  const bankedOn = String(form.get("bankedOn") ?? "").trim() || date;
+  if (banked && bankedOn < date) {
+    return { ...empty, error: "The banking cannot be dated before the receipt." };
+  }
+  const banking = banked ? { date: bankedOn } : null;
+
+  // Infrastructure, boarding and lunch are funded per vote head, not per
+  // learner: the bursar enters each head's amount, and nothing is derived.
+  if (!capitation) {
+    const allocations = heads
+      .map((h) => ({ voteHeadCode: h.code, amount: toCents(Number(form.get(`amount_${h.code}`) || 0)) }))
+      .filter((a) => a.amount > 0);
+    if (!allocations.length) return { ...empty, error: "Enter how much of the receipt goes to each vote head." };
+    const distributed = allocations.reduce((a, x) => a + x.amount, 0);
+    if (distributed !== amount) {
+      return { ...empty, error: "The vote heads must add up to the amount received." };
+    }
+    return { date, receiptNo, particulars, amount, allocations, rates: {}, banking };
   }
 
   // A flat-funded head takes no rate per learner. The box is shut on the form;
@@ -94,18 +123,7 @@ function readReceiptForm(form: FormData, heads: VoteHead[], flatOnly: string[]):
     if (perLearner || flatAmount) rates[h.code] = { perLearner, flatAmount };
   }
 
-  // The money is received in cash and banked; the tick comes off only for a
-  // receipt that stays in the cash box.
-  const banked = form.get("banked") !== null;
-  const bankedOn = String(form.get("bankedOn") ?? "").trim() || date;
-  if (banked && bankedOn < date) {
-    return { ...empty, error: "The banking cannot be dated before the receipt." };
-  }
-
-  return {
-    date, receiptNo, particulars, amount, enrolment, allocations, rates,
-    banking: banked ? { date: bankedOn } : null,
-  };
+  return { date, receiptNo, particulars, amount, enrolment, allocations, rates, banking };
 }
 
 export async function postReceipt(
@@ -115,7 +133,9 @@ export async function postReceipt(
   const accountId = String(form.get("accountId") ?? "");
   const { user, heads, fy, school, account } = await loadBook(accountId, { write: true, require: "entry.post" });
 
-  const r = readReceiptForm(form, heads, flatOnlyHeadCodes(school.level, account.type as AccountType));
+  const type = account.type as AccountType;
+  const capitation = isCapitationAccount(school.level, type);
+  const r = readReceiptForm(form, heads, flatOnlyHeadCodes(school.level, type), capitation);
   if (r.error) return r.error;
 
   let transactionId: string;
@@ -146,7 +166,10 @@ export async function postReceipt(
   }
 
   revalidatePath(`/app/${accountId}/receipts`);
-  redirect(`/app/${accountId}/receipts/${transactionId}/acknowledgement`);
+  // Only a capitation receipt has an acknowledgement to print.
+  redirect(capitation
+    ? `/app/${accountId}/receipts/${transactionId}/acknowledgement`
+    : `/app/${accountId}/receipts`);
 }
 
 export async function amendReceipt(
@@ -157,7 +180,9 @@ export async function amendReceipt(
   const transactionId = String(form.get("transactionId") ?? "");
   const { user, heads, school, account } = await loadBook(accountId, { write: true, require: "entry.amend" });
 
-  const r = readReceiptForm(form, heads, flatOnlyHeadCodes(school.level, account.type as AccountType));
+  const type = account.type as AccountType;
+  const capitation = isCapitationAccount(school.level, type);
+  const r = readReceiptForm(form, heads, flatOnlyHeadCodes(school.level, type), capitation);
   if (r.error) return r.error;
 
   try {
@@ -184,7 +209,10 @@ export async function amendReceipt(
   }
 
   revalidatePath(`/app/${accountId}`, "layout");
-  redirect(`/app/${accountId}/receipts/${transactionId}/acknowledgement`);
+  // Only a capitation receipt has an acknowledgement to print.
+  redirect(capitation
+    ? `/app/${accountId}/receipts/${transactionId}/acknowledgement`
+    : `/app/${accountId}/receipts`);
 }
 
 export async function deleteReceipt(
