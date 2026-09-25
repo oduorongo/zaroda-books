@@ -23,6 +23,8 @@ export default async function Page({ params, searchParams }: {
     heads,
   );
 
+  const headsBalance = tb.lines.reduce((a, l) => a + l.cr - l.dr, 0);
+
   return (
     <ReportShell
       title={`Trial balance as at ${tb.asAt}`}
@@ -35,24 +37,30 @@ export default async function Page({ params, searchParams }: {
       <MonthPicker accountId={accountId} report="trial-balance" periods={periods} active={monthKey(period.month)} posted={posted} />
       <table>
         <thead>
-          <tr><th>Details</th><th className="n">Dr</th><th className="n">Cr</th></tr>
+          <tr><th>Details</th><th className="n">Dr</th><th className="n">Cr</th><th className="n">Balance</th><th className="n">Used</th></tr>
         </thead>
         <tbody>
-          <tr className="carry"><td>Balance brought down &mdash; cash</td><td className="n" /><td className="n">{formatKes(tb.openingCash)}</td></tr>
-          <tr className="carry"><td>Balance brought down &mdash; bank</td><td className="n" /><td className="n">{formatKes(tb.openingBank)}</td></tr>
+          <tr className="carry"><td>Balance brought down &mdash; cash</td><td className="n" /><td className="n">{formatKes(tb.openingCash)}</td><td className="n" /><td className="n" /></tr>
+          <tr className="carry"><td>Balance brought down &mdash; bank</td><td className="n" /><td className="n">{formatKes(tb.openingBank)}</td><td className="n" /><td className="n" /></tr>
           {tb.lines.map((l) => (
             <tr key={l.code}>
               <td>{l.name}</td>
               <td className="n">{formatKes(l.dr)}</td>
               <td className="n">{formatKes(l.cr)}</td>
+              <td className="n">{formatKes(l.cr - l.dr)}</td>
+              <td className="n" style={{ color: "var(--muted)" }}>
+                {l.cr ? `${Math.round((l.dr / l.cr) * 100)}%` : "—"}
+              </td>
             </tr>
           ))}
-          <tr className="carry"><td>Balance carried down &mdash; cash</td><td className="n">{formatKes(tb.closingCash)}</td><td className="n" /></tr>
-          <tr className="carry"><td>Balance carried down &mdash; bank</td><td className="n">{formatKes(tb.closingBank)}</td><td className="n" /></tr>
+          <tr className="carry"><td>Balance carried down &mdash; cash</td><td className="n">{formatKes(tb.closingCash)}</td><td className="n" /><td className="n" /><td className="n" /></tr>
+          <tr className="carry"><td>Balance carried down &mdash; bank</td><td className="n">{formatKes(tb.closingBank)}</td><td className="n" /><td className="n" /><td className="n" /></tr>
           <tr className="total">
             <td>Total</td>
             <td className="n">{formatKes(tb.totalDr)}</td>
             <td className="n">{formatKes(tb.totalCr)}</td>
+            <td className="n">{formatKes(headsBalance)}</td>
+            <td />
           </tr>
         </tbody>
       </table>

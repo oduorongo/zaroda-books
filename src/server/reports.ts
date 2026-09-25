@@ -121,16 +121,20 @@ export async function reportDoc(
     const tb = buildTrialBalance(
       asAt, { cash: fy.openingCash, bank: fy.openingBank }, upTo(txns, month), heads,
     );
+    const headsBalance = tb.lines.reduce((a, l) => a + l.cr - l.dr, 0);
     sections = [{
-      columns: ["Details", "Dr", "Cr"],
+      columns: ["Details", "Dr", "Cr", "Balance", "Used %"],
       rows: [
-        ["Balance brought down — cash", "", csvAmount(tb.openingCash)],
-        ["Balance brought down — bank", "", csvAmount(tb.openingBank)],
-        ...tb.lines.map((l) => [l.name, csvAmount(l.dr), csvAmount(l.cr)]),
-        ["Balance carried down — cash", csvAmount(tb.closingCash), ""],
-        ["Balance carried down — bank", csvAmount(tb.closingBank), ""],
+        ["Balance brought down — cash", "", csvAmount(tb.openingCash), "", ""],
+        ["Balance brought down — bank", "", csvAmount(tb.openingBank), "", ""],
+        ...tb.lines.map((l) => [
+          l.name, csvAmount(l.dr), csvAmount(l.cr), csvAmount(l.cr - l.dr),
+          l.cr ? `${Math.round((l.dr / l.cr) * 100)}%` : "",
+        ]),
+        ["Balance carried down — cash", csvAmount(tb.closingCash), "", "", ""],
+        ["Balance carried down — bank", csvAmount(tb.closingBank), "", "", ""],
       ],
-      total: ["Total", csvAmount(tb.totalDr), csvAmount(tb.totalCr)],
+      total: ["Total", csvAmount(tb.totalDr), csvAmount(tb.totalCr), csvAmount(headsBalance), ""],
       note: tb.balanced
         ? "The book balances. This month can be closed."
         : `Out by ${csvAmount(tb.difference)}. Find the entry before closing.`,
