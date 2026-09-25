@@ -8,6 +8,7 @@ import { db, schema } from "@/db";
 import { eq } from "drizzle-orm";
 import { PdfButton } from "../../../pdf-button";
 import { PrintButton } from "../../../print-button";
+import { LevelBand, PoweredBy } from "../../../level-mark";
 
 export default async function AcknowledgementPage({
   params,
@@ -48,7 +49,8 @@ export default async function AcknowledgementPage({
         </span>
       </div>
 
-      <div className="card">
+      <div className={`card level-card level-${school.level}`}>
+        <LevelBand level={school.level} />
         <div className="eyebrow">Acknowledgement of receipt</div>
         <h1 style={{ marginTop: ".6rem" }}>{school.name}</h1>
         <p className="sub" style={{ marginBottom: "1.75rem" }}>
@@ -91,6 +93,7 @@ export default async function AcknowledgementPage({
           The enrolment shown was derived from the amount disbursed and the per-learner rates in the
           circular in force. Signed ______________________ on ______________.
         </p>
+        <PoweredBy />
       </div>
     </div>
   );

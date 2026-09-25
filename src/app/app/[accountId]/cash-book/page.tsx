@@ -106,7 +106,7 @@ export default async function Page({ params, searchParams }: {
     <ReportShell
       title="Analysed cash book"
       sub={<>{monthName(period.month)} — {school.name}, {account.name} account</>}
-      school={school.name} account={account.name} fyLabel={fy.label}
+      school={school.name} level={school.level} account={account.name} fyLabel={fy.label}
       period={monthName(period.month)}
       csvHref={`/app/${accountId}/cash-book/export?month=${month}`}
       landscape

@@ -435,3 +435,38 @@ a:hover { color: var(--gold); }
   .field-row, .field-row.narrow-first { grid-template-columns: minmax(0, 1fr); gap: .9rem; }
   .field-row .btn { width: 100%; }
 }
+
+/* Level marks. Schools print in black and white, so the levels differ by
+   shape and rule, never by colour alone; the colour is a screen-only aid. */
+.level-band { display: flex; align-items: center; justify-content: center; gap: .6rem; margin: 0 0 .6rem; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.level-name { font-size: .72rem; font-weight: 700; letter-spacing: .18em; padding: .22rem .75rem; color: #000; }
+.level-letter { width: 1.9rem; height: 1.9rem; display: inline-grid; place-items: center; font-family: var(--font-heading), Georgia, serif; font-weight: 700; color: #000; border: 1.5pt solid #000; }
+.level-primary .level-name { background: #000; color: #fff; }
+.level-primary .level-letter { border-radius: 50%; }
+.level-junior .level-name { border: 3px double #000; }
+.level-senior .level-name { border: 2.5pt solid #000; outline: .6pt solid #000; outline-offset: 1.5pt; }
+.level-senior .level-letter { transform: rotate(45deg); width: 1.6rem; height: 1.6rem; }
+.level-senior .level-letter > span { transform: rotate(-45deg); }
+
+/* The voucher number box, in the same three styles. */
+.vr-box { padding: .35rem .75rem; text-align: right; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.vr-box.level-primary { background: #000; color: #fff; }
+.vr-box.level-primary .eyebrow { color: #fff; }
+.vr-box.level-junior { border: 4px double #000; }
+.vr-box.level-senior { border: 2.5pt solid #000; background: #e4e4e4; }
+
+/* On screen only: which level's book is open, at a glance. */
+.report.level-primary, .level-card.level-primary { border-top: 4px solid #2f7d4f; padding-top: .9rem; }
+.report.level-junior, .level-card.level-junior { border-top: 4px solid #1f4f99; padding-top: .9rem; }
+.report.level-senior, .level-card.level-senior { border-top: 4px solid #7a1f2b; padding-top: .9rem; }
+
+.z-powered { margin-top: 1.75rem; padding-top: .85rem; border-top: 1px solid var(--rule); text-align: center; font-size: .72rem; color: #999; font-style: italic; line-height: 1.5; }
+
+@media print {
+  .report[class*="level-"], .level-card[class*="level-"] { border-top: none; padding-top: 0; }
+  .letterhead.level-primary { border-bottom: 1pt solid #000; }
+  .letterhead.level-junior { border-bottom: 3.5pt double #000; }
+  .letterhead.level-senior { border-bottom: 2.5pt solid #000; position: relative; }
+  .letterhead.level-senior::after { content: ""; position: absolute; left: 0; right: 0; bottom: -4pt; border-bottom: .6pt solid #000; }
+  .z-powered { margin-top: 5mm; padding-top: 2mm; border-top: .5pt solid #999; font-size: 7.5pt; color: #666; }
+}

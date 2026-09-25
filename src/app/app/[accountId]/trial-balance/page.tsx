@@ -27,7 +27,7 @@ export default async function Page({ params, searchParams }: {
     <ReportShell
       title={`Trial balance as at ${tb.asAt}`}
       sub={<>{school.name} &mdash; {account.name} account</>}
-      school={school.name} account={account.name} fyLabel={fy.label}
+      school={school.name} level={school.level} account={account.name} fyLabel={fy.label}
       period={`As at ${tb.asAt}`}
       csvHref={`/app/${accountId}/trial-balance/export?month=${monthKey(period.month)}`}
     >

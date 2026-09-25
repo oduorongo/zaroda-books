@@ -35,7 +35,7 @@ export default async function VoteHeadsPage({
         what the Ministry banks for the school; centrally procured items are left out. Add heads of
         your own below — existing ones are never renumbered.
       </>}
-      school={school.name} account={account.name} fyLabel={fy.label}
+      school={school.name} level={school.level} account={account.name} fyLabel={fy.label}
       period={enrolment ? `${learners.toLocaleString("en-KE")} learners` : undefined}
       csvHref={`/app/${accountId}/vote-heads/export`}
       landscape

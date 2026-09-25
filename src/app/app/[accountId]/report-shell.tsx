@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import type { SchoolLevel } from "@/domain";
+import { LevelBand, PoweredBy } from "./level-mark";
 import { BackLink } from "../back-link";
 import { PdfButton } from "./pdf-button";
 import { PrintButton } from "./print-button";
@@ -8,11 +10,12 @@ import { PrintButton } from "./print-button";
  * auditor expect, and the screen chrome dropped. Wide books go landscape.
  */
 export function ReportShell({
-  title, sub, school, account, fyLabel, period, csvHref, landscape, children,
+  title, sub, school, level, account, fyLabel, period, csvHref, landscape, children,
 }: {
   title: string;
   sub: ReactNode;
   school: string;
+  level: SchoolLevel;
   account: string;
   fyLabel: string;
   period?: string;
@@ -25,8 +28,9 @@ export function ReportShell({
   });
 
   return (
-    <div className={landscape ? "report print-landscape" : "report"}>
-      <header className="letterhead">
+    <div className={`report level-${level}${landscape ? " print-landscape" : ""}`}>
+      <header className={`letterhead level-${level}`}>
+        <LevelBand level={level} />
         <div className="letterhead-school">{school}</div>
         <div className="letterhead-title">{title}</div>
         <div className="letterhead-meta">
@@ -55,6 +59,7 @@ export function ReportShell({
       <footer className="letterhead-foot">
         Printed {printed} · ZARODA BOOKS
       </footer>
+      <PoweredBy />
     </div>
   );
 }

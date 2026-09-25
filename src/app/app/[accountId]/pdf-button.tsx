@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import type { SchoolLevel } from "@/domain";
+import { drawLevelBand, drawLevelRule, drawPoweredBy } from "./pdf-marks";
 
 type Cell = string | number;
 interface Section {
@@ -13,6 +15,7 @@ interface Section {
 interface ReportDoc {
   title: string;
   school: string;
+  level?: SchoolLevel;
   account: string;
   fyLabel: string;
   period: string;
@@ -54,15 +57,17 @@ export function PdfButton({ href, landscape }: { href: string; landscape?: boole
       const width = pdf.internal.pageSize.getWidth();
       const margin = 12;
 
+      const top = doc.level ? 10 + drawLevelBand(pdf, doc.level, width / 2, 8) : 10;
       pdf.setFont("helvetica", "bold").setFontSize(14).setTextColor(...INK);
-      pdf.text(doc.school, width / 2, 16, { align: "center" });
+      pdf.text(doc.school, width / 2, top + 6, { align: "center" });
       pdf.setFont("helvetica", "normal").setFontSize(11);
-      pdf.text(doc.title, width / 2, 22, { align: "center" });
+      pdf.text(doc.title, width / 2, top + 12, { align: "center" });
       pdf.setFontSize(8.5).setTextColor(...MUTED);
-      pdf.text(`${doc.account} account · FY ${doc.fyLabel} · ${doc.period}`, width / 2, 27, { align: "center" });
-      pdf.setDrawColor(...INK).setLineWidth(0.4).line(margin, 30, width - margin, 30);
+      pdf.text(`${doc.account} account · FY ${doc.fyLabel} · ${doc.period}`, width / 2, top + 17, { align: "center" });
+      if (doc.level) drawLevelRule(pdf, doc.level, margin, width - margin, top + 20);
+      else pdf.setDrawColor(...INK).setLineWidth(0.4).line(margin, top + 20, width - margin, top + 20);
 
-      let y = 37;
+      let y = top + 28;
       for (const section of doc.sections) {
         if (section.heading) {
           pdf.setFont("helvetica", "bold").setFontSize(9.5).setTextColor(...INK);
@@ -118,6 +123,7 @@ export function PdfButton({ href, landscape }: { href: string; landscape?: boole
           { align: "right" },
         );
       }
+      drawPoweredBy(pdf);
 
       pdf.save(`${doc.filename}.pdf`);
     } catch {

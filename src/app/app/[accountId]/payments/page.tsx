@@ -41,7 +41,7 @@ export default async function PaymentsPage({
         {school.name} — {account.name}, FY {fy.label}. Each payment is charged to one or more vote heads,
         each with its own amount, and to either cash or bank.
       </>}
-      school={school.name} account={account.name} fyLabel={fy.label}
+      school={school.name} level={school.level} account={account.name} fyLabel={fy.label}
       csvHref={`/app/${accountId}/payments/export`}
       landscape
     >

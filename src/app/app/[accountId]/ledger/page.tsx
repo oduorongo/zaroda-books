@@ -28,7 +28,7 @@ export default async function Page({ params, searchParams }: {
     <ReportShell
       title="Ledger accounts"
       sub={<>Year to date, {monthName(period.month)} — {school.name}, {account.name} account</>}
-      school={school.name} account={account.name} fyLabel={fy.label}
+      school={school.name} level={school.level} account={account.name} fyLabel={fy.label}
       period={`Year to date, ${monthName(period.month)}`}
       csvHref={`/app/${accountId}/ledger/export?month=${month}`}
       landscape

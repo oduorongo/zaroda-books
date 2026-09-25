@@ -41,7 +41,7 @@ export default async function ReceiptsPage({
         learner in force. The system derives the enrolment from the amount and the vote heads used,
         then distributes the receipt so the split equals the amount received to the shilling.
       </>}
-      school={school.name} account={account.name} fyLabel={fy.label}
+      school={school.name} level={school.level} account={account.name} fyLabel={fy.label}
       csvHref={`/app/${accountId}/receipts/export`}
     >
 

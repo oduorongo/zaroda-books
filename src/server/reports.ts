@@ -1,4 +1,5 @@
 import "server-only";
+import type { SchoolLevel } from "@/domain";
 import {
   balancesAfter, buildCashBook, buildCashFlow, buildLedger, buildTrialBalance,
   csvAmount, toCsv,
@@ -32,6 +33,8 @@ export interface Section {
 export interface ReportDoc {
   title: string;
   school: string;
+  /** Absent on Zaroda's own receipt, which belongs to no school's books. */
+  level?: SchoolLevel;
   account: string;
   fyLabel: string;
   period: string;
@@ -298,6 +301,7 @@ export async function reportDoc(
   return {
     title,
     school: school.name,
+    level: school.level,
     account: account.name,
     fyLabel: fy.label,
     period: periodLabel,
@@ -327,6 +331,7 @@ export async function acknowledgementDoc(
   return {
     title: "Acknowledgement of receipt",
     school: school.name,
+    level: school.level,
     account: account.name,
     fyLabel: fy.label,
     period: txn.date,
@@ -371,6 +376,7 @@ export async function paymentVoucherDoc(
   return {
     title: "Payment voucher",
     school: school.name,
+    level: school.level,
     account: account.name,
     fyLabel: fy.label,
     period: txn.date,

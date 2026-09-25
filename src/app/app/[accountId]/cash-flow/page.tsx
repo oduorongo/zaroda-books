@@ -33,7 +33,7 @@ export default async function Page({ params, searchParams }: {
     <ReportShell
       title="Cash flow statement"
       sub={<>Year to date, {cf.asAt} — {school.name}, {account.name} account</>}
-      school={school.name} account={account.name} fyLabel={fy.label}
+      school={school.name} level={school.level} account={account.name} fyLabel={fy.label}
       period={`Year to date, ${cf.asAt}`}
       csvHref={`/app/${accountId}/cash-flow/export?month=${monthKey(period.month)}`}
     >

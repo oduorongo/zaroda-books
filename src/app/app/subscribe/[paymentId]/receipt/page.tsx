@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/server/auth";
 import { Logo } from "@/app/logo";
 import { PdfButton } from "../../../[accountId]/pdf-button";
 import { PrintButton } from "../../../[accountId]/print-button";
+import { PoweredBy } from "../../../[accountId]/level-mark";
 
 const stamp = (d: Date | null) =>
   d ? new Date(d).toLocaleString("en-KE", {
@@ -98,6 +99,7 @@ export default async function ReceiptPage({
         <p className="note" style={{ marginTop: "1.25rem" }}>
           Computer generated. No signature is required.
         </p>
+        <PoweredBy />
       </div>
     </div>
   );

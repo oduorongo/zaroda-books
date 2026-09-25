@@ -52,7 +52,7 @@ export default async function Page({ params, searchParams }: {
     <ReportShell
       title="Bank reconciliation statement"
       sub={<>{monthName(period.month)} — {school.name}, {account.name} account</>}
-      school={school.name} account={account.name} fyLabel={fy.label}
+      school={school.name} level={school.level} account={account.name} fyLabel={fy.label}
       period={monthName(period.month)}
       csvHref={`/app/${accountId}/bank-reconciliation/export?month=${month}`}
     >

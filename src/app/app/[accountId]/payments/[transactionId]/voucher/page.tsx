@@ -6,6 +6,7 @@ import { getTxns } from "@/server/queries";
 import { PdfButton } from "../../../pdf-button";
 import { PrintButton } from "../../../print-button";
 import { VoucherSignatures } from "../../signatures";
+import { LevelBand, PoweredBy } from "../../../level-mark";
 
 export default async function VoucherPage({
   params,
@@ -36,17 +37,25 @@ export default async function VoucherPage({
         </span>
       </div>
 
-      <div className="card">
-        <div className="eyebrow">Payment voucher</div>
-        <h1 style={{ marginTop: ".6rem" }}>{school.name}</h1>
-        <p className="sub" style={{ marginBottom: "1.75rem" }}>
-          {account.name} account · FY {fy.label}
-        </p>
+      <div className={`card level-card level-${school.level}`}>
+        <LevelBand level={school.level} />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem", marginBottom: "1.75rem" }}>
+          <div>
+            <div className="eyebrow">Payment voucher</div>
+            <h1 style={{ margin: ".6rem 0 .3rem" }}>{school.name}</h1>
+            <p className="sub" style={{ margin: 0 }}>{account.name} account · FY {fy.label}</p>
+          </div>
+          <div className={`vr-box level-${school.level}`}>
+            <div className="eyebrow">VR No.</div>
+            <div className="mono" style={{ fontSize: "1.9rem", fontWeight: 700, lineHeight: 1.1 }}>
+              {txn.vrNo ?? "—"}
+            </div>
+          </div>
+        </div>
 
         <table>
           <tbody>
             <tr><td>Date paid</td><td className="n">{txn.date}</td></tr>
-            <tr><td>Voucher no.</td><td className="n">{txn.vrNo ?? "—"}</td></tr>
             <tr><td>Cheque no.</td><td className="n">{txn.chequeNo ?? "—"}</td></tr>
             <tr><td>Payee / paid to</td><td className="n">{txn.particulars}</td></tr>
             {txn.narration && <tr><td>Narration</td><td className="n">{txn.narration}</td></tr>}
@@ -75,6 +84,7 @@ export default async function VoucherPage({
         </table>
 
         <VoucherSignatures />
+        <PoweredBy />
       </div>
     </div>
   );

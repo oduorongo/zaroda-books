@@ -4,6 +4,7 @@ import { loadBook } from "@/server/book-context";
 import { getTxns } from "@/server/queries";
 import { PrintButton } from "../../print-button";
 import { VoucherSignatures } from "../signatures";
+import { LevelBand, PoweredBy } from "../../level-mark";
 
 /**
  * Every voucher of the financial year, one to a page, for printing the year's
@@ -46,14 +47,15 @@ export default async function VoucherBookPage({
       {vouchers.map((txn) => {
         const total = txn.cash + txn.bank;
         return (
-          <div key={txn.id} className="voucher-sheet card">
+          <div key={txn.id} className={`voucher-sheet card level-card level-${school.level}`}>
+            <LevelBand level={school.level} />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem" }}>
               <div>
                 <div className="eyebrow">Payment voucher</div>
                 <h2 style={{ margin: ".4rem 0 .2rem" }}>{school.name}</h2>
                 <div className="note">{account.name} account · FY {fy.label}</div>
               </div>
-              <div style={{ textAlign: "right" }}>
+              <div className={`vr-box level-${school.level}`}>
                 <div className="eyebrow">VR No.</div>
                 <div className="mono" style={{ fontSize: "1.9rem", fontWeight: 700, lineHeight: 1.1 }}>
                   {txn.vrNo ?? "—"}
@@ -89,6 +91,7 @@ export default async function VoucherBookPage({
             </table>
 
             <VoucherSignatures />
+            <PoweredBy />
           </div>
         );
       })}
