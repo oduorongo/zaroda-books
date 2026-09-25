@@ -13,25 +13,31 @@ export const monthName = (month: string) =>
   });
 
 /**
- * Invariant 4 and 5. Closing computes bal c/d, writes it as the next month's
- * bal b/d, and freezes the month. It refuses to run on an unbalanced book.
+ * Invariant 4 and 5, for one month end. Closing computes bal c/d, writes it as
+ * the next month's bal b/d, and freezes the month. It refuses to run on an
+ * unbalanced book or a negative cash box.
  */
 export function assertClosable(
   asAt: string,
   yearOpening: Balances,
   txnsToDate: Txn[],
   heads: VoteHead[],
-  reconciliation?: Reconciliation | null,
 ) {
   const tb = buildTrialBalance(asAt, yearOpening, txnsToDate, heads);
   if (!tb.balanced)
     throw new Error(
-      `Trial balance is out by ${tb.difference / 100}. Find the entry before closing.`,
+      `The trial balance at ${asAt} is out by ${tb.difference / 100}. Find the entry before closing.`,
     );
-  if (tb.closingCash < 0) throw new Error("Cash in hand cannot be negative.");
+  if (tb.closingCash < 0) throw new Error(`Cash in hand is negative at ${asAt}. Draw cash from the bank first.`);
+  return tb;
+}
 
-  // The bank column is only proven by the statement. A month that has not been
-  // reconciled has not been checked against anything outside the book.
+/**
+ * The bank column is only proven by the statement. Only the month being closed
+ * needs it: schools reconcile at the year end, and closing June closes the
+ * months before it on June's statement.
+ */
+export function assertReconciled(reconciliation: Reconciliation | null) {
   if (!reconciliation)
     throw new Error(
       "Enter the closing balance from the bank statement and reconcile the month before closing.",
@@ -41,8 +47,6 @@ export function assertClosable(
       `The bank reconciliation is out by ${reconciliation.difference / 100}. `
       + "Post what the statement shows and the book does not before closing.",
     );
-
-  return tb;
 }
 
 /** The month an entry belongs in: the one its own date falls in, not today's. */

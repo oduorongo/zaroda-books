@@ -1,4 +1,4 @@
-import { bankEffect, can, formatKes, toKes } from "@/domain";
+import { bankEffect, can, formatKes, monthsToClose, monthsToReopen, toKes } from "@/domain";
 import { nextFinancialYear, nextYearBook } from "@/server/books";
 import { getReconciliation } from "@/server/reconciliation";
 import { getTxns, upTo } from "@/server/queries";
@@ -113,16 +113,6 @@ export default async function Page({ params, searchParams }: {
                     + "Read the entries off the statement — interest, direct credits — and post them."}
             </p>
 
-            <CloseMonth
-              accountId={accountId}
-              month={period.month}
-              monthName={monthName(period.month)}
-              closed={closed}
-              reconciled={r.reconciled}
-              canClose={can(user.role, "period.close") && !user.readOnly}
-              canReopen={can(user.role, "period.reopen") && !user.readOnly}
-              nextYear={nextYear}
-            />
           </div>
 
           <h2>Tick each entry off against the statement</h2>
@@ -173,6 +163,19 @@ export default async function Page({ params, searchParams }: {
           </div>
         </>
       )}
+
+      <CloseMonth
+        accountId={accountId}
+        month={period.month}
+        monthName={monthName(period.month)}
+        closed={closed}
+        reconciled={hasStatement && r.reconciled}
+        closes={(monthsToClose(periods, period.month).months ?? []).map(monthName)}
+        reopens={(monthsToReopen(periods, period.month).months ?? []).map(monthName)}
+        canClose={can(user.role, "period.close") && !user.readOnly}
+        canReopen={can(user.role, "period.reopen") && !user.readOnly}
+        nextYear={nextYear}
+      />
     </ReportShell>
   );
 }

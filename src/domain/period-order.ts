@@ -1,32 +1,39 @@
 /**
- * Months close in order and reopen in reverse. Each month's balance brought
- * down is the one before it carried down (rule 5), so a month closed ahead of
- * an open one would be frozen on figures that can still change.
+ * Closing a month closes every open month before it: each month's balance
+ * brought down is the one before it carried down (rule 5), so no month may be
+ * frozen ahead of an open one. Schools reconcile at the year end rather than
+ * monthly, so closing June in one step must close July to June. Reopening runs
+ * the other way, taking every closed month after the one reopened.
  */
 interface PeriodStatus {
   month: string; // first day, "2024-07-01"
   status: "open" | "closed";
 }
 
+type Months = { months: string[]; error?: undefined } | { months?: undefined; error: string };
+
 const name = (month: string) =>
   new Date(`${month}T00:00:00Z`).toLocaleDateString("en-KE", {
     month: "long", year: "numeric", timeZone: "UTC",
   });
 
-export function closeRefusal(periods: PeriodStatus[], month: string): string | null {
-  const sorted = [...periods].sort((a, b) => a.month.localeCompare(b.month));
-  const target = sorted.find((p) => p.month === month);
-  if (!target) return "That month is not in this book.";
-  if (target.status === "closed") return `${name(month)} is already closed.`;
-  const earlier = sorted.find((p) => p.month < month && p.status === "open");
-  return earlier ? `Close ${name(earlier.month)} first. Months close in order.` : null;
+const inOrder = (periods: PeriodStatus[]) => [...periods].sort((a, b) => a.month.localeCompare(b.month));
+
+export function monthsToClose(periods: PeriodStatus[], month: string): Months {
+  const target = periods.find((p) => p.month === month);
+  if (!target) return { error: "That month is not in this book." };
+  if (target.status === "closed") return { error: `${name(month)} is already closed.` };
+  return {
+    months: inOrder(periods).filter((p) => p.month <= month && p.status === "open").map((p) => p.month),
+  };
 }
 
-export function reopenRefusal(periods: PeriodStatus[], month: string): string | null {
-  const sorted = [...periods].sort((a, b) => a.month.localeCompare(b.month));
-  const target = sorted.find((p) => p.month === month);
-  if (!target) return "That month is not in this book.";
-  if (target.status === "open") return `${name(month)} is not closed.`;
-  const later = sorted.findLast((p) => p.month > month && p.status === "closed");
-  return later ? `Reopen ${name(later.month)} first. Months reopen from the latest.` : null;
+/** Latest first, the order they unwind in. */
+export function monthsToReopen(periods: PeriodStatus[], month: string): Months {
+  const target = periods.find((p) => p.month === month);
+  if (!target) return { error: "That month is not in this book." };
+  if (target.status === "open") return { error: `${name(month)} is not closed.` };
+  return {
+    months: inOrder(periods).filter((p) => p.month >= month && p.status === "closed").map((p) => p.month).reverse(),
+  };
 }
