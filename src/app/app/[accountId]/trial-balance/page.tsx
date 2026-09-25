@@ -66,7 +66,9 @@ export default async function Page({ params, searchParams }: {
       </table>
       <p className={`verdict ${tb.balanced ? "ok" : "off"}`}>
         {tb.balanced
-          ? "The book balances. This month can be closed."
+          ? period.status === "closed"
+            ? "The book balances. This month is closed."
+            : "The book balances. This month can be closed."
           : `Out by ${formatKes(tb.difference)}. Find the entry before closing.`}
       </p>
     </ReportShell>

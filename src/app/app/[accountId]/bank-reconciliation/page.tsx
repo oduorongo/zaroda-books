@@ -106,7 +106,9 @@ export default async function Page({ params, searchParams }: {
             )}
             <p className={`verdict ${r.reconciled ? "ok" : "off"}`}>
               {r.reconciled
-                ? "The book agrees with the statement. This month can be closed."
+                ? closed
+                  ? "The book agrees with the statement. This month is closed."
+                  : "The book agrees with the statement. This month can be closed."
                 : r.difference < 0
                   ? `The bank has taken ${formatKes(-r.difference)} that the book does not show. `
                     + "Read the entries off the statement — charges, standing orders — and post them."

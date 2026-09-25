@@ -136,7 +136,9 @@ export async function reportDoc(
       ],
       total: ["Total", csvAmount(tb.totalDr), csvAmount(tb.totalCr), csvAmount(headsBalance), ""],
       note: tb.balanced
-        ? "The book balances. This month can be closed."
+        ? period.status === "closed"
+          ? "The book balances. This month is closed."
+          : "The book balances. This month can be closed."
         : `Out by ${csvAmount(tb.difference)}. Find the entry before closing.`,
     }];
   }
