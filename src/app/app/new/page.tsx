@@ -87,7 +87,13 @@ function Entitlement({
 const LEVEL_LINE = `KSh ${priceLabel("primary")} primary, KSh ${priceLabel("junior")} junior, `
   + `KSh ${priceLabel("senior")} senior, per year.`;
 
-export default async function NewBookPage() {
+export default async function NewBookPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ school?: string; level?: string; type?: string; fy?: string }>;
+}) {
+  // Arriving from "Start next year" on a closed June: the same school and account, a year on.
+  const preset = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
@@ -134,6 +140,7 @@ export default async function NewBookPage() {
         freeUsed={entitlements.freeUsed}
         isOwner={owner}
         defaultPhone={account?.phone ?? ""}
+        preset={preset}
         testAmountCents={chargeAmount(0, process.env.TUMA_TEST_AMOUNT_KES).isTest
           ? chargeAmount(0, process.env.TUMA_TEST_AMOUNT_KES).cents
           : null}

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { toCents } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { saveStatementBalance, setCleared } from "@/server/reconciliation";
+import { closeMonth, reopenMonth } from "@/server/period-close";
 
 export async function saveStatement(
   _prev: string | null,
@@ -38,4 +39,32 @@ export async function toggleCleared(form: FormData): Promise<void> {
 
   await setCleared(transactionId, accountId, clearedOn || null);
   revalidatePath(`/app/${accountId}/bank-reconciliation`);
+}
+
+export async function closeMonthAction(
+  _prev: string | null,
+  form: FormData,
+): Promise<string | null> {
+  const accountId = String(form.get("accountId") ?? "");
+  try {
+    await closeMonth(accountId, String(form.get("month") ?? ""));
+  } catch (e) {
+    return e instanceof Error ? e.message : "The month could not be closed.";
+  }
+  revalidatePath(`/app/${accountId}`, "layout");
+  return null;
+}
+
+export async function reopenMonthAction(
+  _prev: string | null,
+  form: FormData,
+): Promise<string | null> {
+  const accountId = String(form.get("accountId") ?? "");
+  try {
+    await reopenMonth(accountId, String(form.get("month") ?? ""), String(form.get("reason") ?? ""));
+  } catch (e) {
+    return e instanceof Error ? e.message : "The month could not be reopened.";
+  }
+  revalidatePath(`/app/${accountId}`, "layout");
+  return null;
 }

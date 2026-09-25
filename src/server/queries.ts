@@ -204,6 +204,13 @@ export async function saveOpeningBalances(
   openingCash: number,
   openingBank: number,
 ) {
+  // Every closed month's carried-down figures start from these.
+  const [closed] = await db
+    .select({ id: schema.periods.id })
+    .from(schema.periods)
+    .where(and(eq(schema.periods.financialYearId, financialYearId), eq(schema.periods.status, "closed")));
+  if (closed) throw new Error("A month of this book is closed. Reopen it before changing the opening balances.");
+
   await db
     .update(schema.financialYears)
     .set({ openingCash, openingBank })

@@ -1,4 +1,5 @@
-import { bankEffect, formatKes, toKes } from "@/domain";
+import { bankEffect, can, formatKes, toKes } from "@/domain";
+import { nextFinancialYear, nextYearBook } from "@/server/books";
 import { getReconciliation } from "@/server/reconciliation";
 import { getTxns, upTo } from "@/server/queries";
 import { loadBook } from "@/server/book-context";
@@ -8,6 +9,7 @@ import { MonthPicker } from "../month-picker";
 import { ReportShell } from "../report-shell";
 import { StatementForm } from "./statement-form";
 import { ClearToggle } from "./clear-toggle";
+import { CloseMonth } from "./close-month";
 
 export default async function Page({ params, searchParams }: {
   params: Promise<{ accountId: string }>;
@@ -20,8 +22,23 @@ export default async function Page({ params, searchParams }: {
     reconciliation: r, period, periods, month, school, account, fy, hasStatement, posted,
   } = await getReconciliation(accountId, asked);
 
-  const { fy: book } = await loadBook(accountId);
+  const { fy: book, user } = await loadBook(accountId);
   const txns = upTo(await getTxns(book.id), month).filter((t) => bankEffect(t) !== 0);
+  // Closing June closes the year: point on to next year's book.
+  const closed = period.status === "closed";
+  const yearEnd = closed && month === book.endsOn.slice(0, 7);
+  const nextLabel = nextFinancialYear(fy.label);
+  const nextId = yearEnd ? await nextYearBook(school.id, account.type, fy.label) : null;
+  const nextYear = !yearEnd ? null : nextId
+    ? { label: nextLabel, href: `/app/${nextId}/receipts`, exists: true }
+    : {
+      label: nextLabel,
+      exists: false,
+      href: `/app/new?${new URLSearchParams({
+        school: school.name, level: school.level, type: account.type, fy: nextLabel,
+      })}`,
+    };
+
   const outstanding = new Set([...r.uncredited, ...r.unpresented].map((i) => i.id));
 
   const Row = ({ label, amount, sign }: { label: string; amount: number; sign?: string }) => (
@@ -95,6 +112,17 @@ export default async function Page({ params, searchParams }: {
                   : `The statement shows ${formatKes(r.difference)} that the book does not. `
                     + "Read the entries off the statement — interest, direct credits — and post them."}
             </p>
+
+            <CloseMonth
+              accountId={accountId}
+              month={period.month}
+              monthName={monthName(period.month)}
+              closed={closed}
+              reconciled={r.reconciled}
+              canClose={can(user.role, "period.close") && !user.readOnly}
+              canReopen={can(user.role, "period.reopen") && !user.readOnly}
+              nextYear={nextYear}
+            />
           </div>
 
           <h2>Tick each entry off against the statement</h2>

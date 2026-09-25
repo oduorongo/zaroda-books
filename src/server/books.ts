@@ -4,6 +4,7 @@ import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { db } from "../db/index.ts";
 import * as schema from "../db/schema.ts";
 import { chartFor } from "../domain/vote-heads.ts";
+import { previousFinancialYear } from "../domain/financial-year.ts";
 import { bookEntitlement, needsSubscriptionMessage, schoolNameKey } from "../domain/subscription.ts";
 import type { AccountType, SchoolLevel } from "../domain/vote-heads.ts";
 
@@ -81,17 +82,24 @@ export async function createBook(input: {
     });
   }
 
+  const carried = await carriedForward(school.id, input.accountType, input.fyLabel);
+
   const [account] = await db.insert(schema.accounts).values({
     schoolId: school.id,
     type: input.accountType,
     name: chart.label,
   }).returning();
 
-  const voteHeads = await db.insert(schema.voteHeads).values(
-    chart.heads.map((h) => ({
+  // Heads the school added last year come across after the chart's own.
+  const added = carried?.heads.filter((h) => !chart.heads.some((c) => c.code === h.code)) ?? [];
+  const voteHeads = await db.insert(schema.voteHeads).values([
+    ...chart.heads.map((h) => ({
       accountId: account.id, code: h.code, name: h.name, order: h.order,
     })),
-  ).returning();
+    ...added.map((h, i) => ({
+      accountId: account.id, code: h.code, name: h.name, order: chart.heads.length + i + 1,
+    })),
+  ]).returning();
 
   const { startsOn, endsOn } = financialYearDates(input.fyLabel);
   const [financialYear] = await db.insert(schema.financialYears).values({
@@ -99,8 +107,8 @@ export async function createBook(input: {
     label: input.fyLabel,
     startsOn,
     endsOn,
-    openingCash: input.openingCash ?? 0,
-    openingBank: input.openingBank ?? 0,
+    openingCash: input.openingCash ?? carried?.cash ?? 0,
+    openingBank: input.openingBank ?? carried?.bank ?? 0,
   }).returning();
 
   const periods = await db.insert(schema.periods).values(
@@ -125,6 +133,46 @@ export async function createBook(input: {
   if (rates.length) await db.insert(schema.voteHeadRates).values(rates);
 
   return { school, account, voteHeads, financialYear, periods, chart };
+}
+
+/**
+ * Last year's book of the same account at the same school, if its June is
+ * closed: its cash and bank carried down open the new year, and the heads the
+ * school added to it come with them. A June still open has no settled
+ * figures, so the new book opens at nil and the balances are typed in.
+ */
+async function carriedForward(schoolId: string, accountType: AccountType, fyLabel: string) {
+  const previous = previousFinancialYear(fyLabel);
+  if (!previous) return null;
+
+  const [book] = await db
+    .select({ accountId: schema.accounts.id, fyId: schema.financialYears.id, endsOn: schema.financialYears.endsOn })
+    .from(schema.accounts)
+    .innerJoin(schema.financialYears, eq(schema.financialYears.accountId, schema.accounts.id))
+    .where(and(
+      eq(schema.accounts.schoolId, schoolId),
+      eq(schema.accounts.type, accountType),
+      isNull(schema.accounts.archivedAt),
+      eq(schema.financialYears.label, previous),
+    ));
+  if (!book) return null;
+
+  const [june] = await db
+    .select()
+    .from(schema.periods)
+    .where(and(
+      eq(schema.periods.financialYearId, book.fyId),
+      eq(schema.periods.month, `${book.endsOn.slice(0, 7)}-01`),
+    ));
+  if (june?.status !== "closed") return null;
+
+  const heads = await db
+    .select({ code: schema.voteHeads.code, name: schema.voteHeads.name })
+    .from(schema.voteHeads)
+    .where(eq(schema.voteHeads.accountId, book.accountId))
+    .orderBy(schema.voteHeads.order);
+
+  return { cash: june.closingCash ?? 0, bank: june.closingBank ?? 0, heads };
 }
 
 /**
@@ -560,4 +608,25 @@ export async function saveSchoolLocation(
     .update(schema.schools)
     .set({ county, subCounty })
     .where(eq(schema.schools.id, schoolId));
+}
+
+/** The year after a label: "2024/25" -> "2025/26". */
+export const nextFinancialYear = (label: string) => {
+  const start = Number(label.slice(0, 4)) + 1;
+  return `${start}/${String((start + 1) % 100).padStart(2, "0")}`;
+};
+
+/** Next year's book of the same account at the same school, if one is open. */
+export async function nextYearBook(schoolId: string, accountType: string, fyLabel: string) {
+  const [book] = await db
+    .select({ accountId: schema.accounts.id })
+    .from(schema.accounts)
+    .innerJoin(schema.financialYears, eq(schema.financialYears.accountId, schema.accounts.id))
+    .where(and(
+      eq(schema.accounts.schoolId, schoolId),
+      eq(schema.accounts.type, accountType),
+      isNull(schema.accounts.archivedAt),
+      eq(schema.financialYears.label, nextFinancialYear(fyLabel)),
+    ));
+  return book?.accountId ?? null;
 }

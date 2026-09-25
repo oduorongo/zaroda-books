@@ -64,6 +64,9 @@ export async function saveStatementBalance(
   statementDate: string | null,
 ) {
   await assertPeriodInAccount(periodId, accountId);
+  const [period] = await db.select({ status: schema.periods.status }).from(schema.periods)
+    .where(eq(schema.periods.id, periodId));
+  if (period?.status === "closed") throw new Error("This month is closed. Reopen it to change the statement balance.");
   await db
     .update(schema.periods)
     .set({ statementBank, statementDate })

@@ -12,7 +12,7 @@ interface ChartOption {
 }
 
 export function NewBookForm({
-  years, levels, charts, covered, freeUsed, isOwner, defaultPhone, testAmountCents,
+  years, levels, charts, covered, freeUsed, isOwner, defaultPhone, testAmountCents, preset = {},
 }: {
   years: string[];
   levels: { id: SchoolLevel; label: string }[];
@@ -25,14 +25,18 @@ export function NewBookForm({
   defaultPhone: string;
   /** Set while Tuma is in sandbox: what will really be charged. */
   testAmountCents: number | null;
+  /** Filled in when opening next year's book of an existing one. */
+  preset?: { school?: string; level?: string; type?: string; fy?: string };
 }) {
   const [error, action, pending] = useActionState(createBookAction, null);
   // Nothing preselected. The level, the year and the account fix the chart and
   // the twelve periods for good, so each one is chosen deliberately rather
   // than left at whatever happened to be first in the list.
-  const [level, setLevel] = useState<SchoolLevel | "">("");
-  const [accountType, setAccountType] = useState("");
-  const [fyLabel, setFyLabel] = useState("");
+  const [level, setLevel] = useState<SchoolLevel | "">(
+    levels.some((l) => l.id === preset.level) ? preset.level as SchoolLevel : "",
+  );
+  const [accountType, setAccountType] = useState(preset.type ?? "");
+  const [fyLabel, setFyLabel] = useState(years.includes(preset.fy ?? "") ? preset.fy! : "");
 
   const options = level === "" ? [] : charts[level] ?? [];
   const chosen = options.find((o) => o.id === accountType);
@@ -54,7 +58,7 @@ export function NewBookForm({
   return (
     <form action={action} className="card stack">
       <label className="field">Name of school
-        <input name="schoolName" placeholder="e.g. Ng'iya Girls High School" required />
+        <input name="schoolName" placeholder="e.g. Ng'iya Girls High School" defaultValue={preset.school} required />
         <span className="note">
           Spell it the same way for every book of this school. Open operations alongside tuition
           under the same name and they share one school, and one subscription for that level and

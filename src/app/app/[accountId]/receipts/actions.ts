@@ -21,7 +21,11 @@ export async function saveOpeningBalancesAction(
   const bank = Number(form.get("openingBank") || 0);
   if (!Number.isFinite(cash) || !Number.isFinite(bank)) return "Enter both balances as figures.";
 
-  await saveOpeningBalances(fy.id, toCents(cash), toCents(bank));
+  try {
+    await saveOpeningBalances(fy.id, toCents(cash), toCents(bank));
+  } catch (e) {
+    return e instanceof Error ? e.message : "The opening balances could not be saved.";
+  }
 
   revalidatePath(`/app/${accountId}`, "layout");
   return "Saved.";
