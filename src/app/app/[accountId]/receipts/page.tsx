@@ -1,6 +1,6 @@
 import Link from "next/link";
 import {
-  buildLedger, circularsFor, entryDates, flatOnlyHeadCodes, formatKes, isCapitationAccount, seesCapitationLetter, toKes,
+  buildLedger, can, circularsFor, entryDates, flatOnlyHeadCodes, formatKes, isCapitationAccount, seesCapitationLetter, toKes,
 } from "@/domain";
 import type { AccountType } from "@/domain";
 import { loadBook } from "@/server/book-context";
@@ -21,6 +21,7 @@ export default async function ReceiptsPage({
   // Boarding, lunch and the like take money from parents, not the Ministry:
   // no enrolment to derive, nothing to acknowledge.
   const capitation = isCapitationAccount(school.level, account.type as AccountType);
+  const canAmend = can(user.role, "entry.amend") && !user.readOnly;
   const txns = await getTxns(fy.id);
 
   // Heads the circular funds per school: their rate box is closed.
@@ -115,6 +116,11 @@ export default async function ReceiptsPage({
                 {capitation && (
                   <Link className="note" href={`/app/${accountId}/receipts/${r.id}/acknowledgement`}>
                     Acknowledgement
+                  </Link>
+                )}
+                {canAmend && (
+                  <Link className="note no-print" href={`/app/${accountId}/receipts/${r.id}/edit`} style={{ marginLeft: capitation ? ".6rem" : 0 }}>
+                    Amend
                   </Link>
                 )}
                 {user.auditing && (
