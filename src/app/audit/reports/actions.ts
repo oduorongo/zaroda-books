@@ -4,7 +4,10 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { auditedSchool, ipsasData, myReport, sentYears, type IpsasContent } from "@/server/audit-reports";
+import {
+  auditedSchool, clearanceData, clearanceDefaults, CLEARANCE_REASONS, ipsasData, myReport, parseClearance, sentYears,
+  type ClearanceContent, type IpsasContent,
+} from "@/server/audit-reports";
 
 /** Starts an IPSAS report on the years ticked, from the books sent to this auditor. */
 export async function createIpsasReport(form: FormData) {
@@ -65,7 +68,15 @@ export async function issueReport(form: FormData) {
   // books it was drawn from, and a taken-back book may be changing.
   await auditedSchool(report.schoolId);
 
-  const figures = await ipsasData(report.schoolId, JSON.parse(report.years ?? "[]"), report.auditorId, user.name);
+  if (report.kind === "clearance") {
+    const memo = parseClearance(report.content);
+    if (!memo.officer || !memo.tscNo || !report.periodTo) {
+      redirect(`/audit/reports/${report.id}?error=incomplete`);
+    }
+  }
+  const figures = report.kind === "clearance"
+    ? await clearanceData(report.schoolId, user.name)
+    : await ipsasData(report.schoolId, JSON.parse(report.years ?? "[]"), report.auditorId, user.name);
   await db.update(schema.auditReports)
     .set({ status: "issued", snapshot: JSON.stringify(figures), issuedAt: new Date(), updatedAt: new Date() })
     .where(and(eq(schema.auditReports.id, report.id), eq(schema.auditReports.status, "draft")));
@@ -80,4 +91,42 @@ export async function deleteDraft(form: FormData) {
     await db.delete(schema.auditReports).where(eq(schema.auditReports.id, report.id));
   }
   redirect(`/audit/schools/${report.schoolId}`);
+}
+
+/** Starts a clearance memo for a head of institution leaving the school. */
+export async function createClearance(form: FormData) {
+  const schoolId = String(form.get("schoolId") ?? "");
+  const { user, scope, school } = await auditedSchool(schoolId);
+  const [row] = await db.insert(schema.auditReports).values({
+    kind: "clearance",
+    auditorId: scope.id,
+    authoredBy: user.id,
+    schoolId,
+    content: JSON.stringify(clearanceDefaults(school.county, school.subCounty)),
+  }).returning({ id: schema.auditReports.id });
+  redirect(`/audit/reports/${row.id}`);
+}
+
+/** Saves the memo's particulars and the date the clearance runs to. */
+export async function saveClearance(form: FormData) {
+  const { report } = await myReport(String(form.get("reportId") ?? ""));
+  if (report.status !== "draft" || report.kind !== "clearance") redirect(`/audit/reports/${report.id}`);
+
+  const reason = text(form, "reason");
+  const content: ClearanceContent = {
+    officer: text(form, "officer"),
+    tscNo: text(form, "tscNo"),
+    reason: (CLEARANCE_REASONS as readonly string[]).includes(reason) ? reason : "retirement",
+    addressee: text(form, "addressee"),
+    from: text(form, "from"),
+    reference: text(form, "reference"),
+    copyTo: text(form, "copyTo"),
+  };
+  const periodTo = text(form, "periodTo") || null;
+
+  await db.update(schema.auditReports)
+    .set({ content: JSON.stringify(content), periodTo, updatedAt: new Date() })
+    .where(eq(schema.auditReports.id, report.id));
+  revalidatePath(`/audit/reports/${report.id}`);
+  redirect(`/audit/reports/${report.id}?saved=1`);
 }

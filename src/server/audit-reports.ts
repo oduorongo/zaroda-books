@@ -246,3 +246,51 @@ export async function issuedReportsOn(schoolId: string) {
     .where(and(eq(schema.auditReports.schoolId, schoolId), eq(schema.auditReports.status, "issued")))
     .orderBy(desc(schema.auditReports.issuedAt));
 }
+
+/** Why a head of institution is being cleared. */
+export const CLEARANCE_REASONS = ["retirement", "transfer", "promotion", "resignation"] as const;
+
+/** What the auditor types on a clearance memo. The school comes from the books. */
+export interface ClearanceContent {
+  officer: string;
+  tscNo: string;
+  reason: string;
+  addressee: string;
+  from: string;
+  reference: string;
+  /** One recipient per line. */
+  copyTo: string;
+}
+
+export const clearanceDefaults = (county: string | null, subCounty: string | null): ClearanceContent => ({
+  officer: "",
+  tscNo: "",
+  reason: "retirement",
+  addressee: `County Director of Education${county ? ` - ${county} County` : ""}`,
+  from: "County Schools Auditor",
+  reference: "",
+  copyTo: subCounty
+    ? `Sub-County Director of Education, ${subCounty}\nSub-County TSC Director, ${subCounty}`
+    : "",
+});
+
+export const parseClearance = (json: string): ClearanceContent => ({
+  ...clearanceDefaults(null, null), ...JSON.parse(json || "{}"),
+});
+
+/** What a memo prints from the records, frozen when issued. */
+export interface ClearanceData { school: string; auditor: string }
+
+export async function clearanceData(schoolId: string, auditor: string): Promise<ClearanceData> {
+  const [school] = await db.select({ name: schema.schools.name }).from(schema.schools).where(eq(schema.schools.id, schoolId));
+  return { school: school.name, auditor };
+}
+
+/** Audit queries on the school not yet closed — for the auditor to weigh before clearing anyone. */
+export async function unsettledQueriesOn(schoolId: string): Promise<number> {
+  const rows = await db.select({ status: schema.auditQueries.status })
+    .from(schema.auditQueries)
+    .innerJoin(schema.accounts, eq(schema.accounts.id, schema.auditQueries.accountId))
+    .where(eq(schema.accounts.schoolId, schoolId));
+  return rows.filter((r) => r.status !== "closed").length;
+}

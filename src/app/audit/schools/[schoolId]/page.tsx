@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { auditedSchool, reportsOn, sentYears } from "@/server/audit-reports";
-import { createIpsasReport } from "../../reports/actions";
+import { createClearance, createIpsasReport } from "../../reports/actions";
 
 const KIND_LABEL = { ipsas: "IPSAS internal audit report", primary: "Audited financial statements", clearance: "Clearance memo" };
 
@@ -39,6 +39,15 @@ export default async function AuditSchoolPage({ params, searchParams }: {
         </form>
       </div>
 
+      <div className="card" style={{ marginBottom: "1.35rem" }}>
+        <h2 style={{ marginTop: 0 }}>New clearance memo</h2>
+        <p className="note">For a head of institution leaving the school: retiring, on transfer, promoted or resigning.</p>
+        <form action={createClearance} style={{ marginTop: ".75rem" }}>
+          <input type="hidden" name="schoolId" value={schoolId} />
+          <button type="submit" className="btn btn-primary">Start memo</button>
+        </form>
+      </div>
+
       <div className="card">
         <h2 style={{ marginTop: 0 }}>Your reports on this school</h2>
         {reports.length === 0 && <p className="note">None yet.</p>}
@@ -47,7 +56,7 @@ export default async function AuditSchoolPage({ params, searchParams }: {
             {reports.map((r) => (
               <tr key={r.id}>
                 <td><Link href={`/audit/reports/${r.id}`}>{KIND_LABEL[r.kind]}</Link></td>
-                <td>{r.years ? JSON.parse(r.years).join(", ") : [r.periodFrom, r.periodTo].filter(Boolean).join(" to ")}</td>
+                <td>{r.years ? JSON.parse(r.years).join(", ") : r.periodTo ? `up to ${r.periodTo}` : ""}</td>
                 <td style={r.status === "draft" ? { color: "var(--alarm)" } : undefined}>
                   {r.status === "draft" ? "Draft" : `Issued ${r.issuedAt?.toLocaleDateString("en-KE")}`}
                 </td>

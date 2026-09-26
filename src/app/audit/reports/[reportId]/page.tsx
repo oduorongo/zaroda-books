@@ -3,6 +3,7 @@ import { myReport, parseContent, reportFigures } from "@/server/audit-reports";
 import { PrintButton } from "../../../app/[accountId]/print-button";
 import { IpsasReport } from "../../ipsas-report";
 import { deleteDraft, issueReport, saveIpsasContent } from "../actions";
+import { ClearancePage } from "./clearance-page";
 
 function Area({ name, label, value, rows = 4, hint }: {
   name: string; label: string; value: string; rows?: number; hint?: string;
@@ -19,11 +20,14 @@ const BLANK_ROWS = 3;
 
 export default async function AuditReportPage({ params, searchParams }: {
   params: Promise<{ reportId: string }>;
-  searchParams: Promise<{ saved?: string }>;
+  searchParams: Promise<{ saved?: string; error?: string }>;
 }) {
   const { reportId } = await params;
-  const { saved } = await searchParams;
+  const { saved, error } = await searchParams;
   const { user, report } = await myReport(reportId);
+  if (report.kind === "clearance") {
+    return <ClearancePage report={report} auditor={user.name} saved={!!saved} error={error} />;
+  }
   const content = parseContent(report.content);
   const data = await reportFigures(report, user.name);
   const draft = report.status === "draft";

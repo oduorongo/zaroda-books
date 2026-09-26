@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 import { can } from "@/domain";
 import { loadBook } from "@/server/book-context";
-import { issuedReportsOn, parseContent } from "@/server/audit-reports";
+import { issuedReportsOn, parseClearance, parseContent } from "@/server/audit-reports";
 import type { IpsasData } from "@/server/audit-reports";
+import { ClearanceMemo } from "../../../../audit/clearance-memo";
 import { IpsasReport } from "../../../../audit/ipsas-report";
 import { BackLink } from "../../../back-link";
 import { PrintButton } from "../../print-button";
@@ -16,7 +17,6 @@ export default async function SchoolAuditReportPage({ params }: {
   if (!can(user.role, "book.sendForAudit")) notFound();
   const report = (await issuedReportsOn(school.id)).find((r) => r.id === reportId);
   if (!report?.snapshot) notFound();
-  const data: IpsasData = JSON.parse(report.snapshot);
 
   return (
     <>
@@ -24,7 +24,12 @@ export default async function SchoolAuditReportPage({ params }: {
         <BackLink />
         <PrintButton />
       </div>
-      <IpsasReport data={data} content={parseContent(report.content)} issuedAt={report.issuedAt} />
+      {report.kind === "clearance" ? (
+        <ClearanceMemo data={JSON.parse(report.snapshot)} memo={parseClearance(report.content)}
+          periodTo={report.periodTo} issuedAt={report.issuedAt} />
+      ) : (
+        <IpsasReport data={JSON.parse(report.snapshot) as IpsasData} content={parseContent(report.content)} issuedAt={report.issuedAt} />
+      )}
     </>
   );
 }

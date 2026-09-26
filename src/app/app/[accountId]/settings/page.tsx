@@ -115,7 +115,9 @@ export default async function SettingsPage({
             {reports.map((r) => (
               <p key={r.id} style={{ margin: ".4rem 0" }}>
                 <Link href={`/app/${accountId}/audit-reports/${r.id}`}>
-                  IPSAS internal audit report, {r.years ? JSON.parse(r.years).join(" and ") : ""}
+                  {r.kind === "clearance"
+                    ? `Clearance memo, for the years up to ${r.periodTo}`
+                    : `IPSAS internal audit report, ${r.years ? JSON.parse(r.years).join(" and ") : ""}`}
                 </Link>
                 <span className="note"> — issued {r.issuedAt?.toLocaleDateString("en-KE")}</span>
               </p>
