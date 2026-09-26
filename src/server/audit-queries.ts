@@ -7,6 +7,7 @@ import {
 } from "@/domain";
 import { auditorScope, getCurrentUser } from "@/server/auth";
 import { emailLayout, sendEmail } from "@/server/email";
+import { schoolContacts } from "@/server/audit-mail";
 import { getBookForOrg } from "@/server/queries";
 import { SITE_URL } from "@/app/site-url";
 
@@ -102,14 +103,6 @@ async function tell(to: string[], input: { subject: string; heading: string; bod
   }
 }
 
-async function ownerEmails(orgId: string) {
-  const rows = await db
-    .select({ email: schema.users.email })
-    .from(schema.memberships)
-    .innerJoin(schema.users, eq(schema.users.id, schema.memberships.userId))
-    .where(and(eq(schema.memberships.orgId, orgId), eq(schema.memberships.role, "owner")));
-  return rows.map((r) => r.email);
-}
 
 const bookName = (b: Awaited<ReturnType<typeof bookOf>>) =>
   `${b.school.name} — ${b.account.name}${b.fyLabel ? ` ${b.fyLabel}` : ""}`;
@@ -135,7 +128,7 @@ export async function raiseQuery(accountId: string, transactionId: string | null
     }),
   ] as unknown as Parameters<typeof db.batch>[0]);
 
-  await tell(await ownerEmails(book.school.orgId), {
+  await tell(await schoolContacts(book.school.orgId, book.school.id), {
     subject: `Audit query on ${book.school.name}`,
     heading: "The auditor has raised a query",
     body: `<strong>${escape(user.name)}</strong>, Ministry auditor, has raised a query on `
@@ -168,7 +161,7 @@ export async function replyToQuery(queryId: string, body: string) {
 
   const [auditor] = await db.select({ email: schema.users.email }).from(schema.users)
     .where(eq(schema.users.id, query.raisedBy));
-  await tell(party === "school" ? (auditor ? [auditor.email] : []) : await ownerEmails(query.orgId), {
+  await tell(party === "school" ? (auditor ? [auditor.email] : []) : await schoolContacts(query.orgId, book.school.id), {
     subject: party === "school"
       ? `${book.school.name} has answered your audit query`
       : `The auditor has replied on ${book.school.name}`,
@@ -196,7 +189,7 @@ export async function closeQuery(queryId: string) {
     }),
   ] as unknown as Parameters<typeof db.batch>[0]);
 
-  await tell(await ownerEmails(query.orgId), {
+  await tell(await schoolContacts(query.orgId, book.school.id), {
     subject: `Audit query closed on ${book.school.name}`,
     heading: "The auditor has closed a query",
     body: `<strong>${escape(user.name)}</strong> has closed the query on <strong>${escape(bookName(book))}</strong>:<br><br>`

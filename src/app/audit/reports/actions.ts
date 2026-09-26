@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { and, eq, isNull } from "drizzle-orm";
-import { auditMail, escapeHtml, schoolOwnerEmails } from "@/server/audit-mail";
+import { auditMail, escapeHtml, schoolContacts } from "@/server/audit-mail";
 import { db, schema } from "@/db";
 import { CLEARANCE_REASONS } from "@/domain";
 import {
@@ -203,7 +203,7 @@ async function tellSchoolIssued(report: typeof schema.auditReports.$inferSelect,
   const [book] = await db.select({ id: schema.accounts.id }).from(schema.accounts)
     .where(and(eq(schema.accounts.schoolId, report.schoolId), isNull(schema.accounts.archivedAt))).limit(1);
   if (!school || !book) return;
-  await auditMail(await schoolOwnerEmails(school.orgId), {
+  await auditMail(await schoolContacts(school.orgId, school.id), {
     subject: `Audit: ${KIND[report.kind]} issued on ${school.name}`,
     heading: "The auditor has issued " + KIND[report.kind],
     body: `<strong>${escapeHtml(auditor)}</strong>, Ministry auditor, has issued ${KIND[report.kind]} on `

@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { emailLayout, sendEmail } from "@/server/email";
 import { SITE_URL } from "@/app/site-url";
@@ -42,13 +42,21 @@ export async function auditMail(to: string[], input: {
 export const escapeHtml = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-/** Who hears from the auditor on a school's behalf: the owners of the books. */
-export async function schoolOwnerEmails(orgId: string) {
+/**
+ * Who hears from the auditor on a school's behalf: its owners and accountants —
+ * those across the practice, and those tied to this school. Someone tied to a
+ * different school of the same practice hears nothing about this one.
+ */
+export async function schoolContacts(orgId: string, schoolId: string) {
   const rows = await db
-    .select({ email: schema.users.email })
+    .selectDistinct({ email: schema.users.email })
     .from(schema.memberships)
     .innerJoin(schema.users, eq(schema.users.id, schema.memberships.userId))
-    .where(and(eq(schema.memberships.orgId, orgId), eq(schema.memberships.role, "owner")));
+    .where(and(
+      eq(schema.memberships.orgId, orgId),
+      inArray(schema.memberships.role, ["owner", "accountant"]),
+      or(isNull(schema.memberships.schoolId), eq(schema.memberships.schoolId, schoolId)),
+    ));
   return rows.map((r) => r.email);
 }
 
