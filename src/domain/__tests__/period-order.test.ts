@@ -22,9 +22,14 @@ describe("monthsToClose", () => {
 });
 
 describe("monthsToReopen", () => {
-  it("takes the month asked for and every closed month after it, latest first", () => {
+  it("takes every closed month of the book, latest first, whichever is asked for", () => {
     expect(monthsToReopen(months("closed", "closed", "closed", "open"), "2024-08-01"))
-      .toEqual({ months: ["2024-09-01", "2024-08-01"] });
+      .toEqual({ months: ["2024-09-01", "2024-08-01", "2024-07-01"] });
+  });
+
+  it("opens the whole year when June is reopened", () => {
+    const year = months(...Array.from({ length: 12 }, () => "closed" as const));
+    expect(monthsToReopen(year, year[year.length - 1].month).months).toHaveLength(12);
   });
 
   it("refuses a month that is open", () => {

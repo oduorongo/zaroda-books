@@ -89,7 +89,7 @@ export function CloseMonth({
           </button>
           {reopens.length > 1 && (
             <span className="note" style={{ flexBasis: "100%" }}>
-              Also reopens {reopens.slice(0, -1).reverse().join(", ")}, closed after it.
+              Reopens every closed month of the year ({[...reopens].reverse().join(", ")}), so any of them can be edited.
             </span>
           )}
         </form>

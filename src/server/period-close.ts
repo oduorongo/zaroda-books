@@ -67,8 +67,8 @@ export async function closeMonth(accountId: string, month: string) {
 
 /**
  * Rule 5: reopening needs a reason, and the reason goes to the audit log.
- * Reopening a month reopens every closed month after it, so no month is left
- * frozen on a balance brought down that can now change.
+ * Reopening a month reopens every closed month of the book, so the whole year
+ * can be corrected and no month is left frozen on a balance that can change.
  */
 export async function reopenMonth(accountId: string, month: string, reason: string) {
   const { user, fy, account } = await loadBook(accountId, { write: true, require: "period.reopen" });
