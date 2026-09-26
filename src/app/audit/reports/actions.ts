@@ -2,7 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
+import { auditMail, escapeHtml, schoolOwnerEmails } from "@/server/audit-mail";
 import { db, schema } from "@/db";
 import { CLEARANCE_REASONS } from "@/domain";
 import {
@@ -88,6 +89,7 @@ export async function issueReport(form: FormData) {
   await db.update(schema.auditReports)
     .set({ status: "issued", snapshot: JSON.stringify(figures), issuedAt: new Date(), updatedAt: new Date() })
     .where(and(eq(schema.auditReports.id, report.id), eq(schema.auditReports.status, "draft")));
+  await tellSchoolIssued(report, user.name);
   revalidatePath(`/audit/reports/${report.id}`);
   redirect(`/audit/reports/${report.id}`);
 }
@@ -191,4 +193,22 @@ export async function savePrimary(form: FormData) {
     .where(eq(schema.auditReports.id, report.id));
   revalidatePath(`/audit/reports/${report.id}`);
   redirect(`/audit/reports/${report.id}?saved=1`);
+}
+
+const KIND = { ipsas: "an internal audit report", primary: "audited financial statements", clearance: "a clearance memo" };
+
+/** The school hears as soon as a report on it is issued, with a link to open it. */
+async function tellSchoolIssued(report: typeof schema.auditReports.$inferSelect, auditor: string) {
+  const [school] = await db.select().from(schema.schools).where(eq(schema.schools.id, report.schoolId));
+  const [book] = await db.select({ id: schema.accounts.id }).from(schema.accounts)
+    .where(and(eq(schema.accounts.schoolId, report.schoolId), isNull(schema.accounts.archivedAt))).limit(1);
+  if (!school || !book) return;
+  await auditMail(await schoolOwnerEmails(school.orgId), {
+    subject: `Audit: ${KIND[report.kind]} issued on ${school.name}`,
+    heading: "The auditor has issued " + KIND[report.kind],
+    body: `<strong>${escapeHtml(auditor)}</strong>, Ministry auditor, has issued ${KIND[report.kind]} on `
+      + `<strong>${escapeHtml(school.name)}</strong>. You can open and print it from Book settings.`,
+    buttonLabel: "Open it",
+    linkPath: `/app/${book.id}/audit-reports/${report.id}`,
+  });
 }

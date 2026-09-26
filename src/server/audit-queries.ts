@@ -182,7 +182,7 @@ export async function replyToQuery(queryId: string, body: string) {
 export async function closeQuery(queryId: string) {
   const [query] = await db.select().from(schema.auditQueries).where(eq(schema.auditQueries.id, queryId));
   if (!query) throw new Error("Query not found.");
-  const { user } = await auditorOver(query.accountId);
+  const { user, book } = await auditorOver(query.accountId);
   const refusal = closeRefusal(query.status);
   if (refusal) throw new Error(refusal);
 
@@ -195,6 +195,14 @@ export async function closeQuery(queryId: string) {
       after: JSON.stringify({ status: "closed" }),
     }),
   ] as unknown as Parameters<typeof db.batch>[0]);
+
+  await tell(await ownerEmails(query.orgId), {
+    subject: `Audit query closed on ${book.school.name}`,
+    heading: "The auditor has closed a query",
+    body: `<strong>${escape(user.name)}</strong> has closed the query on <strong>${escape(bookName(book))}</strong>:<br><br>`
+      + `<em>${escape(query.subject)}</em><br>Nothing more is needed on it.`,
+    linkPath: `/app/${query.accountId}/queries`,
+  });
 }
 
 /** A book's queries with their conversations, open first. */

@@ -3,6 +3,7 @@ import { db, schema } from "@/db";
 import { eq, inArray } from "drizzle-orm";
 import { monthEndExclusive, monthsToClose, monthsToReopen } from "@/domain";
 import { loadBook } from "@/server/book-context";
+import { auditMail, auditorEmail, escapeHtml } from "@/server/audit-mail";
 import { assertClosable, assertReconciled, monthKey } from "@/server/periods";
 import { getTxns, upTo } from "@/server/queries";
 import { getReconciliation } from "@/server/reconciliation";
@@ -71,7 +72,7 @@ export async function closeMonth(accountId: string, month: string) {
  * can be corrected and no month is left frozen on a balance that can change.
  */
 export async function reopenMonth(accountId: string, month: string, reason: string) {
-  const { user, fy, account } = await loadBook(accountId, { write: true, require: "period.reopen" });
+  const { user, fy, account, school } = await loadBook(accountId, { write: true, require: "period.reopen" });
   if (!reason.trim()) throw new Error("Say why the month is being reopened.");
 
   const periods = await periodsOf(fy.id);
@@ -108,4 +109,15 @@ export async function reopenMonth(accountId: string, month: string, reason: stri
     ] : []),
   ];
   await db.batch(writes as unknown as Parameters<typeof db.batch>[0]);
+
+  if (account.auditSentTo) {
+    await auditMail(await auditorEmail(account.auditSentTo), {
+      subject: `${school.name} has taken back its books`,
+      heading: "Books taken back from audit",
+      body: `<strong>${escapeHtml(school.name)} — ${escapeHtml(account.name)} ${escapeHtml(fy.label)}</strong> has been reopened `
+        + `and is no longer sent to you. Your queries on it are kept.<br><br>Reason given: ${escapeHtml(reason.trim())}`,
+      buttonLabel: "Open your audit list",
+      linkPath: "/audit",
+    });
+  }
 }

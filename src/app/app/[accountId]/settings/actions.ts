@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { loadBook } from "@/server/book-context";
-import { sendForAudit } from "@/server/audit-send";
+import { auditorsForSchool, sendForAudit } from "@/server/audit-send";
+import { auditMail, escapeHtml } from "@/server/audit-mail";
 import { isSubCountyOf, readHandover } from "@/domain";
 import { db, schema } from "@/db";
 import {
@@ -138,6 +139,18 @@ export async function saveHandoverAction(
   );
   if ("error" in h) return h.error;
   await db.insert(schema.hoiHandovers).values({ schoolId: school.id, recordedBy: user.id, ...h });
+
+  // The auditors covering the school hear of it: a clearance is theirs to issue.
+  const auditors = await auditorsForSchool(school);
+  await auditMail(auditors.map((a) => a.email), {
+    subject: `${school.name}: head of institution handing over`,
+    heading: "A head of institution is handing over",
+    body: `<strong>${escapeHtml(school.name)}</strong> has recorded that <strong>${escapeHtml(h.officer)}</strong> `
+      + `(TSC ${escapeHtml(h.tscNo)}) is leaving on ${h.reason}, handing over on ${h.handoverDate}. `
+      + "A clearance memo you start for the school will be filled in from these details.",
+    buttonLabel: "Open your audit list",
+    linkPath: "/audit",
+  });
   revalidatePath(`/app/${accountId}/settings`);
   return "Saved.";
 }
