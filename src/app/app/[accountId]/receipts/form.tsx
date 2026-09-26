@@ -59,10 +59,12 @@ export function ReceiptForm({
 }) {
   const [error, action, pending] = useActionState(receipt ? amendReceipt : postReceipt, null);
   const [amount, setAmount] = useState(receipt?.amount ?? "");
-  const [date, setDate] = useState(receipt?.date ?? dates.start);
+  // Left empty on a new receipt: a date filled in for the bursar is one they
+  // can post without reading. Required, so it cannot be skipped.
+  const [date, setDate] = useState(receipt?.date ?? "");
   // Every shilling arrives as cash and is banked, so the tick starts on.
   const [banked, setBanked] = useState(receipt ? receipt.bankedOn !== null : true);
-  const [bankedOn, setBankedOn] = useState(receipt?.bankedOn ?? receipt?.date ?? dates.start);
+  const [bankedOn, setBankedOn] = useState(receipt?.bankedOn ?? receipt?.date ?? "");
   // A circular's figures, as the boxes hold them.
   const figuresOf = (c?: (typeof circulars)[number]): Record<string, HeadEntry> => {
     if (!c) return {};
