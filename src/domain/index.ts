@@ -32,3 +32,4 @@ export * from "./vote-heads";
 export * from "./period-order";
 export * from "./circulars";
 export * from "./audit-query";
+export * from "./ipsas";
