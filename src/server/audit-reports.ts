@@ -3,9 +3,10 @@ import { notFound } from "next/navigation";
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { db, schema } from "@/db";
 import {
-  auditorCanSee, buildIpsasYear, compareIpsas, disbursementRows, previousFinancialYear,
-  IPSAS_FUND_OF,
-  type AccountType, type AccountYear, type Cents, type DisbursementRow, type Grant, type IpsasComparison,
+  auditorCanSee, buildIpsasYear, buildPeriodStatement, compareIpsas, disbursementRows, previousFinancialYear,
+  priorPeriod, IPSAS_FUND_OF,
+  type AccountType, type AccountYear, type BookYear, type Cents, type DisbursementRow, type Grant, type IpsasComparison,
+  type PeriodStatement,
 } from "@/domain";
 import { requireAuditor } from "@/server/audit";
 import { getTxns, receiptProjects } from "@/server/queries";
@@ -141,12 +142,14 @@ export async function ipsasData(schoolId: string, labels: string[], grantId: str
       }
     }
 
-    // The same books as the year beside it, so the comparative and the check
-    // on the fund brought forward compare like with like.
+    // Each year is its own book. The comparative takes last year's book of
+    // every kind reported this year, sent or not, so the comparative and the
+    // check on the fund brought forward compare like with like.
     const priorLabel = previousFinancialYear(label);
     const prior: AccountYear[] = [];
+    const types = new Set(current.map((b) => b.type));
     if (priorLabel) {
-      for (const a of accounts.filter((x) => x.auditSentTo === grantId)) {
+      for (const a of accounts.filter((x) => types.has(x.type as AccountType))) {
         const y = await accountYear(a, priorLabel);
         if (y) prior.push(y.book);
       }
@@ -301,3 +304,128 @@ export async function unsettledQueriesOn(schoolId: string): Promise<number> {
     .where(eq(schema.accounts.schoolId, schoolId));
   return rows.filter((r) => r.status !== "closed").length;
 }
+
+/* ---------- Primary audited financial statements ---------- */
+
+export interface PrimaryAccountData {
+  account: string;
+  type: string;
+  current: PeriodStatement;
+  /** The same length of period before, or null where the books do not cover it. */
+  prior: PeriodStatement | null;
+  /** Months in the period with a bank statement balance entered. */
+  statements: { entered: number; months: number };
+}
+
+export interface PrimaryData {
+  school: string;
+  county: string | null;
+  subCounty: string | null;
+  auditor: string;
+  from: string;
+  to: string;
+  priorFrom: string;
+  priorTo: string;
+  accounts: PrimaryAccountData[];
+  grants: DisbursementRow[];
+  /** All tuition spending in the period, and its largest payments. */
+  procurementTotal: Cents;
+  procurement: MajorPayment[];
+}
+
+/** Worked from every book sent to this auditor, for the period they set. */
+export async function primaryData(
+  schoolId: string, from: string, to: string, grantId: string, auditor: string,
+): Promise<PrimaryData> {
+  const [school] = await db.select().from(schema.schools).where(eq(schema.schools.id, schoolId));
+  const accounts = await db.select().from(schema.accounts)
+    .where(and(eq(schema.accounts.schoolId, schoolId), isNull(schema.accounts.archivedAt)));
+  const prior = priorPeriod(from, to);
+
+  const out: PrimaryAccountData[] = [];
+  const grants: Grant[] = [];
+  const tuitionPayments: MajorPayment[] = [];
+  // Each financial year is its own book, so one bank account's statements are
+  // read across every year's book of that kind. The period itself uses only
+  // the books sent to this auditor; the comparative may use any.
+  const types = [...new Set(accounts.filter((a) => a.auditSentTo === grantId).map((a) => a.type))];
+  for (const type of types) {
+    const books = accounts.filter((a) => a.type === type);
+    const heads = new Map<string, { code: string; name: string; order: number }>();
+    const sentYears: BookYear[] = [];
+    const allYears: BookYear[] = [];
+    let entered = 0, months = 0;
+    for (const a of books) {
+      for (const h of await db.select().from(schema.voteHeads).where(eq(schema.voteHeads.accountId, a.id))) {
+        heads.set(h.code, { code: h.code, name: h.name, order: h.order });
+      }
+      for (const fy of await db.select().from(schema.financialYears).where(eq(schema.financialYears.accountId, a.id))) {
+        const year = { startsOn: fy.startsOn, endsOn: fy.endsOn, opening: { cash: fy.openingCash, bank: fy.openingBank }, txns: await getTxns(fy.id) };
+        allYears.push(year);
+        if (a.auditSentTo !== grantId) continue;
+        sentYears.push(year);
+        const periods = await db.select({ month: schema.periods.month, statementBank: schema.periods.statementBank })
+          .from(schema.periods).where(eq(schema.periods.financialYearId, fy.id));
+        for (const p of periods) {
+          if (p.month < from.slice(0, 8) + "01" || p.month > to) continue;
+          months++;
+          if (p.statementBank !== null) entered++;
+        }
+      }
+    }
+    const chart = [...heads.values()];
+    const current = buildPeriodStatement(chart, sentYears, from, to);
+    const before = buildPeriodStatement(chart, allYears, prior.from, prior.to);
+    const latest = books.filter((a) => a.auditSentTo === grantId).at(-1)!;
+    out.push({ account: latest.name, type, current, prior: before.complete ? before : null, statements: { entered, months } });
+
+    const fund = IPSAS_FUND_OF[type as AccountType];
+    for (const t of sentYears.flatMap((y) => y.txns)) {
+      if (t.date < from || t.date > to) continue;
+      if (t.kind === "receipt" && (fund === "tuition" || fund === "operations")) grants.push({ fund, date: t.date, amount: t.cash + t.bank });
+      if (t.kind === "payment" && fund === "tuition") tuitionPayments.push({ amount: t.cash + t.bank, payee: t.particulars, chequeNo: t.chequeNo ?? "" });
+    }
+  }
+
+  return {
+    school: school.name, county: school.county, subCounty: school.subCounty, auditor,
+    from, to, priorFrom: prior.from, priorTo: prior.to,
+    accounts: out,
+    grants: disbursementRows(grants),
+    procurementTotal: tuitionPayments.reduce((x, p) => x + p.amount, 0),
+    procurement: tuitionPayments.sort((x, y) => y.amount - x.amount).slice(0, PROCUREMENT_ROWS),
+  };
+}
+
+/** The items the county's checklist on the books of account runs through. */
+export const BOOKS_CHECKLIST = [
+  "Cash books", "Payment vouchers", "Ledger books", "Trial balances",
+  "Income and expenditure account", "Reconciliation statement", "I.M. receipt and issue register",
+] as const;
+
+/** What the auditor writes on the primary statements. */
+export interface PrimaryContent {
+  headTeacher: string;
+  tscNo: string;
+  zone: string;
+  certificate: string;
+  procurement: string;
+  management: string;
+  /** Observation per checklist item. */
+  books: Record<string, string>;
+}
+
+export const PRIMARY_DEFAULTS: PrimaryContent = {
+  headTeacher: "",
+  tscNo: "",
+  zone: "",
+  certificate:
+    "We have prepared the financial statements from the books of account and other documents "
+    + "presented to us for audit.\nWe have obtained all the information and explanations that we "
+    + "consider necessary for the audit.",
+  procurement: "",
+  management: "",
+  books: {},
+};
+
+export const parsePrimary = (json: string): PrimaryContent => ({ ...PRIMARY_DEFAULTS, ...JSON.parse(json || "{}") });

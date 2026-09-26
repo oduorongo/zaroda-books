@@ -62,7 +62,7 @@ const sum = (xs: Balances[]): Balances =>
   xs.reduce((a, b) => ({ cash: a.cash + b.cash, bank: a.bank + b.bank }), { cash: 0, bank: 0 });
 
 /** Adds each allocation to its head's line, keeping the chart's order. */
-function addLines(lines: IpsasLine[], heads: VoteHead[], txns: Txn[], kind: "receipt" | "payment") {
+export function addLines(lines: IpsasLine[], heads: VoteHead[], txns: Txn[], kind: "receipt" | "payment") {
   const byCode = new Map(lines.map((l) => [l.code, l]));
   for (const h of [...heads].sort((a, b) => a.order - b.order)) {
     let amount = 0;

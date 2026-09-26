@@ -49,7 +49,7 @@ function Bullets({ text, empty }: { text: string; empty?: string }) {
   return <ul>{items.map((p, i) => <li key={i}>{p}</li>)}</ul>;
 }
 
-function SignOff({ lines }: { lines: string[] }) {
+export function SignOff({ lines }: { lines: string[] }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.6rem 2.5rem", marginTop: "2rem" }}>
       {lines.map((l) => (

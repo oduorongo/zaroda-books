@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import { can } from "@/domain";
 import { loadBook } from "@/server/book-context";
-import { issuedReportsOn, parseClearance, parseContent } from "@/server/audit-reports";
+import { issuedReportsOn, parseClearance, parseContent, parsePrimary } from "@/server/audit-reports";
+import { PrimaryStatements } from "../../../../audit/primary-statements";
 import type { IpsasData } from "@/server/audit-reports";
 import { ClearanceMemo } from "../../../../audit/clearance-memo";
 import { IpsasReport } from "../../../../audit/ipsas-report";
@@ -27,6 +28,8 @@ export default async function SchoolAuditReportPage({ params }: {
       {report.kind === "clearance" ? (
         <ClearanceMemo data={JSON.parse(report.snapshot)} memo={parseClearance(report.content)}
           periodTo={report.periodTo} issuedAt={report.issuedAt} />
+      ) : report.kind === "primary" ? (
+        <PrimaryStatements data={JSON.parse(report.snapshot)} content={parsePrimary(report.content)} issuedAt={report.issuedAt} />
       ) : (
         <IpsasReport data={JSON.parse(report.snapshot) as IpsasData} content={parseContent(report.content)} issuedAt={report.issuedAt} />
       )}

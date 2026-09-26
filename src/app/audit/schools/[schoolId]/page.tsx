@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { auditedSchool, latestHandover, reportsOn, sentYears } from "@/server/audit-reports";
-import { createClearance, createIpsasReport } from "../../reports/actions";
+import { createClearance, createIpsasReport, createPrimary } from "../../reports/actions";
 
 const KIND_LABEL = { ipsas: "IPSAS internal audit report", primary: "Audited financial statements", clearance: "Clearance memo" };
 
@@ -42,6 +42,24 @@ export default async function AuditSchoolPage({ params, searchParams }: {
       </div>
 
       <div className="card" style={{ marginBottom: "1.35rem" }}>
+        <h2 style={{ marginTop: 0 }}>New audited financial statements</h2>
+        <p className="note">The primary school format: one set of statements per account, for the period you set.</p>
+        <form action={createPrimary} style={{ marginTop: ".75rem" }}>
+          <input type="hidden" name="schoolId" value={schoolId} />
+          <div className="grid-3" style={{ alignItems: "end" }}>
+            <label className="field">From
+              <input name="from" type="date" required />
+            </label>
+            <label className="field">To
+              <input name="to" type="date" required />
+            </label>
+            <button type="submit" className="btn btn-primary">Start statements</button>
+          </div>
+          {error === "period" && <p className="error">Set a period whose start is on or before its end.</p>}
+        </form>
+      </div>
+
+      <div className="card" style={{ marginBottom: "1.35rem" }}>
         <h2 style={{ marginTop: 0 }}>New clearance memo</h2>
         <p className="note">
           {handover
@@ -62,7 +80,7 @@ export default async function AuditSchoolPage({ params, searchParams }: {
             {reports.map((r) => (
               <tr key={r.id}>
                 <td><Link href={`/audit/reports/${r.id}`}>{KIND_LABEL[r.kind]}</Link></td>
-                <td>{r.years ? JSON.parse(r.years).join(", ") : r.periodTo ? `up to ${r.periodTo}` : ""}</td>
+                <td>{r.years ? JSON.parse(r.years).join(", ") : r.kind === "primary" ? `${r.periodFrom} to ${r.periodTo}` : r.periodTo ? `up to ${r.periodTo}` : ""}</td>
                 <td style={r.status === "draft" ? { color: "var(--alarm)" } : undefined}>
                   {r.status === "draft" ? "Draft" : `Issued ${r.issuedAt?.toLocaleDateString("en-KE")}`}
                 </td>

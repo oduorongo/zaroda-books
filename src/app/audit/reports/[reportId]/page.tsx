@@ -4,6 +4,7 @@ import { PrintButton } from "../../../app/[accountId]/print-button";
 import { IpsasReport } from "../../ipsas-report";
 import { deleteDraft, issueReport, saveIpsasContent } from "../actions";
 import { ClearancePage } from "./clearance-page";
+import { PrimaryPage } from "./primary-page";
 
 function Area({ name, label, value, rows = 4, hint }: {
   name: string; label: string; value: string; rows?: number; hint?: string;
@@ -27,6 +28,9 @@ export default async function AuditReportPage({ params, searchParams }: {
   const { user, report } = await myReport(reportId);
   if (report.kind === "clearance") {
     return <ClearancePage report={report} auditor={user.name} saved={!!saved} error={error} />;
+  }
+  if (report.kind === "primary") {
+    return <PrimaryPage report={report} auditor={user.name} saved={!!saved} error={error} />;
   }
   const content = parseContent(report.content);
   const data = await reportFigures(report, user.name);

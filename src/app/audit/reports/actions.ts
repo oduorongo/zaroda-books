@@ -6,8 +6,9 @@ import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { CLEARANCE_REASONS } from "@/domain";
 import {
-  auditedSchool, clearanceData, clearanceDefaults, ipsasData, latestHandover, myReport, parseClearance, sentYears,
-  type ClearanceContent, type IpsasContent,
+  auditedSchool, BOOKS_CHECKLIST, clearanceData, clearanceDefaults, ipsasData, latestHandover, myReport, parseClearance,
+  PRIMARY_DEFAULTS, primaryData, sentYears,
+  type ClearanceContent, type IpsasContent, type PrimaryContent,
 } from "@/server/audit-reports";
 
 /** Starts an IPSAS report on the years ticked, from the books sent to this auditor. */
@@ -75,9 +76,15 @@ export async function issueReport(form: FormData) {
       redirect(`/audit/reports/${report.id}?error=incomplete`);
     }
   }
-  const figures = report.kind === "clearance"
-    ? await clearanceData(report.schoolId, user.name)
-    : await ipsasData(report.schoolId, JSON.parse(report.years ?? "[]"), report.auditorId, user.name);
+  let figures: unknown;
+  if (report.kind === "clearance") figures = await clearanceData(report.schoolId, user.name);
+  else if (report.kind === "primary") {
+    const data = await primaryData(report.schoolId, report.periodFrom!, report.periodTo!, report.auditorId, user.name);
+    // Figures for days the books do not cover would be invented, so the
+    // statements are not issued until the books cover the whole period.
+    if (data.accounts.some((a) => !a.current.complete)) redirect(`/audit/reports/${report.id}?error=uncovered`);
+    figures = data;
+  } else figures = await ipsasData(report.schoolId, JSON.parse(report.years ?? "[]"), report.auditorId, user.name);
   await db.update(schema.auditReports)
     .set({ status: "issued", snapshot: JSON.stringify(figures), issuedAt: new Date(), updatedAt: new Date() })
     .where(and(eq(schema.auditReports.id, report.id), eq(schema.auditReports.status, "draft")));
@@ -135,6 +142,52 @@ export async function saveClearance(form: FormData) {
 
   await db.update(schema.auditReports)
     .set({ content: JSON.stringify(content), periodTo, updatedAt: new Date() })
+    .where(eq(schema.auditReports.id, report.id));
+  revalidatePath(`/audit/reports/${report.id}`);
+  redirect(`/audit/reports/${report.id}?saved=1`);
+}
+
+/** Starts audited financial statements for the period the auditor sets. */
+export async function createPrimary(form: FormData) {
+  const schoolId = String(form.get("schoolId") ?? "");
+  const { user, scope } = await auditedSchool(schoolId);
+  const from = text(form, "from");
+  const to = text(form, "to");
+  const iso = /^d{4}-d{2}-d{2}$/;
+  if (!iso.test(from) || !iso.test(to) || from > to) redirect(`/audit/schools/${schoolId}?error=period`);
+
+  const handover = await latestHandover(schoolId);
+  const content: PrimaryContent = {
+    ...PRIMARY_DEFAULTS,
+    ...(handover ? { headTeacher: handover.officer, tscNo: handover.tscNo } : {}),
+  };
+  const [row] = await db.insert(schema.auditReports).values({
+    kind: "primary",
+    auditorId: scope.id,
+    authoredBy: user.id,
+    schoolId,
+    periodFrom: from,
+    periodTo: to,
+    content: JSON.stringify(content),
+  }).returning({ id: schema.auditReports.id });
+  redirect(`/audit/reports/${row.id}`);
+}
+
+/** Saves what the auditor wrote on the statements. */
+export async function savePrimary(form: FormData) {
+  const { report } = await myReport(String(form.get("reportId") ?? ""));
+  if (report.status !== "draft" || report.kind !== "primary") redirect(`/audit/reports/${report.id}`);
+  const content: PrimaryContent = {
+    headTeacher: text(form, "headTeacher"),
+    tscNo: text(form, "tscNo"),
+    zone: text(form, "zone"),
+    certificate: text(form, "certificate"),
+    procurement: text(form, "procurement"),
+    management: text(form, "management"),
+    books: Object.fromEntries(BOOKS_CHECKLIST.map((item, i) => [item, text(form, `book_${i}`)])),
+  };
+  await db.update(schema.auditReports)
+    .set({ content: JSON.stringify(content), updatedAt: new Date() })
     .where(eq(schema.auditReports.id, report.id));
   revalidatePath(`/audit/reports/${report.id}`);
   redirect(`/audit/reports/${report.id}?saved=1`);
