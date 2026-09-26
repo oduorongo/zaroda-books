@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { describeAuditScope, QUERY_STATUS_LABEL } from "@/domain";
 import { queriesRaisedBy } from "@/server/audit-queries";
 import { auditTrail, requireAuditor, schoolsInScope } from "@/server/audit";
@@ -54,7 +55,7 @@ export default async function AuditPage() {
             <thead>
               <tr>
                 <th>School</th><th>Level</th><th>Sub-county</th>
-                <th>Books kept by</th><th>Open</th>
+                <th>Books kept by</th><th>Open</th><th>Reports</th>
               </tr>
             </thead>
             <tbody>
@@ -77,6 +78,11 @@ export default async function AuditPage() {
                           </button>
                         </form>
                       ))
+                    )}
+                  </td>
+                  <td>
+                    {s.books.length > 0 && (
+                      <Link href={`/audit/schools/${s.schoolId}`} style={{ fontSize: ".82rem" }}>Audit reports</Link>
                     )}
                   </td>
                 </tr>
