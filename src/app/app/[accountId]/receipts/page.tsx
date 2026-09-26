@@ -1,11 +1,13 @@
 import Link from "next/link";
 import {
-  buildLedger, can, circularsFor, entryDates, flatOnlyHeadCodes, formatKes, isCapitationAccount, seesCapitationLetter, toKes,
+  buildLedger, can, circularsFor, entryDates, flatOnlyHeadCodes, formatKes, isCapitationAccount, PROJECT_APPROVALS,
+  PROJECT_STATUSES, seesCapitationLetter, takesProject, toKes,
 } from "@/domain";
 import type { AccountType } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { queriedEntries } from "@/server/audit-queries";
-import { getTxns } from "@/server/queries";
+import { getTxns, receiptProjects } from "@/server/queries";
+import { updateProjectAction } from "./actions";
 import { ReceiptForm } from "./form";
 import { OpeningBalances } from "./opening-balances";
 import { ReportShell } from "../report-shell";
@@ -23,6 +25,8 @@ export default async function ReceiptsPage({
   const capitation = isCapitationAccount(school.level, account.type as AccountType);
   const canAmend = can(user.role, "entry.amend") && !user.readOnly;
   const txns = await getTxns(fy.id);
+  const project = takesProject(account.type as AccountType);
+  const projects = project ? await receiptProjects(fy.id) : new Map();
 
   // Heads the circular funds per school: their rate box is closed.
   const flatOnly = flatOnlyHeadCodes(school.level, account.type as AccountType);
@@ -74,7 +78,7 @@ export default async function ReceiptsPage({
           note: c.note,
           figures: c.accounts[account.type as AccountType]!,
         }))}
-        flatOnly={flatOnly} capitation={capitation} />
+        flatOnly={flatOnly} capitation={capitation} project={project} />
 
       <div className="grid-2" style={{ marginTop: "1.6rem", alignItems: "start" }}>
         <div className="card">
@@ -108,6 +112,26 @@ export default async function ReceiptsPage({
                 <div className="note">
                   {r.date}{r.kind === "receipt" && r.receiptNo ? ` · ${r.receiptNo}` : ""}
                 </div>
+                {projects.get(r.id) && (
+                  <div className="note" style={{ marginTop: ".3rem" }}>
+                    Project: <strong>{projects.get(r.id).project}</strong>
+                    {canAmend ? (
+                      <form action={updateProjectAction} style={{ display: "flex", gap: ".4rem", marginTop: ".3rem", flexWrap: "wrap" }}>
+                        <input type="hidden" name="accountId" value={accountId} />
+                        <input type="hidden" name="transactionId" value={r.id} />
+                        <select name="projectApproval" defaultValue={projects.get(r.id).approval ?? ""} aria-label="SCDE approval">
+                          {PROJECT_APPROVALS.map((a) => <option key={a}>{a}</option>)}
+                        </select>
+                        <select name="projectStatus" defaultValue={projects.get(r.id).status ?? ""} aria-label="Project status">
+                          {PROJECT_STATUSES.map((s) => <option key={s}>{s}</option>)}
+                        </select>
+                        <button type="submit" className="btn-link">Update</button>
+                      </form>
+                    ) : (
+                      <> · {projects.get(r.id).approval} · {projects.get(r.id).status}</>
+                    )}
+                  </div>
+                )}
               </div>
               <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                 <div className="mono" style={{ fontSize: ".9rem" }}>

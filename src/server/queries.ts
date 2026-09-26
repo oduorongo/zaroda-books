@@ -255,6 +255,9 @@ export async function getReceiptForEdit(transactionId: string, accountId: string
     particulars: txn.particulars,
     amount: txn.cash + txn.bank,
     bankedOn: banking?.date ?? null,
+    project: txn.project ?? "",
+    projectApproval: txn.projectApproval ?? "",
+    projectStatus: txn.projectStatus ?? "",
     rates: Object.fromEntries(
       lines.map((l) => [l.code, {
         perLearner: l.perLearner ?? 0,
@@ -399,4 +402,19 @@ export async function getEnrolmentInForce(financialYearId: string) {
     .limit(1);
 
   return row?.enrolment ? { learners: row.enrolment, date: row.date, receiptNo: row.receiptNo } : null;
+}
+
+/** The project each infrastructure receipt in a year funds, by transaction. */
+export async function receiptProjects(financialYearId: string) {
+  const rows = await db
+    .select({
+      id: schema.transactions.id,
+      project: schema.transactions.project,
+      approval: schema.transactions.projectApproval,
+      status: schema.transactions.projectStatus,
+    })
+    .from(schema.transactions)
+    .innerJoin(schema.periods, eq(schema.periods.id, schema.transactions.periodId))
+    .where(and(eq(schema.periods.financialYearId, financialYearId), isNotNull(schema.transactions.project)));
+  return new Map(rows.map((r) => [r.id, r]));
 }

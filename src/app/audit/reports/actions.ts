@@ -31,7 +31,6 @@ export async function saveIpsasContent(form: FormData) {
   const { report } = await myReport(String(form.get("reportId") ?? ""));
   if (report.status !== "draft") redirect(`/audit/reports/${report.id}`);
 
-  const years: string[] = JSON.parse(report.years ?? "[]");
   const content: IpsasContent = {
     summary: text(form, "summary"),
     objectives: text(form, "objectives"),
@@ -40,11 +39,6 @@ export async function saveIpsasContent(form: FormData) {
     strengths: text(form, "strengths"),
     weaknesses: text(form, "weaknesses"),
     effectiveness: text(form, "effectiveness"),
-    projects: Object.fromEntries(years.map((y) => [y, {
-      project: text(form, `project_${y}`),
-      approval: text(form, `approval_${y}`),
-      status: text(form, `status_${y}`),
-    }])),
     recommendations: form.getAll("issue").map((_, i) => ({
       issue: String(form.getAll("issue")[i] ?? "").trim(),
       comments: String(form.getAll("comments")[i] ?? "").trim(),

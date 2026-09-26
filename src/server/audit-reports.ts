@@ -8,7 +8,7 @@ import {
   type AccountType, type AccountYear, type Cents, type DisbursementRow, type Grant, type IpsasComparison,
 } from "@/domain";
 import { requireAuditor } from "@/server/audit";
-import { getTxns } from "@/server/queries";
+import { getTxns, receiptProjects } from "@/server/queries";
 
 /**
  * The auditor's reports on a school. Every function starts from the auditor's
@@ -50,8 +50,11 @@ async function accountYear(account: Account, label: string) {
   };
   const periods = await db.select({ statementBank: schema.periods.statementBank })
     .from(schema.periods).where(eq(schema.periods.financialYearId, fy.id));
-  return { book, statements: periods.filter((p) => p.statementBank !== null).length, months: periods.length };
+  return { fyId: fy.id, book, statements: periods.filter((p) => p.statementBank !== null).length, months: periods.length };
 }
+
+/** A project the infrastructure account received money for, as the school recorded it. */
+export interface FundedProject { project: string; amount: Cents; approval: string; status: string }
 
 /** A tuition payment large enough to list under procurement. */
 export interface MajorPayment { amount: Cents; payee: string; chequeNo: string }
@@ -61,6 +64,9 @@ export interface IpsasYearData {
   comparison: IpsasComparison;
   grants: DisbursementRow[];
   procurement: MajorPayment[];
+  /** Infrastructure receipts by project. Receipts posted before projects were asked for have none. */
+  projects: FundedProject[];
+  unnamedTransfers: Cents;
   /** Bank statements entered per book, as evidence for the reconciliation finding. */
   statements: { account: string; entered: number; months: number }[];
   /** Books kept that year but not sent to this auditor: their figures are left out. */
@@ -99,6 +105,8 @@ export async function ipsasData(schoolId: string, labels: string[], grantId: str
     const notSent: string[] = [];
     const grants: Grant[] = [];
     const procurement: MajorPayment[] = [];
+    const projects = new Map<string, FundedProject>();
+    let unnamedTransfers = 0;
 
     for (const a of accounts) {
       const y = await accountYear(a, label);
@@ -107,6 +115,22 @@ export async function ipsasData(schoolId: string, labels: string[], grantId: str
       current.push(y.book);
       statements.push({ account: a.name, entered: y.statements, months: y.months });
       const fund = IPSAS_FUND_OF[y.book.type];
+      if (fund === "infrastructure") {
+        const named = await receiptProjects(y.fyId);
+        for (const t of [...y.book.txns].sort((a, b) => a.date.localeCompare(b.date))) {
+          if (t.kind !== "receipt") continue;
+          const p = named.get(t.id);
+          if (!p?.project) { unnamedTransfers += t.cash + t.bank; continue; }
+          const was = projects.get(p.project);
+          // The latest receipt's approval and status speak for the project.
+          projects.set(p.project, {
+            project: p.project,
+            amount: (was?.amount ?? 0) + t.cash + t.bank,
+            approval: p.approval ?? "",
+            status: p.status ?? "",
+          });
+        }
+      }
       for (const t of y.book.txns) {
         if (t.kind === "receipt" && (fund === "tuition" || fund === "operations")) {
           grants.push({ fund, date: t.date, amount: t.cash + t.bank });
@@ -133,6 +157,8 @@ export async function ipsasData(schoolId: string, labels: string[], grantId: str
       comparison: compareIpsas(buildIpsasYear(current), prior.length ? buildIpsasYear(prior) : null),
       grants: disbursementRows(grants),
       procurement: procurement.sort((a, b) => b.amount - a.amount).slice(0, PROCUREMENT_ROWS),
+      projects: [...projects.values()],
+      unnamedTransfers,
       statements,
       notSent,
     });
@@ -150,8 +176,6 @@ export interface IpsasContent {
   strengths: string;
   weaknesses: string;
   effectiveness: string;
-  /** Per year: the maintenance and improvement project, as approved. */
-  projects: Record<string, { project: string; approval: string; status: string }>;
   recommendations: { issue: string; comments: string; who: string; timeframe: string }[];
 }
 
@@ -179,7 +203,6 @@ export const IPSAS_DEFAULTS: IpsasContent = {
     "The recommendations below are made to strengthen controls and reduce risk, not to conclude "
     + "that the school failed to observe them. No material weakness was found that would lead us "
     + "to conclude that internal control, risk management and governance were not effective.",
-  projects: {},
   recommendations: [],
 };
 

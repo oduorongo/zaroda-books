@@ -2,13 +2,16 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { allocateCapitationFromAmount, flatOnlyHeadCodes, isCapitationAccount, residualHeadCode, toCents } from "@/domain";
+import {
+  allocateCapitationFromAmount, flatOnlyHeadCodes, isCapitationAccount, readProject, residualHeadCode,
+  takesProject, toCents, type ReceiptProject,
+} from "@/domain";
 import type { AccountType } from "@/domain";
 import type { Allocation, VoteHead } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getPeriodForDate } from "@/server/periods";
 import { saveOpeningBalances, saveVoteHeadRates } from "@/server/queries";
-import { createTransaction, deleteTransaction, updateTransaction, type LineRates } from "@/server/transactions";
+import { createTransaction, deleteTransaction, updateReceiptProject, updateTransaction, type LineRates } from "@/server/transactions";
 
 export async function saveOpeningBalancesAction(
   _prev: string | null,
@@ -43,6 +46,8 @@ interface ReadResult {
   rates: LineRates;
   /** null when the money stays in the cash box rather than being banked. */
   banking: { date: string } | null;
+  /** The project an infrastructure receipt funds. */
+  project?: ReceiptProject;
 }
 
 /**
@@ -54,6 +59,7 @@ function readReceiptForm(
   heads: VoteHead[],
   flatOnly: string[],
   capitation: boolean,
+  needsProject: boolean,
 ): ReadResult {
   const empty = {
     date: "", receiptNo: "", particulars: "", amount: 0,
@@ -80,6 +86,16 @@ function readReceiptForm(
   }
   const banking = banked ? { date: bankedOn } : null;
 
+  // Money into the infrastructure account is for a named project.
+  let project: ReceiptProject | undefined;
+  if (needsProject) {
+    const p = readProject(
+      String(form.get("project") ?? ""), String(form.get("projectApproval") ?? ""), String(form.get("projectStatus") ?? ""),
+    );
+    if ("error" in p) return { ...empty, error: p.error };
+    project = p;
+  }
+
   // Infrastructure, boarding and lunch are funded per vote head, not per
   // learner: the bursar enters each head's amount, and nothing is derived.
   if (!capitation) {
@@ -91,7 +107,7 @@ function readReceiptForm(
     if (distributed !== amount) {
       return { ...empty, error: "The vote heads must add up to the amount received." };
     }
-    return { date, receiptNo, particulars, amount, allocations, rates: {}, banking };
+    return { date, receiptNo, particulars, amount, allocations, rates: {}, banking, project };
   }
 
   // A flat-funded head takes no rate per learner. The box is shut on the form;
@@ -135,7 +151,7 @@ export async function postReceipt(
 
   const type = account.type as AccountType;
   const capitation = isCapitationAccount(school.level, type);
-  const r = readReceiptForm(form, heads, flatOnlyHeadCodes(school.level, type), capitation);
+  const r = readReceiptForm(form, heads, flatOnlyHeadCodes(school.level, type), capitation, takesProject(type));
   if (r.error) return r.error;
 
   let transactionId: string;
@@ -150,6 +166,7 @@ export async function postReceipt(
       orgId: user.orgId,
       enrolment: r.enrolment,
       rates: r.rates,
+      project: r.project,
       txn: {
         date: r.date,
         kind: "receipt",
@@ -182,7 +199,7 @@ export async function amendReceipt(
 
   const type = account.type as AccountType;
   const capitation = isCapitationAccount(school.level, type);
-  const r = readReceiptForm(form, heads, flatOnlyHeadCodes(school.level, type), capitation);
+  const r = readReceiptForm(form, heads, flatOnlyHeadCodes(school.level, type), capitation, takesProject(type));
   if (r.error) return r.error;
 
   try {
@@ -193,6 +210,7 @@ export async function amendReceipt(
       orgId: user.orgId,
       enrolment: r.enrolment,
       rates: r.rates,
+      project: r.project,
       txn: {
         date: r.date,
         kind: "receipt",
@@ -231,4 +249,18 @@ export async function deleteReceipt(
 
   revalidatePath(`/app/${accountId}`, "layout");
   redirect(`/app/${accountId}/receipts`);
+}
+
+/** Updates an infrastructure project's approval and status, closed month or not. */
+export async function updateProjectAction(form: FormData) {
+  const accountId = String(form.get("accountId") ?? "");
+  const { user } = await loadBook(accountId, { write: true, require: "entry.amend" });
+  const p = readProject("-", String(form.get("projectApproval") ?? ""), String(form.get("projectStatus") ?? ""));
+  if ("error" in p) return;
+  await updateReceiptProject({
+    transactionId: String(form.get("transactionId") ?? ""),
+    accountId, userId: user.id, orgId: user.orgId,
+    approval: p.approval, status: p.status,
+  });
+  revalidatePath(`/app/${accountId}/receipts`);
 }

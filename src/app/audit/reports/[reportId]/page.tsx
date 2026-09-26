@@ -27,7 +27,6 @@ export default async function AuditReportPage({ params, searchParams }: {
   const content = parseContent(report.content);
   const data = await reportFigures(report, user.name);
   const draft = report.status === "draft";
-  const years: string[] = JSON.parse(report.years ?? "[]");
   const recs = [...content.recommendations, ...Array.from({ length: BLANK_ROWS }, () => ({ issue: "", comments: "", who: "", timeframe: "" }))];
 
   return (
@@ -53,22 +52,6 @@ export default async function AuditReportPage({ params, searchParams }: {
             <Area name="strengths" label="Areas of strength" value={content.strengths} rows={6} />
             <Area name="weaknesses" label="Areas of weakness" value={content.weaknesses} rows={6} />
             <Area name="effectiveness" label="Effectiveness of internal control, risk management and governance" value={content.effectiveness} rows={4} />
-
-            <h3>Maintenance and improvement project</h3>
-            <p className="note">The amount transferred and the expenditure come from the infrastructure book.</p>
-            {years.map((y) => (
-              <div key={y} className="grid-3" style={{ marginBottom: ".75rem" }}>
-                <label className="field">{y}: approved project
-                  <input name={`project_${y}`} defaultValue={content.projects[y]?.project} />
-                </label>
-                <label className="field">SCDE approval
-                  <input name={`approval_${y}`} defaultValue={content.projects[y]?.approval} placeholder="Approved" />
-                </label>
-                <label className="field">Project status
-                  <input name={`status_${y}`} defaultValue={content.projects[y]?.status} placeholder="Completed" />
-                </label>
-              </div>
-            ))}
 
             <h3>Recommendation matrix</h3>
             <table>

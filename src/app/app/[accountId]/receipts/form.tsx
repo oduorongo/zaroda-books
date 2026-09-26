@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { allocateCapitationFromAmount, enrolmentFit, formatKes, residualHeadCode, toCents, toKes, type CircularAccount, type EntryDates, type VoteHead } from "@/domain";
+import { allocateCapitationFromAmount, enrolmentFit, formatKes, PROJECT_APPROVALS, PROJECT_STATUSES, residualHeadCode, toCents, toKes, type CircularAccount, type EntryDates, type VoteHead } from "@/domain";
 import { amendReceipt, postReceipt } from "./actions";
 
 /**
@@ -21,6 +21,9 @@ export interface ReceiptDraft {
   entries: Record<string, HeadEntry>;
   /** The date this receipt was banked, or null if it stayed in the cash box. */
   bankedOn: string | null;
+  project?: string;
+  projectApproval?: string;
+  projectStatus?: string;
 }
 
 const num = (v: string) => {
@@ -29,7 +32,7 @@ const num = (v: string) => {
 };
 
 export function ReceiptForm({
-  accountId, heads, dates, receipt, flatOnly = [], capitation = true, circulars = [],
+  accountId, heads, dates, receipt, flatOnly = [], capitation = true, circulars = [], project = false,
 }: {
   accountId: string;
   heads: VoteHead[];
@@ -46,6 +49,8 @@ export function ReceiptForm({
   capitation?: boolean;
   /** This account's figures from each circular in the library, newest first. */
   circulars?: { key: string; label: string; note?: string; figures: CircularAccount }[];
+  /** An infrastructure receipt names the project it funds, for the audit. */
+  project?: boolean;
 }) {
   const [error, action, pending] = useActionState(receipt ? amendReceipt : postReceipt, null);
   const [amount, setAmount] = useState(receipt?.amount ?? "");
@@ -196,6 +201,27 @@ export function ReceiptForm({
         <input name="particulars" defaultValue={receipt?.particulars}
           placeholder={capitation ? "Capitation disbursement, Term 1" : "Funds received"} />
       </label>
+
+      {project && (
+        <div className="grid-3" style={{ marginTop: "1.25rem" }}>
+          <label className="field">Project this money is for
+            <input name="project" required defaultValue={receipt?.project}
+              placeholder="e.g. Floor tiling of a classroom" />
+          </label>
+          <label className="field">SCDE approval
+            <select name="projectApproval" required defaultValue={receipt?.projectApproval ?? ""}>
+              <option value="" disabled>Choose…</option>
+              {PROJECT_APPROVALS.map((a) => <option key={a}>{a}</option>)}
+            </select>
+          </label>
+          <label className="field">Project status
+            <select name="projectStatus" required defaultValue={receipt?.projectStatus ?? ""}>
+              <option value="" disabled>Choose…</option>
+              {PROJECT_STATUSES.map((s) => <option key={s}>{s}</option>)}
+            </select>
+          </label>
+        </div>
+      )}
 
       <div style={{ display: "flex", alignItems: "center", gap: "1.25rem", marginTop: "1.25rem", flexWrap: "wrap" }}>
         <label style={{ display: "flex", alignItems: "center", gap: ".5rem" }}>

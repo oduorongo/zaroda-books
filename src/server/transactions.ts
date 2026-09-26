@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { db, schema } from "@/db";
 import { and, eq } from "drizzle-orm";
 import { bankingContraFor, cashAvailableAsAt, validateTransaction } from "@/domain";
-import type { NewTxn, Txn } from "@/domain";
+import type { NewTxn, ReceiptProject, Txn } from "@/domain";
 import { getTxns } from "./queries";
 
 /** Cash a transaction takes out of the box: a payment's cash leg, or a contra drawing cash to bank. */
@@ -71,6 +71,8 @@ export async function createTransaction(input: {
   txn: NewTxn;
   enrolment?: number;
   rates?: LineRates;
+  /** The project an infrastructure receipt funds. */
+  project?: ReceiptProject;
   /** Bank this receipt the same call: the contra lands in the same batch. */
   banking?: { date: string };
 }) {
@@ -111,6 +113,9 @@ export async function createTransaction(input: {
     cash: t.kind === "contra" ? t.amount : t.cash,
     bank: t.kind === "contra" ? t.amount : t.bank,
     enrolment: t.kind === "receipt" ? input.enrolment : undefined,
+    project: input.project?.project,
+    projectApproval: input.project?.approval,
+    projectStatus: input.project?.status,
     contraFrom: t.kind === "contra" ? t.from : undefined,
     contraTo: t.kind === "contra" ? t.to : undefined,
     createdBy: input.userId,
@@ -207,6 +212,8 @@ export async function updateTransaction(input: {
   txn: NewTxn;
   enrolment?: number;
   rates?: LineRates;
+  /** The project an infrastructure receipt funds. */
+  project?: ReceiptProject;
   /** A date rebanks the amended receipt; null leaves the money in the cash box. */
   banking?: { date: string } | null;
 }) {
@@ -262,6 +269,9 @@ export async function updateTransaction(input: {
     // frozen again. Rule 7 forbids recomputing when rates later change; this is
     // the entry itself being corrected.
     enrolment: t.kind === "receipt" ? input.enrolment ?? null : null,
+    project: input.project?.project ?? null,
+    projectApproval: input.project?.approval ?? null,
+    projectStatus: input.project?.status ?? null,
     contraFrom: t.kind === "contra" ? t.from : null,
     contraTo: t.kind === "contra" ? t.to : null,
   };
@@ -389,4 +399,40 @@ async function assertInAccount(financialYearId: string, accountId: string) {
     where: eq(schema.financialYears.id, financialYearId),
   });
   if (!fy || fy.accountId !== accountId) throw new Error("Transaction not found.");
+}
+
+/**
+ * Moves an infrastructure project on: its SCDE approval and status. Allowed
+ * in a closed month, because neither changes a figure — only the project's
+ * story, which the audit report reads. Logged like any other change.
+ */
+export async function updateReceiptProject(input: {
+  transactionId: string;
+  accountId: string;
+  userId: string;
+  orgId: string;
+  approval: ReceiptProject["approval"];
+  status: ReceiptProject["status"];
+}) {
+  const existing = await db.query.transactions.findFirst({
+    where: eq(schema.transactions.id, input.transactionId),
+  });
+  if (!existing || existing.kind !== "receipt" || !existing.project) throw new Error("Project not found.");
+  const period = await db.query.periods.findFirst({ where: eq(schema.periods.id, existing.periodId) });
+  if (!period) throw new Error("Period not found.");
+  await assertInAccount(period.financialYearId, input.accountId);
+
+  const change = { projectApproval: input.approval, projectStatus: input.status };
+  await db.batch([
+    db.update(schema.transactions).set(change).where(eq(schema.transactions.id, existing.id)),
+    db.insert(schema.auditLog).values({
+      orgId: input.orgId,
+      userId: input.userId,
+      action: "update",
+      entity: "project",
+      entityId: existing.id,
+      before: JSON.stringify({ projectApproval: existing.projectApproval, projectStatus: existing.projectStatus }),
+      after: JSON.stringify(change),
+    }),
+  ]);
 }

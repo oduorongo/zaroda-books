@@ -302,14 +302,32 @@ export function IpsasReport({ data, content, issuedAt }: {
       <Bullets text={content.strengths} empty="None recorded." />
 
       <h3>Maintenance and improvement fund</h3>
+      <p className="note">As the school recorded each transfer into the infrastructure account.</p>
       <table>
-        <thead><tr><th>Year</th>{data.years.map((y) => <th key={y.label}>{y.label}</th>)}</tr></thead>
+        <thead>
+          <tr><th>Year</th><th>Approved project</th><th className="n">Amount transferred</th><th>SCDE approval</th><th className="n">Expenditure incurred</th><th>Project status</th></tr>
+        </thead>
         <tbody>
-          <tr><td><strong>Approved project</strong></td>{data.years.map((y) => <td key={y.label}>{content.projects[y.label]?.project || "—"}</td>)}</tr>
-          <tr><td><strong>Amount transferred</strong></td>{data.years.map((y) => <td key={y.label} className="n">{kes(sumRows(y.comparison.receipts.infrastructure, "current") ?? 0)}</td>)}</tr>
-          <tr><td><strong>SCDE approval</strong></td>{data.years.map((y) => <td key={y.label}>{content.projects[y.label]?.approval || "—"}</td>)}</tr>
-          <tr><td><strong>Expenditure incurred</strong></td>{data.years.map((y) => <td key={y.label} className="n">{kes(sumRows(y.comparison.payments.infrastructure, "current") ?? 0)}</td>)}</tr>
-          <tr><td><strong>Project status</strong></td>{data.years.map((y) => <td key={y.label}>{content.projects[y.label]?.status || "—"}</td>)}</tr>
+          {data.years.map((y) => {
+            const rows = [
+              ...(y.projects ?? []),
+              ...(y.unnamedTransfers ? [{ project: "Not named by the school", amount: y.unnamedTransfers, approval: "—", status: "—" }] : []),
+            ];
+            const spent = sumRows(y.comparison.payments.infrastructure, "current") ?? 0;
+            if (!rows.length) {
+              return <tr key={y.label}><td>{y.label}</td><td colSpan={2} className="note">No transfer received</td><td>—</td><td className="n">{kes(spent)}</td><td>—</td></tr>;
+            }
+            return rows.map((p, i) => (
+              <tr key={`${y.label}-${i}`}>
+                {i === 0 && <td rowSpan={rows.length}>{y.label}</td>}
+                <td>{p.project}</td>
+                <td className="n">{kes(p.amount)}</td>
+                <td>{p.approval || "—"}</td>
+                {i === 0 && <td className="n" rowSpan={rows.length}>{kes(spent)}</td>}
+                <td>{p.status || "—"}</td>
+              </tr>
+            ));
+          })}
         </tbody>
       </table>
 

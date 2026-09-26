@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { circularsFor, entryDates, flatOnlyHeadCodes, isCapitationAccount, toKes } from "@/domain";
+import { circularsFor, entryDates, flatOnlyHeadCodes, isCapitationAccount, takesProject, toKes } from "@/domain";
 import type { AccountType } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getReceiptForEdit } from "@/server/queries";
@@ -47,6 +47,7 @@ export default async function AmendReceiptPage({
         }))}
         flatOnly={flatOnlyHeadCodes(school.level, account.type as AccountType)}
         capitation={capitation}
+        project={takesProject(account.type as AccountType)}
         receipt={{
           id: receipt.id,
           date: receipt.date,
@@ -54,6 +55,9 @@ export default async function AmendReceiptPage({
           particulars: receipt.particulars,
           amount: figure(receipt.amount),
           bankedOn: receipt.bankedOn,
+          project: receipt.project,
+          projectApproval: receipt.projectApproval,
+          projectStatus: receipt.projectStatus,
           entries: Object.fromEntries(
             heads.map((h) => [h.code, {
               rate: figure(receipt.rates[h.code]?.perLearner ?? 0),

@@ -217,6 +217,13 @@ export const transactions = pgTable("transactions", {
   // The date this entry appeared on the bank statement. Null means it has not
   // been ticked off, which is what makes it a reconciling item.
   clearedOn: date("cleared_on"),
+  // An infrastructure receipt names the project it funds, required when
+  // posted. Approval and status follow the project after the money lands, so
+  // they can be updated even once the month is closed; they change no figure.
+  // The audit report reads all three. See src/domain/projects.ts.
+  project: text("project"),
+  projectApproval: text("project_approval"),
+  projectStatus: text("project_status"),
   createdBy: uuid("created_by").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => [index("txn_period_idx").on(t.periodId, t.date)]);
