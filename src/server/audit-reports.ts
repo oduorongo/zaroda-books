@@ -247,8 +247,6 @@ export async function issuedReportsOn(schoolId: string) {
     .orderBy(desc(schema.auditReports.issuedAt));
 }
 
-/** Why a head of institution is being cleared. */
-export const CLEARANCE_REASONS = ["retirement", "transfer", "promotion", "resignation"] as const;
 
 /** What the auditor types on a clearance memo. The school comes from the books. */
 export interface ClearanceContent {
@@ -277,6 +275,15 @@ export const clearanceDefaults = (county: string | null, subCounty: string | nul
 export const parseClearance = (json: string): ClearanceContent => ({
   ...clearanceDefaults(null, null), ...JSON.parse(json || "{}"),
 });
+
+/** The latest handover the school recorded, which a new memo starts from. */
+export async function latestHandover(schoolId: string) {
+  const [row] = await db.select().from(schema.hoiHandovers)
+    .where(eq(schema.hoiHandovers.schoolId, schoolId))
+    .orderBy(desc(schema.hoiHandovers.recordedAt))
+    .limit(1);
+  return row ?? null;
+}
 
 /** What a memo prints from the records, frozen when issued. */
 export interface ClearanceData { school: string; auditor: string }

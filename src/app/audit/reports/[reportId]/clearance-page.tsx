@@ -1,7 +1,6 @@
 import Link from "next/link";
-import {
-  clearanceData, CLEARANCE_REASONS, parseClearance, unsettledQueriesOn, type ClearanceData,
-} from "@/server/audit-reports";
+import { CLEARANCE_REASONS } from "@/domain";
+import { clearanceData, parseClearance, unsettledQueriesOn, type ClearanceData } from "@/server/audit-reports";
 import type { schema } from "@/db";
 import { PrintButton } from "../../../app/[accountId]/print-button";
 import { ClearanceMemo } from "../../clearance-memo";

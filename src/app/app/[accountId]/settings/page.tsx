@@ -4,7 +4,8 @@ import {
 } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { auditorsForSchool, auditStatus } from "@/server/audit-send";
-import { issuedReportsOn } from "@/server/audit-reports";
+import { issuedReportsOn, latestHandover } from "@/server/audit-reports";
+import { HandoverForm } from "./handover-form";
 import { describeAuditScope } from "@/domain";
 import { getTxns } from "@/server/queries";
 import { AccountTypeForm } from "./account-type-form";
@@ -21,10 +22,11 @@ export default async function SettingsPage({
 }) {
   const { accountId } = await params;
   const { user, fy, school, account } = await loadBook(accountId);
-  const [auditors, audit, reports] = await Promise.all([
+  const [auditors, audit, reports, handover] = await Promise.all([
     auditorsForSchool(school),
     auditStatus(fy.id, account.auditSentTo),
     issuedReportsOn(school.id),
+    latestHandover(school.id),
   ]);
   const sends = can(user.role, "book.sendForAudit") && !user.readOnly;
   const entries = (await getTxns(fy.id)).length;
@@ -106,6 +108,13 @@ export default async function SettingsPage({
           <p className="note" style={{ marginTop: ".9rem" }}>The owner or accountant sends the books for audit.</p>
         )}
       </div>
+
+      {sends && (
+        <>
+          <h2>Head of institution handing over</h2>
+          <HandoverForm accountId={accountId} current={handover} />
+        </>
+      )}
 
       {can(user.role, "book.sendForAudit") && reports.length > 0 && (
         <>

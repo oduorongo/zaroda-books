@@ -4,8 +4,9 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
+import { CLEARANCE_REASONS } from "@/domain";
 import {
-  auditedSchool, clearanceData, clearanceDefaults, CLEARANCE_REASONS, ipsasData, myReport, parseClearance, sentYears,
+  auditedSchool, clearanceData, clearanceDefaults, ipsasData, latestHandover, myReport, parseClearance, sentYears,
   type ClearanceContent, type IpsasContent,
 } from "@/server/audit-reports";
 
@@ -97,12 +98,20 @@ export async function deleteDraft(form: FormData) {
 export async function createClearance(form: FormData) {
   const schoolId = String(form.get("schoolId") ?? "");
   const { user, scope, school } = await auditedSchool(schoolId);
+  // Starts from the handover the school recorded, if any; the auditor can
+  // change every particular before issuing.
+  const handover = await latestHandover(schoolId);
+  const content = {
+    ...clearanceDefaults(school.county, school.subCounty),
+    ...(handover ? { officer: handover.officer, tscNo: handover.tscNo, reason: handover.reason } : {}),
+  };
   const [row] = await db.insert(schema.auditReports).values({
     kind: "clearance",
     auditorId: scope.id,
     authoredBy: user.id,
     schoolId,
-    content: JSON.stringify(clearanceDefaults(school.county, school.subCounty)),
+    content: JSON.stringify(content),
+    periodTo: handover?.handoverDate ?? null,
   }).returning({ id: schema.auditReports.id });
   redirect(`/audit/reports/${row.id}`);
 }

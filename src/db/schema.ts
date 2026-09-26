@@ -510,3 +510,21 @@ export const auditReports = pgTable("audit_reports", {
   index("audit_reports_school_idx").on(t.schoolId),
   index("audit_reports_author_idx").on(t.authoredBy),
 ]);
+
+/**
+ * A head of institution handing the school over, recorded by the school so
+ * the auditor's clearance memo starts from its particulars. Kept, not
+ * overwritten: a school sees several heads over the years, and the latest is
+ * the one a new memo is drawn from.
+ */
+export const hoiHandovers = pgTable("hoi_handovers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  schoolId: uuid("school_id").references(() => schools.id).notNull(),
+  officer: text("officer").notNull(),
+  tscNo: text("tsc_no").notNull(),
+  /** retirement | transfer | promotion | resignation — see CLEARANCE_REASONS. */
+  reason: text("reason").notNull(),
+  handoverDate: date("handover_date").notNull(),
+  recordedBy: uuid("recorded_by").references(() => users.id).notNull(),
+  recordedAt: timestamp("recorded_at").defaultNow().notNull(),
+}, (t) => [index("hoi_handovers_school_idx").on(t.schoolId, t.recordedAt)]);

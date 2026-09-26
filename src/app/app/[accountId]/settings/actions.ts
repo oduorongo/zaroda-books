@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { loadBook } from "@/server/book-context";
 import { sendForAudit } from "@/server/audit-send";
-import { isSubCountyOf } from "@/domain";
+import { isSubCountyOf, readHandover } from "@/domain";
+import { db, schema } from "@/db";
 import {
   archiveBook, changeAccountType, changeFinancialYear, saveSchool, saveSchoolLocation,
 } from "@/server/books";
@@ -119,4 +120,24 @@ export async function sendForAuditAction(_prev: string | null, form: FormData): 
   }
   revalidatePath(`/app/${accountId}`, "layout");
   return null;
+}
+
+/**
+ * Records the head of institution handing the school over, for the auditor's
+ * clearance memo. Each save is a new record; the latest is the one used.
+ */
+export async function saveHandoverAction(
+  _prev: string | null,
+  form: FormData,
+): Promise<string | null> {
+  const accountId = String(form.get("accountId") ?? "");
+  const { user, school } = await loadBook(accountId, { write: true, require: "book.sendForAudit" });
+  const h = readHandover(
+    String(form.get("officer") ?? ""), String(form.get("tscNo") ?? ""),
+    String(form.get("reason") ?? ""), String(form.get("handoverDate") ?? ""),
+  );
+  if ("error" in h) return h.error;
+  await db.insert(schema.hoiHandovers).values({ schoolId: school.id, recordedBy: user.id, ...h });
+  revalidatePath(`/app/${accountId}/settings`);
+  return "Saved.";
 }

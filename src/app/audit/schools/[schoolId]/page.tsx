@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { auditedSchool, reportsOn, sentYears } from "@/server/audit-reports";
+import { auditedSchool, latestHandover, reportsOn, sentYears } from "@/server/audit-reports";
 import { createClearance, createIpsasReport } from "../../reports/actions";
 
 const KIND_LABEL = { ipsas: "IPSAS internal audit report", primary: "Audited financial statements", clearance: "Clearance memo" };
@@ -11,7 +11,9 @@ export default async function AuditSchoolPage({ params, searchParams }: {
   const { schoolId } = await params;
   const { error } = await searchParams;
   const { user, school, sent } = await auditedSchool(schoolId);
-  const [years, reports] = await Promise.all([sentYears(sent.map((a) => a.id)), reportsOn(schoolId, user.id)]);
+  const [years, reports, handover] = await Promise.all([
+    sentYears(sent.map((a) => a.id)), reportsOn(schoolId, user.id), latestHandover(schoolId),
+  ]);
 
   return (
     <div className="wrap" style={{ padding: "2.5rem 2.5rem 5rem", maxWidth: 900 }}>
@@ -41,7 +43,11 @@ export default async function AuditSchoolPage({ params, searchParams }: {
 
       <div className="card" style={{ marginBottom: "1.35rem" }}>
         <h2 style={{ marginTop: 0 }}>New clearance memo</h2>
-        <p className="note">For a head of institution leaving the school: retiring, on transfer, promoted or resigning.</p>
+        <p className="note">
+          {handover
+            ? `The school recorded a handover: ${handover.officer} (TSC ${handover.tscNo}), ${handover.reason}, on ${handover.handoverDate}. The memo starts from these details.`
+            : "For a head of institution leaving the school: retiring, on transfer, promoted or resigning. The school has not recorded a handover, so you enter the details."}
+        </p>
         <form action={createClearance} style={{ marginTop: ".75rem" }}>
           <input type="hidden" name="schoolId" value={schoolId} />
           <button type="submit" className="btn btn-primary">Start memo</button>
