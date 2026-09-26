@@ -466,3 +466,40 @@ export const problems = pgTable("problems", {
   seenAt: timestamp("seen_at"),
   seenBy: uuid("seen_by").references(() => users.id),
 }, (t) => [index("problems_at_idx").on(t.at)]);
+
+/**
+ * A report an auditor writes on a school: the IPSAS internal annual audit
+ * report, a primary account's audited statements, or a head of institution's
+ * clearance memo. See src/domain/ipsas.ts.
+ *
+ * Every figure comes from the books. `content` holds only what the auditor
+ * writes — findings, recommendations, the memo's particulars. A draft is
+ * computed afresh each time it is opened; issuing freezes the figures into
+ * `snapshot`, so an issued report never changes, whatever the books do after.
+ */
+export const auditReports = pgTable("audit_reports", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  kind: text("kind", { enum: ["ipsas", "primary", "clearance"] }).notNull(),
+  /** The auditor's grant it was written under, and the auditor. */
+  auditorId: uuid("auditor_id").references(() => auditors.id).notNull(),
+  authoredBy: uuid("authored_by").references(() => users.id).notNull(),
+  schoolId: uuid("school_id").references(() => schools.id).notNull(),
+  /** A primary report covers one account; the others the whole school. */
+  accountId: uuid("account_id").references(() => accounts.id),
+  /** Financial years covered, e.g. ["2024/25","2025/26"], as JSON. IPSAS only. */
+  years: text("years"),
+  /** The period the auditor set. Primary statements and the clearance memo. */
+  periodFrom: date("period_from"),
+  periodTo: date("period_to"),
+  /** What the auditor wrote, as JSON. */
+  content: text("content").notNull().default("{}"),
+  status: text("status", { enum: ["draft", "issued"] }).default("draft").notNull(),
+  /** The figures as they stood when issued, as JSON. Null while a draft. */
+  snapshot: text("snapshot"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  issuedAt: timestamp("issued_at"),
+}, (t) => [
+  index("audit_reports_school_idx").on(t.schoolId),
+  index("audit_reports_author_idx").on(t.authoredBy),
+]);
