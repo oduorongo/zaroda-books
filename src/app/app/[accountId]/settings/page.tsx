@@ -4,6 +4,7 @@ import {
 } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { auditorsForSchool, auditStatus } from "@/server/audit-send";
+import { issuedReportsOn } from "@/server/audit-reports";
 import { describeAuditScope } from "@/domain";
 import { getTxns } from "@/server/queries";
 import { AccountTypeForm } from "./account-type-form";
@@ -20,9 +21,10 @@ export default async function SettingsPage({
 }) {
   const { accountId } = await params;
   const { user, fy, school, account } = await loadBook(accountId);
-  const [auditors, audit] = await Promise.all([
+  const [auditors, audit, reports] = await Promise.all([
     auditorsForSchool(school),
     auditStatus(fy.id, account.auditSentTo),
+    issuedReportsOn(school.id),
   ]);
   const sends = can(user.role, "book.sendForAudit") && !user.readOnly;
   const entries = (await getTxns(fy.id)).length;
@@ -104,6 +106,23 @@ export default async function SettingsPage({
           <p className="note" style={{ marginTop: ".9rem" }}>The owner or accountant sends the books for audit.</p>
         )}
       </div>
+
+      {can(user.role, "book.sendForAudit") && reports.length > 0 && (
+        <>
+          <h2>Audit reports</h2>
+          <div className="card" style={{ maxWidth: 720, marginBottom: "1.6rem" }}>
+            <p className="note" style={{ marginTop: 0 }}>Issued by the auditor on this school. Read-only.</p>
+            {reports.map((r) => (
+              <p key={r.id} style={{ margin: ".4rem 0" }}>
+                <Link href={`/app/${accountId}/audit-reports/${r.id}`}>
+                  IPSAS internal audit report, {r.years ? JSON.parse(r.years).join(" and ") : ""}
+                </Link>
+                <span className="note"> — issued {r.issuedAt?.toLocaleDateString("en-KE")}</span>
+              </p>
+            ))}
+          </div>
+        </>
+      )}
 
       <h2>Archive this book</h2>
 

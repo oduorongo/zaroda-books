@@ -213,3 +213,13 @@ export async function reportFigures(
   if (report.snapshot) return JSON.parse(report.snapshot);
   return ipsasData(report.schoolId, JSON.parse(report.years ?? "[]"), report.auditorId, auditorName);
 }
+
+/**
+ * The school's side: its issued reports, whoever wrote them. Drafts stay the
+ * auditor's. The caller has already checked the book belongs to this session.
+ */
+export async function issuedReportsOn(schoolId: string) {
+  return db.select().from(schema.auditReports)
+    .where(and(eq(schema.auditReports.schoolId, schoolId), eq(schema.auditReports.status, "issued")))
+    .orderBy(desc(schema.auditReports.issuedAt));
+}
