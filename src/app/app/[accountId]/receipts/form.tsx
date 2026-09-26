@@ -33,6 +33,7 @@ const num = (v: string) => {
 
 export function ReceiptForm({
   accountId, heads, dates, receipt, flatOnly = [], capitation = true, circulars = [], project = false,
+  bookYear, levelLabel,
 }: {
   accountId: string;
   heads: VoteHead[];
@@ -48,7 +49,11 @@ export function ReceiptForm({
    */
   capitation?: boolean;
   /** This account's figures from each circular in the library, newest first. */
-  circulars?: { key: string; label: string; note?: string; figures: CircularAccount }[];
+  circulars?: { key: string; label: string; note?: string; year: string; figures: CircularAccount }[];
+  /** The book's financial year: the circular list opens on it. */
+  bookYear?: string;
+  /** "Junior school" — the only level whose circulars fit this book's vote heads. */
+  levelLabel?: string;
   /** An infrastructure receipt names the project it funds, for the audit. */
   project?: boolean;
 }) {
@@ -74,6 +79,10 @@ export function ReceiptForm({
   const [entries, setEntries] = useState<Record<string, HeadEntry>>(receipt?.entries ?? {});
   const [circularKey, setCircularKey] = useState(receipt ? "posted" : "");
   const chosenCircular = circulars.find((c) => c.key === circularKey);
+  // The list grows every term, so it opens on the book's own year.
+  const years = [...new Set(circulars.map((c) => c.year))].sort().reverse();
+  const [year, setYear] = useState(bookYear && years.includes(bookYear) ? bookYear : "all");
+  const shown = circulars.filter((c) => year === "all" || c.year === year || c.key === circularKey);
   const locked = capitation && circularKey === "";
 
   const chooseCircular = (key: string) => {
@@ -147,11 +156,19 @@ export function ReceiptForm({
       {receipt && <input type="hidden" name="transactionId" value={receipt.id} />}
 
       {capitation && (
-        <label className="field no-print" style={{ marginBottom: "1.25rem" }}>Circular this money came under
+        <div className="no-print" style={{ display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "start", marginBottom: "1.25rem" }}>
+        <label className="field" style={{ margin: 0, flex: "0 0 11rem" }}>Financial year
+          <select value={year} onChange={(e) => setYear(e.target.value)}>
+            <option value="all">All years</option>
+            {years.map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
+        </label>
+        <label className="field" style={{ margin: 0, flex: "1 1 20rem" }}>
+          {levelLabel ? `${levelLabel} circular this money came under` : "Circular this money came under"}
           <select value={circularKey} onChange={(e) => chooseCircular(e.target.value)} required>
             <option value="" disabled>Choose the circular…</option>
             {receipt && <option value="posted">Figures this receipt was posted with</option>}
-            {circulars.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+            {shown.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
             <option value="none">No circular — I&apos;ll enter the figures</option>
           </select>
           <span className="note">
@@ -164,6 +181,7 @@ export function ReceiptForm({
                   : "Choose it first: its rates and flat amounts are then filled in below."}
           </span>
         </label>
+        </div>
       )}
 
       <div className={capitation ? "grid-4" : "grid-3"}>

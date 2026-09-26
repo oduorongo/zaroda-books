@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CIRCULARS, circularsFor } from "../circulars";
+import { CIRCULARS, circularsFor, circularYear } from "../circulars";
 import { chartFor } from "../vote-heads";
 
 const sum = (xs: Record<string, number>) => Object.values(xs).reduce((a, x) => a + x, 0);
@@ -43,5 +43,11 @@ describe("the circular library", () => {
   it("offers nothing where no circular has been given", () => {
     expect(circularsFor("junior", "BOARDING")).toEqual([]);
   });
-});
 
+  it("files a circular under the financial year it was issued in", () => {
+    expect(circularYear("2025-02-13")).toBe("2024/25");
+    expect(circularYear("2025-08-28")).toBe("2025/26");
+    expect(circularYear("2025-07-01")).toBe("2025/26");
+    expect(circularYear("2025-01")).toBe("2024/25");
+  });
+});

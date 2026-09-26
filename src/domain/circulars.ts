@@ -129,6 +129,18 @@ export const CIRCULARS: Circular[] = [
     },
   },
   {
+    programme: "FDJSE", level: "junior", ref: "MOE.HQs/3/7/33(15)", date: "2024-09-02",
+    term: "Term 3 2024",
+    note: "SMASSE (20.00) and KICD textbooks (366.80) per learner were procured centrally and are left out.",
+    accounts: {
+      OPERATIONS: account(
+        { RMI: 640, ADM: 130, ACT: 140, LTT: 160, MED: 90 },
+        { TEL: 17919, EWC: 2352, INT: 7350, PER: 43316 }, 1160, 70937,
+      ),
+      TUITION: account({ LAB: 90, MFP: 240, ASS: 126.81, STN: 400 }, { TGR: 3856.20 }, 856.81, 3856.20),
+    },
+  },
+  {
     programme: "FDJSE", level: "junior", ref: "Not shown on the copy", date: "2025-01",
     term: "Headed First Term 2025; the text says Term 3, 2024",
     note: "Only the top of this circular was sent: its reference, date and tuition rates per learner are not on the copy, so tuition is entered by hand. RMI was retained centrally.",
@@ -195,16 +207,75 @@ export const CIRCULARS: Circular[] = [
     },
   },
 
-  // ---- Senior (FDSE): the figures the app was built with; no copy sent yet.
+  // ---- Senior (FDSE): tuition is one teaching and learning materials vote;
+  // operations carries RMI, the "other vote heads" line, co-curricular and
+  // medical. SMASSE, KICD, KEMI and centralised co-curricular are remitted
+  // by the Ministry and never reach the school.
+  {
+    programme: "FDSE", level: "senior", ref: "MOE.HQS/3/10/18 Vol.II/(32)", date: "2024-01-17",
+    term: "Term 1 2024",
+    note: "Headed \"FSE\"; the text says FDSE. SMASSE 100, KICD 315 and co-curricular 150 per learner were retained centrally.",
+    accounts: {
+      TUITION: account({ TLM: 1203 }, {}, 1203, 0),
+      OPERATIONS: account({ RMI: 2000, OTV: 3401.68, MED: 750, ACT: 400 }, {}, 6551.68, 0),
+    },
+  },
+  {
+    programme: "FDSE", level: "senior", ref: "MOE.HQS/3/13/5", date: "2024-08-22",
+    term: "Term 3 2024",
+    note: "KICD 58.90 and SMASSE 40.00 per learner were remitted centrally.",
+    accounts: {
+      TUITION: account({ TLM: 591.10 }, {}, 591.10, 0),
+      OPERATIONS: account({ RMI: 750, OTV: 1430.72, MED: 280, ACT: 230 }, {}, 2690.72, 0),
+    },
+  },
+  {
+    programme: "FDSE", level: "senior", ref: "MOE.HQS/3/13/6", date: "2025-02-13",
+    term: "Term 1 2025",
+    note: "SMASSE 50.00 and co-curricular 162.50 per learner were remitted centrally.",
+    accounts: {
+      TUITION: account({ TLM: 821.50 }, {}, 821.50, 0),
+      OPERATIONS: account({ RMI: 1000, OTV: 1865.30, MED: 375, ACT: 135 }, {}, 3375.30, 0),
+    },
+  },
+  {
+    programme: "FDSE", level: "senior", ref: "MOE.HQS/3/13/6", date: "2025-05-28",
+    term: "Term 2 2025",
+    note: "No medical vote this term. SMASSE 60.00 and co-curricular 200.00 per learner were retained centrally. The operations subtotal is printed 2,784.61; the rows make 2,784.60.",
+    accounts: {
+      TUITION: account({ TLM: 627 }, {}, 627, 0),
+      OPERATIONS: account({ RMI: 750, OTV: 1669.60, ACT: 165 }, {}, 2584.60, 0),
+    },
+  },
+  {
+    programme: "FDSE", level: "senior", ref: "MOE.HQS/3/13/6", date: "2025-08-28",
+    term: "Term 3 2025",
+    note: "SMASSE 40.00 and KEMI 86.69 per learner were remitted centrally.",
+    accounts: {
+      TUITION: account({ TLM: 828.80 }, {}, 828.80, 0),
+      OPERATIONS: account({ RMI: 600, OTV: 1099.43, ACT: 210, MED: 230 }, {}, 2139.43, 0),
+    },
+  },
   {
     programme: "FDSE", level: "senior", ref: "MOE.HQS/3/13/10", date: "2026-07-28",
-    term: "Release of FDSE funds",
+    term: "Term 3 2026",
+    note: "KICD 305.55 and SMASSE 40.00 per learner were remitted centrally.",
     accounts: {
       TUITION: account({ TLM: 523.25 }, {}, 523.25, 0),
       OPERATIONS: account({ RMI: 600, OTV: 1418.96, ACT: 200, MED: 250 }, {}, 2468.96, 0),
     },
   },
 ];
+
+/**
+ * The financial year a circular was issued in: 1 July to 30 June, "2025/26".
+ * A date given as a month alone counts by its month.
+ */
+export function circularYear(date: string): string {
+  const y = Number(date.slice(0, 4));
+  const start = Number(date.slice(5, 7)) >= 7 ? y : y - 1;
+  return `${start}/${String((start + 1) % 100).padStart(2, "0")}`;
+}
 
 /** A book's circulars, newest first — the one a bursar most likely wants. */
 export const circularsFor = (level: SchoolLevel, accountType: AccountType): Circular[] =>

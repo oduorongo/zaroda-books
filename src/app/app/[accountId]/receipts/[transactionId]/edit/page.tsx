@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { circularsFor, entryDates, flatOnlyHeadCodes, isCapitationAccount, takesProject, toKes } from "@/domain";
+import { circularsFor, circularYear, LEVEL_LABEL, entryDates, flatOnlyHeadCodes, isCapitationAccount, takesProject, toKes } from "@/domain";
 import type { AccountType } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getReceiptForEdit } from "@/server/queries";
@@ -43,8 +43,11 @@ export default async function AmendReceiptPage({
           key: `${c.ref}|${c.date}`,
           label: `${c.programme} ${c.term} — ${c.ref}, ${c.date}`,
           note: c.note,
+          year: circularYear(c.date),
           figures: c.accounts[account.type as AccountType]!,
         }))}
+        bookYear={fy.label}
+        levelLabel={LEVEL_LABEL[school.level]}
         flatOnly={flatOnlyHeadCodes(school.level, account.type as AccountType)}
         capitation={capitation}
         project={takesProject(account.type as AccountType)}
