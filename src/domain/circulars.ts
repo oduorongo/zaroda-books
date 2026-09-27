@@ -221,6 +221,15 @@ export const CIRCULARS: Circular[] = [
     },
   },
   {
+    programme: "FDSE", level: "senior", ref: "MOE.HQS/3/13/4", date: "2024-04-09",
+    term: "Term 2 2024",
+    note: "KICD 160.00 and SMASSE 60.00 per learner, and co-curricular 130.00, were retained centrally.",
+    accounts: {
+      TUITION: account({ TLM: 750.80 }, {}, 750.80, 0),
+      OPERATIONS: account({ RMI: 1100, OTV: 2029.71, MED: 75, ACT: 199.99 }, {}, 3404.70, 0),
+    },
+  },
+  {
     programme: "FDSE", level: "senior", ref: "MOE.HQS/3/13/5", date: "2024-08-22",
     term: "Term 3 2024",
     note: "KICD 58.90 and SMASSE 40.00 per learner were remitted centrally.",
@@ -254,6 +263,24 @@ export const CIRCULARS: Circular[] = [
     accounts: {
       TUITION: account({ TLM: 828.80 }, {}, 828.80, 0),
       OPERATIONS: account({ RMI: 600, OTV: 1099.43, ACT: 210, MED: 230 }, {}, 2139.43, 0),
+    },
+  },
+  {
+    programme: "FDSE", level: "senior", ref: "MOE.HQS/3/13/7", date: "2025-11-28",
+    term: "Term 1 2026",
+    note: "KICD 900.00 and SMASSE 100.00 per learner, and co-curricular 375.00, were retained centrally.",
+    accounts: {
+      TUITION: account({ TLM: 1072 }, {}, 1072, 0),
+      OPERATIONS: account({ RMI: 1500, OTV: 3055.04, MED: 575, ACT: 375 }, {}, 5505.04, 0),
+    },
+  },
+  {
+    programme: "FDSE", level: "senior", ref: "MOE.HQS/3/13/8", date: "2026-04-01",
+    term: "Term 2 2026",
+    note: "SMASSE 60.00 per learner and co-curricular 225.00 were retained centrally.",
+    accounts: {
+      TUITION: account({ TLM: 944 }, {}, 944, 0),
+      OPERATIONS: account({ RMI: 1000, OTV: 2012.49, MED: 300, ACT: 225 }, {}, 3537.49, 0),
     },
   },
   {

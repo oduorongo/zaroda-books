@@ -29,7 +29,7 @@ export function TransferForm({
   const [direction, setDirection] = useState<string>(transfer?.direction ?? "to-cash");
   const [amount, setAmount] = useState(transfer?.amount ?? "");
   // Held in state so it survives a save: the next transfer is usually the same day.
-  const [date, setDate] = useState(transfer?.date ?? dates.start);
+  const [date, setDate] = useState(transfer?.date ?? "");
 
   const asked = toCents(parseFloat(amount.replace(/[^0-9.]/g, "")) || 0);
   const available = direction === "to-bank" ? cash : bank;
