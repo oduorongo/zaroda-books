@@ -17,6 +17,11 @@ export interface CircularAccount {
   /** The totals the circular prints, which the figures above must add to. */
   perLearnerTotal: Cents;
   flatTotal: Cents;
+  /**
+   * The circular prints only this account's total per learner, not its split.
+   * The split is taken in the proportions of an earlier circular.
+   */
+  totalOnly?: true;
 }
 
 export interface Circular {
@@ -40,6 +45,10 @@ const account = (perLearner: Kes, flat: Kes, perLearnerTotal: number, flatTotal:
   flat: cents(flat),
   perLearnerTotal: toCents(perLearnerTotal),
   flatTotal: toCents(flatTotal),
+});
+
+const totalOnly = (perLearnerTotal: number): CircularAccount => ({
+  perLearner: {}, flat: {}, perLearnerTotal: toCents(perLearnerTotal), flatTotal: 0, totalOnly: true,
 });
 
 export const CIRCULARS: Circular[] = [
@@ -94,10 +103,11 @@ export const CIRCULARS: Circular[] = [
 
   {
     programme: "FPE", level: "primary", ref: "MOE/DBE/6/2/3/28", date: "2026-01-22",
-    term: "Term 1 2026, Account 1 only",
-    note: "Taken from a summary of the circular, not the circular itself: check each rate against the circular before posting. Account 2 (312.41 a learner) was given as a total only, so it is entered by hand. Same reference number as the circular of 22 May 2025.",
+    term: "Term 1 2026",
+    note: "Taken from a summary of the circular, not the circular itself: check each rate against the circular before posting. Same reference number as the circular of 22 May 2025.",
     accounts: {
       TUITION: account({ TXB: 23.87, TXM: 11.00, EXB: 153.50, TGR: 54.80, STN: 36.50 }, {}, 279.67, 0),
+      OPERATIONS: totalOnly(312.41),
     },
   },
 
@@ -311,6 +321,31 @@ export function circularYear(date: string): string {
   const y = Number(date.slice(0, 4));
   const start = Number(date.slice(5, 7)) >= 7 ? y : y - 1;
   return `${start}/${String((start + 1) % 100).padStart(2, "0")}`;
+}
+
+/**
+ * The circulars a missing split can be taken from: earlier ones for the same
+ * level and account that print every vote head, newest first.
+ */
+export const proportionSources = (level: SchoolLevel, accountType: AccountType, before: string): Circular[] =>
+  circularsFor(level, accountType).filter((c) => c.date < before && !c.accounts[accountType]!.totalOnly);
+
+/**
+ * An earlier circular's per-learner rates, scaled to a new total in the same
+ * proportions. Each rate is rounded down and the cents left over go to the
+ * heads that lost the most, so the rates add to the total exactly and the
+ * enrolment derived from them is the true one.
+ */
+export function inProportion(source: CircularAccount, perLearnerTotal: Cents): CircularAccount {
+  const entries = Object.entries(source.perLearner);
+  const exact = entries.map(([code, rate]) => [code, (rate * perLearnerTotal) / source.perLearnerTotal] as const);
+  const perLearner = Object.fromEntries(exact.map(([code, x]) => [code, Math.floor(x)]));
+  let left = perLearnerTotal - Object.values(perLearner).reduce((a, x) => a + x, 0);
+  for (const [code] of [...exact].sort((a, b) => (b[1] % 1) - (a[1] % 1))) {
+    if (left-- <= 0) break;
+    perLearner[code] += 1;
+  }
+  return { perLearner, flat: {}, perLearnerTotal, flatTotal: 0 };
 }
 
 /** A book's circulars, newest first — the one a bursar most likely wants. */

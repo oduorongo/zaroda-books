@@ -77,10 +77,12 @@ export default async function ReceiptsPage({
           label: `${c.programme} ${c.term} — ${c.ref}, ${c.date}`,
           note: c.note,
           year: circularYear(c.date),
+          date: c.date,
           figures: c.accounts[account.type as AccountType]!,
         }))}
         bookYear={fy.label}
         levelLabel={LEVEL_LABEL[school.level]}
+        canEstimate={school.level === "primary"}
         flatOnly={flatOnly} capitation={capitation} project={project} />
 
       <div className="grid-2" style={{ marginTop: "1.6rem", alignItems: "start" }}>

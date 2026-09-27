@@ -44,10 +44,12 @@ export default async function AmendReceiptPage({
           label: `${c.programme} ${c.term} — ${c.ref}, ${c.date}`,
           note: c.note,
           year: circularYear(c.date),
+          date: c.date,
           figures: c.accounts[account.type as AccountType]!,
         }))}
         bookYear={fy.label}
         levelLabel={LEVEL_LABEL[school.level]}
+        canEstimate={school.level === "primary"}
         flatOnly={flatOnlyHeadCodes(school.level, account.type as AccountType)}
         capitation={capitation}
         project={takesProject(account.type as AccountType)}

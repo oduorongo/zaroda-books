@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { allocateCapitationFromAmount, enrolmentFit, formatKes, PROJECT_APPROVALS, PROJECT_STATUSES, residualHeadCode, toCents, toKes, type CircularAccount, type EntryDates, type VoteHead } from "@/domain";
+import { allocateCapitationFromAmount, enrolmentFit, formatKes, inProportion, PROJECT_APPROVALS, PROJECT_STATUSES, residualHeadCode, toCents, toKes, type CircularAccount, type EntryDates, type VoteHead } from "@/domain";
 import { amendReceipt, postReceipt } from "./actions";
 
 /**
@@ -33,7 +33,7 @@ const num = (v: string) => {
 
 export function ReceiptForm({
   accountId, heads, dates, receipt, flatOnly = [], capitation = true, circulars = [], project = false,
-  bookYear, levelLabel,
+  bookYear, levelLabel, canEstimate = false,
 }: {
   accountId: string;
   heads: VoteHead[];
@@ -49,7 +49,12 @@ export function ReceiptForm({
    */
   capitation?: boolean;
   /** This account's figures from each circular in the library, newest first. */
-  circulars?: { key: string; label: string; note?: string; year: string; figures: CircularAccount }[];
+  circulars?: { key: string; label: string; note?: string; year: string; date: string; figures: CircularAccount }[];
+  /**
+   * Primary circulars can be late, so a primary book may split money in an
+   * earlier circular's proportions until it comes. Other levels can trace theirs.
+   */
+  canEstimate?: boolean;
   /** The book's financial year: the circular list opens on it. */
   bookYear?: string;
   /** "Junior school" — the only level whose circulars fit this book's vote heads. */
@@ -69,12 +74,12 @@ export function ReceiptForm({
   // themselves — an amendment banked on a later day counts as set.
   const [bankedByHand, setBankedByHand] = useState(Boolean(receipt?.bankedOn && receipt.bankedOn !== receipt.date));
   // A circular's figures, as the boxes hold them.
-  const figuresOf = (c?: (typeof circulars)[number]): Record<string, HeadEntry> => {
-    if (!c) return {};
+  const figuresOf = (f?: CircularAccount): Record<string, HeadEntry> => {
+    if (!f) return {};
     const figure = (v?: number) => (v ? String(toKes(v)) : "");
     return Object.fromEntries(heads.map((h) => [h.code, {
-      rate: figure(c.figures.perLearner[h.code]),
-      flat: figure(c.figures.flat[h.code]),
+      rate: figure(f.perLearner[h.code]),
+      flat: figure(f.flat[h.code]),
     }]));
   };
 
@@ -90,20 +95,52 @@ export function ReceiptForm({
   const shown = circulars.filter((c) => year === "all" || c.year === year || c.key === circularKey);
   const locked = capitation && circularKey === "";
 
+  // A circular that prints only its total is split in the proportions of an
+  // earlier one. So is money whose circular has not come at all ("earlier"),
+  // using the learners the bursar gives, since there is no total to derive
+  // them from.
+  const estimating = circularKey === "earlier";
+  const sourcesFor = (key: string) => {
+    const c = circulars.find((x) => x.key === key);
+    return circulars.filter((s) => !s.figures.totalOnly
+      && (key === "earlier" || (c?.figures.totalOnly && s.date < c.date)));
+  };
+  const sources = sourcesFor(circularKey);
+  const [sourceKey, setSourceKey] = useState("");
+  const source = sources.find((s) => s.key === sourceKey) ?? sources[0];
+  const [learners, setLearners] = useState("");
+
   const chooseCircular = (key: string) => {
     setCircularKey(key);
+    setSourceKey("");
     const c = circulars.find((x) => x.key === key);
-    if (c) setEntries(figuresOf(c));
-    else if (key === "none") setEntries({});
+    const from = sourcesFor(key)[0];
+    if (c?.figures.totalOnly) setEntries(from ? figuresOf(inProportion(from.figures, c.figures.perLearnerTotal)) : {});
+    else if (c) setEntries(figuresOf(c.figures));
+    else if (key === "none" || key === "earlier") setEntries({});
   };
 
-  const entry = (code: string) => entries[code] ?? { rate: "", flat: "" };
+  const chooseSource = (key: string) => {
+    setSourceKey(key);
+    const from = sources.find((s) => s.key === key);
+    if (chosenCircular?.figures.totalOnly && from)
+      setEntries(figuresOf(inProportion(from.figures, chosenCircular.figures.perLearnerTotal)));
+  };
+
+  const disbursed = toCents(num(amount));
+  const learnerCount = parseInt(learners, 10) || 0;
+  const shownEntries = !estimating
+    ? entries
+    : source && disbursed > 0 && learnerCount > 0
+      ? figuresOf(inProportion(source.figures, Math.round(disbursed / learnerCount)))
+      : {};
+
+  const entry = (code: string) => shownEntries[code] ?? { rate: "", flat: "" };
   const set = (code: string, field: keyof HeadEntry, value: string) =>
     setEntries({ ...entries, [code]: { ...entry(code), [field]: value } });
 
   // The same domain function the server posts with, so the preview and the
   // posted split can never disagree.
-  const disbursed = toCents(num(amount));
   const rateList = heads
     .map((h) => ({ voteHeadCode: h.code, perLearner: toCents(num(entry(h.code).rate)) }))
     .filter((r) => r.perLearner > 0);
@@ -134,7 +171,9 @@ export function ReceiptForm({
   const fit = capitation && disbursed > 0 && (rateList.length || flatList.length)
     ? enrolmentFit(disbursed, rateList, flatList)
     : null;
-  const mismatch = fit && fit.difference !== 0 ? fit : null;
+  // An estimate's rates are the amount over the learners, rounded to the cent,
+  // so a few cents always fall to the residual head. That is expected, not an error.
+  const mismatch = fit && fit.difference !== 0 && !estimating ? fit : null;
   const left = disbursed - distributed;
 
   const note = !capitation
@@ -145,6 +184,8 @@ export function ReceiptForm({
         : left < 0
           ? `The vote heads come to ${formatKes(-left)} more than the amount received.`
           : "The vote heads add up to the amount received."
+    : estimating && !(disbursed && learnerCount && source)
+      ? "Enter the amount received and the learners, and the split follows."
     : !disbursed
     ? "Enter the amount received, then the rates and any flat amounts from the circular."
     : !rateList.length && !flatList.length
@@ -174,6 +215,7 @@ export function ReceiptForm({
             <option value="" disabled>Choose the circular…</option>
             {receipt && <option value="posted">Figures this receipt was posted with</option>}
             {shown.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+            {canEstimate && <option value="earlier">Circular not yet out — split like an earlier circular</option>}
             <option value="none">No circular — I&apos;ll enter the figures</option>
           </select>
           <span className="note">
@@ -181,11 +223,33 @@ export function ReceiptForm({
               ? chosenCircular.note ?? "Figures filled in from the circular. Change any the Ministry changed."
               : circularKey === "none"
                 ? "Enter each rate and flat amount from the circular."
-                : circularKey === "posted"
-                  ? "Change what is wrong, or choose a circular to start again from its figures."
-                  : "Choose it first: its rates and flat amounts are then filled in below."}
+                : estimating
+                  ? "An estimate: the amount is split in the earlier circular's proportions. Amend this receipt when the circular comes."
+                  : circularKey === "posted"
+                    ? "Change what is wrong, or choose a circular to start again from its figures."
+                    : "Choose it first: its rates and flat amounts are then filled in below."}
           </span>
         </label>
+        {sources.length > 0 && (
+          <label className="field" style={{ margin: 0, flex: "1 1 20rem" }}>
+            Split in the proportions of
+            <select value={source?.key} onChange={(e) => chooseSource(e.target.value)}>
+              {sources.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+            </select>
+            <span className="note">
+              {estimating
+                ? "The latest circular is chosen first."
+                : "This circular gives this account's total only, so its split is estimated from the earlier one."}
+            </span>
+          </label>
+        )}
+        {estimating && (
+          <label className="field" style={{ margin: 0, flex: "0 0 11rem" }}>Learners
+            <input className="mono" inputMode="numeric" value={learners} required
+              onChange={(e) => setLearners(e.target.value.replace(/\D/g, ""))} />
+            <span className="note">Verified enrolment on NEMIS.</span>
+          </label>
+        )}
         </div>
       )}
 
@@ -318,6 +382,7 @@ export function ReceiptForm({
                       name={`rate_${h.code}`} className="mono" inputMode="decimal"
                       placeholder={flatOnly.includes(h.code) ? "per school" : "—"}
                       disabled={locked || flatOnly.includes(h.code)}
+                      readOnly={estimating}
                       title={flatOnly.includes(h.code)
                         ? "The circular funds this head per school, not per learner."
                         : undefined}
@@ -331,6 +396,7 @@ export function ReceiptForm({
                       name={`flat_${h.code}`} className="mono" inputMode="decimal" placeholder="—"
                       style={{ width: 118, textAlign: "right", padding: ".5rem .6rem" }}
                       disabled={locked}
+                      readOnly={estimating}
                       value={e.flat} onChange={(ev) => set(h.code, "flat", ev.target.value)}
                     />
                   </td>
