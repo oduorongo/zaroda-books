@@ -65,6 +65,9 @@ export function ReceiptForm({
   // Every shilling arrives as cash and is banked, so the tick starts on.
   const [banked, setBanked] = useState(receipt ? receipt.bankedOn !== null : true);
   const [bankedOn, setBankedOn] = useState(receipt?.bankedOn ?? receipt?.date ?? "");
+  // The banking date copies the date received until the bursar sets it
+  // themselves — an amendment banked on a later day counts as set.
+  const [bankedByHand, setBankedByHand] = useState(Boolean(receipt?.bankedOn && receipt.bankedOn !== receipt.date));
   // A circular's figures, as the boxes hold them.
   const figuresOf = (c?: (typeof circulars)[number]): Record<string, HeadEntry> => {
     if (!c) return {};
@@ -197,7 +200,7 @@ export function ReceiptForm({
             onChange={(e) => {
               setDate(e.target.value);
               // The banking follows the receipt unless it has been moved on purpose.
-              if (bankedOn < e.target.value) setBankedOn(e.target.value);
+              if (!bankedByHand || bankedOn < e.target.value) setBankedOn(e.target.value);
             }} />
         </label>
         <label className="field">Receipt no.
@@ -254,7 +257,7 @@ export function ReceiptForm({
             "Banked" rather than a second date of equal weight. */}
         <label className="field" style={{ margin: 0 }}>Date banked, if later
           <input name="bankedOn" type="date" value={bankedOn} min={date} max={dates.to} disabled={!banked}
-            onChange={(e) => setBankedOn(e.target.value)} />
+            onChange={(e) => { setBankedOn(e.target.value); setBankedByHand(e.target.value !== date); }} />
         </label>
         <p className="note" style={{ flex: "1 1 18rem", margin: 0 }}>
           {banked
