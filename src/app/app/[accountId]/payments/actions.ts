@@ -2,13 +2,14 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { parseAmount } from "@/domain";
+import { parseAmount, readDecisions } from "@/domain";
 import type { Allocation, VoteHead } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getPeriodForDate } from "@/server/periods";
 import { getPaymentForEdit } from "@/server/queries";
 import { createTransaction, deleteTransaction, updateTransaction } from "@/server/transactions";
 import { resequenceVouchers } from "@/server/voucher-numbers";
+import { authoriseSignedIn, preparePaperSchedule, recordSignedSchedule, sendToHoi } from "@/server/authorisation";
 import { NARRATION_STEM } from "./narration";
 
 /**
@@ -178,4 +179,56 @@ export async function deletePayment(
 
   revalidatePath(`/app/${accountId}`, "layout");
   redirect(`/app/${accountId}/payments`);
+}
+
+const decisionsFrom = (form: FormData) =>
+  readDecisions(
+    String(form.get("ids") ?? "").split(",").filter(Boolean),
+    (k) => (form.get(k) as string | null),
+  );
+
+/** The head, signed in, authorising or holding back payments. */
+export async function authoriseAction(_prev: string | null, form: FormData): Promise<string | null> {
+  const accountId = String(form.get("accountId") ?? "");
+  try {
+    await authoriseSignedIn(accountId, decisionsFrom(form));
+  } catch (e) {
+    return e instanceof Error ? e.message : "The authorisation could not be saved.";
+  }
+  revalidatePath(`/app/${accountId}`, "layout");
+  return null;
+}
+
+export async function sendToHoiAction(_prev: string | null, form: FormData): Promise<string | null> {
+  const accountId = String(form.get("accountId") ?? "");
+  try {
+    const n = await sendToHoi(accountId);
+    revalidatePath(`/app/${accountId}/payments`);
+    return `Sent. ${n} payment${n === 1 ? "" : "s"} emailed to the head for authorisation.`;
+  } catch (e) {
+    return e instanceof Error ? e.message : "The payments could not be sent.";
+  }
+}
+
+export async function preparePaperAction(_prev: string | null, form: FormData): Promise<string | null> {
+  const accountId = String(form.get("accountId") ?? "");
+  let id: string;
+  try {
+    id = await preparePaperSchedule(accountId);
+  } catch (e) {
+    return e instanceof Error ? e.message : "The schedule could not be prepared.";
+  }
+  redirect(`/app/${accountId}/payments/authorisation/${id}`);
+}
+
+export async function recordScheduleAction(_prev: string | null, form: FormData): Promise<string | null> {
+  const accountId = String(form.get("accountId") ?? "");
+  const requestId = String(form.get("requestId") ?? "");
+  try {
+    await recordSignedSchedule(accountId, requestId, String(form.get("signedOn") ?? ""), decisionsFrom(form));
+  } catch (e) {
+    return e instanceof Error ? e.message : "The signed schedule could not be recorded.";
+  }
+  revalidatePath(`/app/${accountId}`, "layout");
+  redirect(`/app/${accountId}/payments/authorisation`);
 }

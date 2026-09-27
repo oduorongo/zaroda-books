@@ -36,7 +36,7 @@ export function InviteForm({ origin, schools }: {
         </div>
         <label className="field">Which books
           <select name="schoolId" defaultValue="">
-            <option value="">Every school on these books</option>
+            {role !== "authoriser" && <option value="">Every school on these books</option>}
             {schools.map((s) => <option key={s.id} value={s.id}>{s.name} only</option>)}
           </select>
           <span className="note">

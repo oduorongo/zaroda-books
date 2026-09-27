@@ -12,7 +12,7 @@
 export interface Membership {
   id: string;
   orgId: string;
-  role: "owner" | "accountant" | "bursar" | "viewer";
+  role: "owner" | "accountant" | "bursar" | "viewer" | "authoriser";
   schoolId: string | null;
   createdAt: Date;
 }

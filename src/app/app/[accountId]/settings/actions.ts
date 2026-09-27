@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { loadBook } from "@/server/book-context";
 import { auditorsForSchool, sendForAudit } from "@/server/audit-send";
 import { auditMail, escapeHtml } from "@/server/audit-mail";
+import { saveAuthorisationSettings } from "@/server/authorisation";
 import { isSubCountyOf, readHandover } from "@/domain";
 import { db, schema } from "@/db";
 import {
@@ -152,5 +153,24 @@ export async function saveHandoverAction(
     linkPath: "/audit",
   });
   revalidatePath(`/app/${accountId}/settings`);
+  return "Saved.";
+}
+
+export async function saveAuthorisationAction(
+  _prev: string | null,
+  form: FormData,
+): Promise<string | null> {
+  const accountId = String(form.get("accountId") ?? "");
+  try {
+    await saveAuthorisationSettings(accountId, {
+      route: String(form.get("route") ?? ""),
+      hoiName: String(form.get("hoiName") ?? ""),
+      hoiTsc: String(form.get("hoiTsc") ?? ""),
+      hoiEmail: String(form.get("hoiEmail") ?? ""),
+    });
+  } catch (e) {
+    return e instanceof Error ? e.message : "The settings could not be saved.";
+  }
+  revalidatePath(`/app/${accountId}`, "layout");
   return "Saved.";
 }

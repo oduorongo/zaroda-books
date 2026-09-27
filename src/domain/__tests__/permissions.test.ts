@@ -66,6 +66,14 @@ describe("can", () => {
     expect(can("accountant", "period.reopen")).toBe(false);
   });
 
+  it("lets an authoriser change nothing in the books", () => {
+    // The head authorises payments, which sits outside the matrix
+    // (see authorisation.ts); posting is the bookkeeper's.
+    for (const action of Object.keys(EXPECTED) as Action[]) {
+      expect(can("authoriser", action)).toBe(false);
+    }
+  });
+
   it("refuses an unknown role rather than defaulting open", () => {
     expect(can("caretaker" as Role, "entry.post")).toBe(false);
   });

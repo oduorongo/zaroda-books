@@ -1,3 +1,16 @@
+import { voucherAuthorisationText, type AuthorisationState } from "@/domain";
+
+/**
+ * How the head of institution authorised the payment, above the signatures.
+ */
+export function VoucherAuthorisation({ status }: { status: AuthorisationState | undefined }) {
+  return (
+    <p style={{ margin: "1.5rem 0 0", padding: ".6rem .8rem", border: "1px solid var(--rule-strong)", fontSize: ".88rem" }}>
+      <span className="eyebrow" style={{ marginRight: ".6rem" }}>Authorisation</span>{voucherAuthorisationText(status)}
+    </p>
+  );
+}
+
 /**
  * The signature block at the foot of a payment voucher.
  *

@@ -1,8 +1,9 @@
 import "server-only";
 import { and, eq, isNull } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { auditorCanSee, yearClosed, type Placed } from "@/domain";
+import { auditBlockReason, auditorCanSee, yearClosed, type Placed } from "@/domain";
 import { loadBook } from "@/server/book-context";
+import { unauthorisedVouchers } from "@/server/authorisation";
 import { emailLayout, sendEmail } from "@/server/email";
 import { SITE_URL } from "@/app/site-url";
 
@@ -26,6 +27,8 @@ export async function sendForAudit(accountId: string, grantId: string) {
 
   const periods = await db.select().from(schema.periods).where(eq(schema.periods.financialYearId, fy.id));
   if (!yearClosed(periods)) throw new Error("Close the year, up to June, before sending the books for audit.");
+  const blocked = auditBlockReason(await unauthorisedVouchers(fy.id));
+  if (blocked) throw new Error(`${blocked} Have the head authorise them from Payments first.`);
 
   const [chosen] = await db
     .select({ grant: schema.auditors, email: schema.users.email })
@@ -75,5 +78,9 @@ export async function auditStatus(financialYearId: string, auditSentTo: string |
       .innerJoin(schema.users, eq(schema.users.id, schema.auditors.userId))
       .where(eq(schema.auditors.id, auditSentTo))
     : [];
-  return { yearClosed: yearClosed(periods), sentTo: sentTo ?? null };
+  return {
+    yearClosed: yearClosed(periods),
+    unauthorised: auditBlockReason(await unauthorisedVouchers(financialYearId)),
+    sentTo: sentTo ?? null,
+  };
 }

@@ -1,11 +1,21 @@
 import Link from "next/link";
-import { cashMoves, entryDates, buildLedger, formatKes } from "@/domain";
+import { cashMoves, entryDates, buildLedger, formatKes, can, mayAuthorise, authorisationLine, type AuthorisationState } from "@/domain";
 import type { Txn, VoteEntry } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { queriedEntries } from "@/server/audit-queries";
 import { getTxns } from "@/server/queries";
 import { PaymentForm } from "./form";
 import { ReportShell } from "../report-shell";
+import { AuthorisationPanel } from "./authorisation-panel";
+import { decisionRow } from "../../../decision-table";
+import { needsHoi, paymentStatuses, requestsFor } from "@/server/authorisation";
+
+function HoiStatus({ s }: { s: AuthorisationState | undefined }) {
+  if (!s || s.state === "awaiting") return <span className="note">Awaiting</span>;
+  if (s.state === "changed") return <span className="error">Amended since authorised</span>;
+  if (s.state === "held") return <span className="error" title={s.reason}>Held back</span>;
+  return <span title={authorisationLine(s.record)}>✓ Authorised</span>;
+}
 
 /** Every receipt and payment line, so the form can date the balances. */
 const voteEntries = (txns: Txn[]): VoteEntry[] =>
@@ -36,6 +46,12 @@ export default async function PaymentsPage({
   const totalCash = payments.reduce((a, p) => a + (p.kind === "payment" ? p.cash : 0), 0);
   const totalBank = payments.reduce((a, p) => a + (p.kind === "payment" ? p.bank : 0), 0);
 
+  const [statuses, requests] = await Promise.all([paymentStatuses(txns), requestsFor(accountId)]);
+  const statusOf = new Map(statuses.map((s) => [s.payment.id, s.status]));
+  const pending = statuses.filter(needsHoi);
+  const held = statuses.flatMap((s) =>
+    s.status.state === "held" ? [{ vrNo: s.payment.vrNo, payee: s.payment.particulars, reason: s.status.reason }] : []);
+
   return (
     <ReportShell
       title="Payments"
@@ -58,14 +74,30 @@ export default async function PaymentsPage({
         </span>
       </p>
 
-      <PaymentForm
+      <AuthorisationPanel
         accountId={accountId}
-        heads={heads}
-        entries={entries}
-        openingCash={fy.openingCash}
-        cashMoves={cashMoves(txns)}
-        dates={entryDates(fy, txns.map((t) => t.date))}
+        counts={{ authorised: statuses.length - pending.length - held.length, pending: pending.length, held: held.length }}
+        pending={pending.map((s) => decisionRow(s.payment, s.terms))}
+        held={held}
+        iAuthorise={mayAuthorise(user.role, user.position) && !user.readOnly}
+        iPost={can(user.role, "entry.post") && !user.readOnly}
+        route={school.authRoute}
+        hoi={{ name: school.hoiName, email: school.hoiEmail }}
+        openSchedules={requests
+          .filter((r) => r.route === "paper" && !r.completedAt)
+          .map((r) => ({ id: r.id, printed: r.createdAt.toISOString().slice(0, 10), count: JSON.parse(r.payments).length }))}
       />
+
+      {can(user.role, "entry.post") && (
+        <PaymentForm
+          accountId={accountId}
+          heads={heads}
+          entries={entries}
+          openingCash={fy.openingCash}
+          cashMoves={cashMoves(txns)}
+          dates={entryDates(fy, txns.map((t) => t.date))}
+        />
+      )}
 
       <div className="card" style={{ marginTop: "1.6rem" }}>
         <h2 style={{ marginTop: 0, fontSize: "1.05rem" }}>Payments recorded</h2>
@@ -73,7 +105,7 @@ export default async function PaymentsPage({
           <thead>
             <tr>
               <th>Date</th><th>VR no.</th><th>Particulars</th><th>Vote heads</th>
-              <th className="n">Cash</th><th className="n">Bank</th><th></th>
+              <th className="n">Cash</th><th className="n">Bank</th><th>Head</th><th></th>
             </tr>
           </thead>
           <tbody>
@@ -93,6 +125,7 @@ export default async function PaymentsPage({
                 </td>
                 <td className="n">{p.kind === "payment" && p.cash ? formatKes(p.cash) : "—"}</td>
                 <td className="n">{p.kind === "payment" && p.bank ? formatKes(p.bank) : "—"}</td>
+                <td><HoiStatus s={statusOf.get(p.id)} /></td>
                 <td className="n">
                   <Link className="note" href={`/app/${accountId}/payments/${p.id}/voucher`}>View</Link>
                   {user.auditing && (
@@ -105,6 +138,7 @@ export default async function PaymentsPage({
               <td colSpan={4}>Total paid</td>
               <td className="n">{formatKes(totalCash)}</td>
               <td className="n">{formatKes(totalBank)}</td>
+              <td></td>
               <td></td>
             </tr>
           </tbody>

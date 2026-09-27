@@ -6,6 +6,8 @@ import { loadBook } from "@/server/book-context";
 import { auditorsForSchool, auditStatus } from "@/server/audit-send";
 import { issuedReportsOn, latestHandover } from "@/server/audit-reports";
 import { HandoverForm } from "./handover-form";
+import { AuthorisationForm } from "./authorisation-form";
+import { emailConfigured } from "@/server/email";
 import { describeAuditScope } from "@/domain";
 import { getTxns } from "@/server/queries";
 import { AccountTypeForm } from "./account-type-form";
@@ -73,6 +75,14 @@ export default async function SettingsPage({
         entries={entries}
       />
 
+      <h2>Authorisation of payments</h2>
+      <AuthorisationForm
+        accountId={accountId}
+        current={{ authRoute: school.authRoute, hoiName: school.hoiName, hoiTsc: school.hoiTsc, hoiEmail: school.hoiEmail }}
+        emailReady={emailConfigured()}
+        canEdit={can(user.role, "school.edit") && !user.readOnly}
+      />
+
       <h2>Send for audit</h2>
       <div className="card" style={{ maxWidth: 720, marginBottom: "1.6rem" }}>
         {audit.sentTo ? (
@@ -95,6 +105,11 @@ export default async function SettingsPage({
         ) : !audit.yearClosed ? (
           <p className="note" style={{ marginTop: ".9rem" }}>
             The year is not closed yet. <Link href={`/app/${accountId}/bank-reconciliation`}>Close it up to June</Link> on the bank reconciliation.
+          </p>
+        ) : audit.unauthorised ? (
+          <p className="note" style={{ marginTop: ".9rem" }}>
+            {audit.unauthorised}{" "}
+            <Link href={`/app/${accountId}/payments`}>Go to Payments</Link>.
           </p>
         ) : auditors.length === 0 ? (
           <p className="note" style={{ marginTop: ".9rem" }}>No auditor covers this school&apos;s area yet.</p>

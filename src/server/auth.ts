@@ -169,7 +169,7 @@ export interface CurrentUser {
   name: string;
   email: string;
   orgId: string;
-  role: "owner" | "accountant" | "bursar" | "viewer";
+  role: "owner" | "accountant" | "bursar" | "viewer" | "authoriser";
   /** Set while a system owner is looking at another org's books. */
   viewingAs: { orgId: string; orgName: string } | null;
   /** A view-as session may read every book and write to none of them. */

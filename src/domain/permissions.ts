@@ -10,7 +10,7 @@
  * person may *see* is decided by tenancy, not by role.
  */
 
-export const ROLES = ["owner", "accountant", "bursar", "viewer"] as const;
+export const ROLES = ["owner", "accountant", "bursar", "viewer", "authoriser"] as const;
 export type Role = (typeof ROLES)[number];
 
 export type Action =
@@ -79,6 +79,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   accountant: "Accountant",
   bursar: "Bursar",
   viewer: "Viewer",
+  authoriser: "Authoriser",
 };
 
 export const ROLE_DESCRIPTION: Record<Role, string> = {
@@ -86,4 +87,5 @@ export const ROLE_DESCRIPTION: Record<Role, string> = {
   accountant: "Posts, amends and deletes entries, closes months, manages vote heads.",
   bursar: "Posts and amends entries. Cannot delete one, or close a month.",
   viewer: "Reads and prints. Changes nothing.",
+  authoriser: "The head of institution: reads, and authorises payments. Posts nothing.",
 };

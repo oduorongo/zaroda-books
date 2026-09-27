@@ -2,7 +2,7 @@ import "server-only";
 import type { AccountType, SchoolLevel } from "@/domain";
 import {
   balancesAfter, buildCashBook, buildCashFlow, buildLedger, buildTrialBalance,
-  csvAmount, isCapitationAccount, toCsv,
+  csvAmount, isCapitationAccount, toCsv, voucherAuthorisationText,
 } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import {
@@ -10,6 +10,7 @@ import {
 } from "@/server/queries";
 import { getReportPeriod, monthKey, monthName } from "@/server/periods";
 import { getReconciliation } from "@/server/reconciliation";
+import { paymentStatuses } from "@/server/authorisation";
 
 export type ReportName =
   | "cash-book" | "ledger" | "trial-balance" | "cash-flow"
@@ -393,6 +394,7 @@ export async function paymentVoucherDoc(
 
   const nameOf = (code: string) => heads.find((h) => h.code === code)?.name ?? code;
   const total = txn.cash + txn.bank;
+  const authorisation = (await paymentStatuses(txns)).find((s) => s.payment.id === transactionId)?.status;
 
   return {
     title: "Payment voucher",
@@ -414,6 +416,7 @@ export async function paymentVoucherDoc(
           ...(txn.narration ? [["Narration", txn.narration]] : []),
           ["Paid from", txn.cash > 0 ? "Cash" : "Bank"],
           ["Amount paid", csvAmount(total)],
+          ["Authorisation", voucherAuthorisationText(authorisation)],
         ],
       },
       {

@@ -6,7 +6,8 @@ import { queriedEntries } from "@/server/audit-queries";
 import { getTxns } from "@/server/queries";
 import { PdfButton } from "../../../pdf-button";
 import { PrintButton } from "../../../print-button";
-import { VoucherSignatures } from "../../signatures";
+import { VoucherAuthorisation, VoucherSignatures } from "../../signatures";
+import { paymentStatuses } from "@/server/authorisation";
 import { LevelBand, PoweredBy } from "../../../level-mark";
 
 export default async function VoucherPage({
@@ -18,9 +19,11 @@ export default async function VoucherPage({
   const { user, heads, fy, school, account } = await loadBook(accountId);
   const queried = await queriedEntries(accountId);
 
-  const txn = (await getTxns(fy.id)).find((t) => t.id === transactionId);
+  const txns = await getTxns(fy.id);
+  const txn = txns.find((t) => t.id === transactionId);
   if (!txn || txn.kind !== "payment") notFound();
 
+  const status = (await paymentStatuses(txns)).find((s) => s.payment.id === transactionId)?.status;
   const nameOf = (code: string) => heads.find((h) => h.code === code)?.name ?? code;
   const total = txn.cash + txn.bank;
   const voucherExport = `/app/${accountId}/payments/${transactionId}/voucher/export`;
@@ -89,6 +92,7 @@ export default async function VoucherPage({
           </tbody>
         </table>
 
+        <VoucherAuthorisation status={status} />
         <VoucherSignatures />
         <PoweredBy />
       </div>

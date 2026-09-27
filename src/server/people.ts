@@ -56,6 +56,8 @@ export async function inviteToOrg(
   const address = email.trim().toLowerCase();
   if (!address.includes("@")) throw new Error("Enter a valid email address.");
   if (!ROLES.includes(role)) throw new Error("Choose a role.");
+  // The head authorises one school's payments, never a whole practice.
+  if (role === "authoriser" && !schoolId) throw new Error("Choose the school this head of institution authorises for.");
 
   const [already] = await db
     .select({ id: schema.memberships.id })
@@ -140,6 +142,10 @@ export async function changeRole(userId: string, role: Role) {
     .where(eq(schema.memberships.orgId, owner.orgId));
   const target = members.find((m) => m.userId === userId);
   if (!target) throw new Error("That person is not on these books.");
+
+  if (role === "authoriser" && !target.schoolId) {
+    throw new Error("An authoriser must be tied to one school. Invite the head for their school instead.");
+  }
 
   const owners = members.filter((m) => m.role === "owner");
   if (target.role === "owner" && role !== "owner" && owners.length === 1) {

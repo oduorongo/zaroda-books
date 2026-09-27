@@ -3,7 +3,8 @@ import { formatKes } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getTxns } from "@/server/queries";
 import { PrintButton } from "../../print-button";
-import { VoucherSignatures } from "../signatures";
+import { VoucherAuthorisation, VoucherSignatures } from "../signatures";
+import { paymentStatuses } from "@/server/authorisation";
 import { LevelBand, PoweredBy } from "../../level-mark";
 
 /**
@@ -19,7 +20,9 @@ export default async function VoucherBookPage({
   const { accountId } = await params;
   const { heads, fy, school, account } = await loadBook(accountId);
 
-  const vouchers = (await getTxns(fy.id))
+  const txns = await getTxns(fy.id);
+  const statusOf = new Map((await paymentStatuses(txns)).map((s) => [s.payment.id, s.status]));
+  const vouchers = txns
     .filter((t) => t.kind === "payment")
     .sort((a, b) => Number(a.vrNo ?? 0) - Number(b.vrNo ?? 0));
 
@@ -90,6 +93,7 @@ export default async function VoucherBookPage({
               </tbody>
             </table>
 
+            <VoucherAuthorisation status={statusOf.get(txn.id)} />
             <VoucherSignatures />
             <PoweredBy />
           </div>

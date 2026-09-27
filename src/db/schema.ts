@@ -38,7 +38,7 @@ export const memberships = pgTable("memberships", {
   id: uuid("id").primaryKey().defaultRandom(),
   orgId: uuid("org_id").references(() => orgs.id).notNull(),
   userId: uuid("user_id").references(() => users.id).notNull(),
-  role: text("role", { enum: ["owner", "accountant", "bursar", "viewer"] }).notNull(),
+  role: text("role", { enum: ["owner", "accountant", "bursar", "viewer", "authoriser"] }).notNull(),
   /**
    * Tie this person to one school. Null is the whole practice, which is what
    * a freelancer and their own staff get.
@@ -64,6 +64,14 @@ export const schools = pgTable("schools", {
   // out, and it is what decides whether two books are the same school.
   nemisCode: text("nemis_code"),
   nameKey: text("name_key"),
+  // How the head authorises payments, and who the head is. Changes are
+  // written to audit_log and shown to the auditor: whoever keeps the books
+  // sets these, so a changed address is itself something to answer for.
+  // See src/domain/authorisation.ts.
+  authRoute: text("auth_route", { enum: ["email", "paper", "login"] }),
+  hoiName: text("hoi_name"),
+  hoiTsc: text("hoi_tsc"),
+  hoiEmail: text("hoi_email"),
 }, (t) => [
   index("schools_org_idx").on(t.orgId),
   unique("schools_org_name").on(t.orgId, t.level, t.nameKey),
@@ -381,7 +389,7 @@ export const invitations = pgTable("invitations", {
   orgId: uuid("org_id").references(() => orgs.id).notNull(),
   /** Who it was meant for, so an owner can see what they sent. */
   email: text("email").notNull(),
-  role: text("role", { enum: ["owner", "accountant", "bursar", "viewer"] }).notNull(),
+  role: text("role", { enum: ["owner", "accountant", "bursar", "viewer", "authoriser"] }).notNull(),
   /** The one school this invitation is for, or null for the whole practice. */
   schoolId: uuid("school_id").references(() => schools.id),
   code: text("code").notNull().unique(),
@@ -528,3 +536,54 @@ export const hoiHandovers = pgTable("hoi_handovers", {
   recordedBy: uuid("recorded_by").references(() => users.id).notNull(),
   recordedAt: timestamp("recorded_at").defaultNow().notNull(),
 }, (t) => [index("hoi_handovers_school_idx").on(t.schoolId, t.recordedAt)]);
+
+/**
+ * A batch of payments put to the head of institution: emailed as a link, or
+ * printed as a schedule to sign. `payments` is the list as it was put, as
+ * JSON [{ id, terms }], so a schedule records what was actually on the paper.
+ *
+ * The link token and the code are stored hashed, like a password reset.
+ */
+export const authorisationRequests = pgTable("authorisation_requests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  accountId: uuid("account_id").references(() => accounts.id).notNull(),
+  route: text("route", { enum: ["email", "paper"] }).notNull(),
+  payments: text("payments").notNull(),
+  hoiName: text("hoi_name").notNull(),
+  hoiTsc: text("hoi_tsc"),
+  sentTo: text("sent_to"),
+  tokenHash: text("token_hash").unique(),
+  codeHash: text("code_hash"),
+  codeIssuedAt: timestamp("code_issued_at"),
+  codeTries: integer("code_tries").default(0).notNull(),
+  codesSent: integer("codes_sent").default(0).notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdBy: uuid("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+  signedOn: date("signed_on"),
+}, (t) => [index("authorisation_requests_account_idx").on(t.accountId, t.createdAt)]);
+
+/**
+ * The head's decision on one payment. Never updated: a later decision is a
+ * new row, and the latest counts. `terms` is the payment as the head saw it,
+ * so an amendment after authorising shows instead of inheriting the approval.
+ */
+export const paymentAuthorisations = pgTable("payment_authorisations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  transactionId: uuid("transaction_id").references(() => transactions.id, { onDelete: "cascade" }).notNull(),
+  requestId: uuid("request_id").references(() => authorisationRequests.id),
+  decision: text("decision", { enum: ["authorised", "held"] }).notNull(),
+  terms: text("terms").notNull(),
+  reason: text("reason"),
+  route: text("route", { enum: ["email", "paper", "login"] }).notNull(),
+  hoiName: text("hoi_name").notNull(),
+  hoiTsc: text("hoi_tsc"),
+  sentTo: text("sent_to"),
+  signedOn: date("signed_on"),
+  /** The signed-in head, on the login route. */
+  authorisedBy: uuid("authorised_by").references(() => users.id),
+  /** Who entered the decision: the head, or the bookkeeper recording a signed schedule. */
+  recordedBy: uuid("recorded_by").references(() => users.id),
+  at: timestamp("at").defaultNow().notNull(),
+}, (t) => [index("payment_authorisations_txn_idx").on(t.transactionId, t.at)]);
