@@ -64,7 +64,9 @@ export default async function Page({ params, searchParams }: {
         accountId={accountId}
         periodId={period.id}
         statementBank={period.statementBank !== null ? String(toKes(period.statementBank)) : ""}
-        statementDate={period.statementDate ?? ""}
+        // Schools reconcile once, at the year end: the statement is dated 30 June
+        // unless the bursar enters another date.
+        statementDate={period.statementDate ?? book.endsOn}
       />
 
       {!hasStatement ? (

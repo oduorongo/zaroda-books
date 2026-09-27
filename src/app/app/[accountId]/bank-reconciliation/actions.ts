@@ -12,14 +12,15 @@ export async function saveStatement(
 ): Promise<string | null> {
   const accountId = String(form.get("accountId") ?? "");
   const periodId = String(form.get("periodId") ?? "");
-  await loadBook(accountId, { write: true, require: "entry.amend" });
+  const { fy } = await loadBook(accountId, { write: true, require: "entry.amend" });
 
   const raw = String(form.get("statementBank") ?? "").trim();
   if (!raw) return "Enter the closing balance shown on the bank statement.";
   const balance = Number(raw.replace(/,/g, ""));
   if (!Number.isFinite(balance)) return "Enter the closing balance as a figure.";
 
-  const statementDate = String(form.get("statementDate") ?? "").trim() || null;
+  // Left blank, the statement is taken as dated the last day of the year.
+  const statementDate = String(form.get("statementDate") ?? "").trim() || fy.endsOn;
 
   try {
     await saveStatementBalance(periodId, accountId, toCents(balance), statementDate);
