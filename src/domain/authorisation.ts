@@ -89,8 +89,15 @@ export function authorisationLine(r: AuthorisationRecord): string {
     + (r.selfAuthorised ? ". Entered and authorised by the same person" : "");
 }
 
-/** The voucher's authorisation line, whatever the state. An amended payment says so. */
-export function voucherAuthorisationText(s: AuthorisationState | undefined): string {
+/**
+ * The voucher's authorisation line, whatever the state. An amended payment
+ * says so. An exempt book went for audit before the head's authorisation was
+ * kept here, so its payments were authorised on paper, if at all.
+ */
+export function voucherAuthorisationText(s: AuthorisationState | undefined, exempt = false): string {
+  if (exempt && s?.state !== "authorised") {
+    return "Sent for audit before Zaroda Books kept the head of institution's authorisation. See the signed voucher.";
+  }
   if (!s || s.state === "awaiting") return "Not authorised by the head of institution.";
   if (s.state === "changed") return "Amended after it was authorised. Not authorised as it stands.";
   if (s.state === "held") return `Held back by the head of institution: ${s.reason}`;

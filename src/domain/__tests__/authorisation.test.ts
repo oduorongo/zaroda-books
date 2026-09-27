@@ -170,3 +170,15 @@ describe("voucherAuthorisationText", () => {
     expect(voucherAuthorisationText({ state: "authorised", record: rec() })).toMatch(/^Authorised by Jane Otieno/);
   });
 });
+
+describe("books sent for audit before authorisation was kept", () => {
+  it("do not call their payments unauthorised", () => {
+    const text = voucherAuthorisationText(undefined, true);
+    expect(text).not.toMatch(/not authorised/i);
+    expect(text).toMatch(/before/i);
+  });
+
+  it("still print an authorisation the head did give", () => {
+    expect(voucherAuthorisationText({ state: "authorised", record: rec() }, true)).toMatch(/^Authorised by/);
+  });
+});

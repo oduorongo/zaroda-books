@@ -92,7 +92,7 @@ export default async function VoucherPage({
           </tbody>
         </table>
 
-        <VoucherAuthorisation status={status} />
+        <VoucherAuthorisation status={status} exempt={account.authorisationExempt} />
         <VoucherSignatures />
         <PoweredBy />
       </div>

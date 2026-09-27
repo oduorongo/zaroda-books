@@ -36,6 +36,7 @@ CREATE TABLE "payment_authorisations" (
 	"at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+ALTER TABLE "accounts" ADD COLUMN "authorisation_exempt" boolean DEFAULT false NOT NULL;--> statement-breakpoint
 ALTER TABLE "schools" ADD COLUMN "auth_route" text;--> statement-breakpoint
 ALTER TABLE "schools" ADD COLUMN "hoi_name" text;--> statement-breakpoint
 ALTER TABLE "schools" ADD COLUMN "hoi_tsc" text;--> statement-breakpoint
@@ -47,4 +48,5 @@ ALTER TABLE "payment_authorisations" ADD CONSTRAINT "payment_authorisations_requ
 ALTER TABLE "payment_authorisations" ADD CONSTRAINT "payment_authorisations_authorised_by_users_id_fk" FOREIGN KEY ("authorised_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "payment_authorisations" ADD CONSTRAINT "payment_authorisations_recorded_by_users_id_fk" FOREIGN KEY ("recorded_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "authorisation_requests_account_idx" ON "authorisation_requests" USING btree ("account_id","created_at");--> statement-breakpoint
-CREATE INDEX "payment_authorisations_txn_idx" ON "payment_authorisations" USING btree ("transaction_id","at");
+CREATE INDEX "payment_authorisations_txn_idx" ON "payment_authorisations" USING btree ("transaction_id","at");--> statement-breakpoint
+UPDATE "accounts" SET "authorisation_exempt" = true WHERE "audit_sent_at" IS NOT NULL OR "id" IN (SELECT "entity_id" FROM "audit_log" WHERE "action" = 'audit.sent');

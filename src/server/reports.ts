@@ -416,7 +416,7 @@ export async function paymentVoucherDoc(
           ...(txn.narration ? [["Narration", txn.narration]] : []),
           ["Paid from", txn.cash > 0 ? "Cash" : "Bank"],
           ["Amount paid", csvAmount(total)],
-          ["Authorisation", voucherAuthorisationText(authorisation)],
+          ["Authorisation", voucherAuthorisationText(authorisation, account.authorisationExempt)],
         ],
       },
       {

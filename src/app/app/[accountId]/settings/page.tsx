@@ -26,7 +26,7 @@ export default async function SettingsPage({
   const { user, fy, school, account } = await loadBook(accountId);
   const [auditors, audit, reports, handover] = await Promise.all([
     auditorsForSchool(school),
-    auditStatus(fy.id, account.auditSentTo),
+    auditStatus(fy.id, account.auditSentTo, account.authorisationExempt),
     issuedReportsOn(school.id),
     latestHandover(school.id),
   ]);

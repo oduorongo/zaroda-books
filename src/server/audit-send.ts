@@ -27,7 +27,7 @@ export async function sendForAudit(accountId: string, grantId: string) {
 
   const periods = await db.select().from(schema.periods).where(eq(schema.periods.financialYearId, fy.id));
   if (!yearClosed(periods)) throw new Error("Close the year, up to June, before sending the books for audit.");
-  const blocked = auditBlockReason(await unauthorisedVouchers(fy.id));
+  const blocked = account.authorisationExempt ? null : auditBlockReason(await unauthorisedVouchers(fy.id));
   if (blocked) throw new Error(`${blocked} Have the head authorise them from Payments first.`);
 
   const [chosen] = await db
@@ -69,7 +69,7 @@ export async function sendForAudit(accountId: string, grantId: string) {
 }
 
 /** Where a book stands with the audit: whether it may be sent, and to whom it went. */
-export async function auditStatus(financialYearId: string, auditSentTo: string | null) {
+export async function auditStatus(financialYearId: string, auditSentTo: string | null, exempt: boolean) {
   const periods = await db.select().from(schema.periods).where(eq(schema.periods.financialYearId, financialYearId));
   const [sentTo] = auditSentTo
     ? await db
@@ -80,7 +80,7 @@ export async function auditStatus(financialYearId: string, auditSentTo: string |
     : [];
   return {
     yearClosed: yearClosed(periods),
-    unauthorised: auditBlockReason(await unauthorisedVouchers(financialYearId)),
+    unauthorised: exempt ? null : auditBlockReason(await unauthorisedVouchers(financialYearId)),
     sentTo: sentTo ?? null,
   };
 }

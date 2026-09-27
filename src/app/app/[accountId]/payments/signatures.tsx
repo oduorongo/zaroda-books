@@ -3,10 +3,10 @@ import { voucherAuthorisationText, type AuthorisationState } from "@/domain";
 /**
  * How the head of institution authorised the payment, above the signatures.
  */
-export function VoucherAuthorisation({ status }: { status: AuthorisationState | undefined }) {
+export function VoucherAuthorisation({ status, exempt }: { status: AuthorisationState | undefined; exempt: boolean }) {
   return (
     <p style={{ margin: "1.5rem 0 0", padding: ".6rem .8rem", border: "1px solid var(--rule-strong)", fontSize: ".88rem" }}>
-      <span className="eyebrow" style={{ marginRight: ".6rem" }}>Authorisation</span>{voucherAuthorisationText(status)}
+      <span className="eyebrow" style={{ marginRight: ".6rem" }}>Authorisation</span>{voucherAuthorisationText(status, exempt)}
     </p>
   );
 }

@@ -130,6 +130,10 @@ export const accounts = pgTable("accounts", {
   auditSentTo: uuid("audit_sent_to").references((): AnyPgColumn => auditors.id),
   auditSentAt: timestamp("audit_sent_at"),
   auditSentBy: uuid("audit_sent_by").references(() => users.id),
+  // Sent for audit before the head's authorisation was kept here: its
+  // payments were authorised on paper, so it is never refused for lacking it.
+  // Set once, by migration 0032, for every book sent by then.
+  authorisationExempt: boolean("authorisation_exempt").default(false).notNull(),
 });
 
 /**

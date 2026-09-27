@@ -38,6 +38,13 @@ export default async function AuthorisationRegisterPage({ params }: {
           : <span className="note">No route chosen yet. <Link href={`/app/${accountId}/settings`}>Choose one in Book settings</Link>.</span>}
       </p>
 
+      {account.authorisationExempt && (
+        <p className="note" style={{ margin: "0 0 1.2rem" }}>
+          This book was sent for audit before Zaroda Books kept the head&apos;s authorisation, so it is exempt:
+          its payments were authorised on the signed vouchers.
+        </p>
+      )}
+
       <table>
         <thead><tr><th>VR</th><th>Date</th><th>Paid to</th><th className="n">Amount</th><th>Authorisation</th></tr></thead>
         <tbody>
