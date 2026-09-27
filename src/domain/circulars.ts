@@ -92,6 +92,15 @@ export const CIRCULARS: Circular[] = [
     },
   },
 
+  {
+    programme: "FPE", level: "primary", ref: "MOE/DBE/6/2/3/28", date: "2026-01-22",
+    term: "Term 1 2026, Account 1 only",
+    note: "Taken from a summary of the circular, not the circular itself: check each rate against the circular before posting. Account 2 (312.41 a learner) was given as a total only, so it is entered by hand. Same reference number as the circular of 22 May 2025.",
+    accounts: {
+      TUITION: account({ TXB: 23.87, TXM: 11.00, EXB: 153.50, TGR: 54.80, STN: 36.50 }, {}, 279.67, 0),
+    },
+  },
+
   // ---- Junior (FDJSE): a rate per learner, plus a basic allocation per school.
   {
     programme: "FDJSE", level: "junior", ref: "MOE.HQs/3/7/33(15)", date: "2024-01-26",
