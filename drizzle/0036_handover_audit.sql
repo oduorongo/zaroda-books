@@ -1,0 +1,1 @@
+ALTER TABLE "accounts" ADD COLUMN "audit_up_to" text;

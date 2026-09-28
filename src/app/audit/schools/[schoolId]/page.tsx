@@ -20,7 +20,9 @@ export default async function AuditSchoolPage({ params, searchParams }: {
       <Link href="/audit">← All schools</Link>
       <h1 style={{ marginTop: "1rem" }}>{school.name}</h1>
       <p className="sub">
-        Books sent to you: {sent.map((a) => a.name).join(", ")}. Reports draw their figures from these
+        Books sent to you: {sent.map((a) => a.auditUpTo
+          ? `${a.name} (handover audit, up to ${new Date(`${a.auditUpTo}-01T00:00:00Z`).toLocaleDateString("en-KE", { month: "long", year: "numeric", timeZone: "UTC" })})`
+          : a.name).join(", ")}. Reports draw their figures from these
         books only; you write the findings.
       </p>
 

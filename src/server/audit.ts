@@ -28,7 +28,8 @@ export interface AuditableSchool {
   subCounty: string | null;
   orgId: string;
   orgName: string;
-  books: { accountId: string; name: string }[];
+  /** `upTo` is set on a book sent for a handover audit: the last month, "yyyy-mm", it covers. */
+  books: { accountId: string; name: string; upTo: string | null }[];
   lastPostedAt: Date | null;
 }
 
@@ -66,7 +67,7 @@ export async function schoolsInScope(scope: AuditScope & { id: string }): Promis
       lastPostedAt: null,
     };
     if (r.account?.auditSentTo !== scope.id) continue;
-    found.books.push({ accountId: r.account.id, name: r.account.name });
+    found.books.push({ accountId: r.account.id, name: r.account.name, upTo: r.account.auditUpTo });
     by.set(r.school.id, found);
   }
   return [...by.values()];

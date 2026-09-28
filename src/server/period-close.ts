@@ -99,7 +99,7 @@ export async function reopenMonth(accountId: string, month: string, reason: stri
     // A year sent for audit comes back from the auditor once it is reopened:
     // they audit closed figures, not ones still being changed.
     ...(account.auditSentTo ? [
-      db.update(schema.accounts).set({ auditSentTo: null, auditSentAt: null, auditSentBy: null })
+      db.update(schema.accounts).set({ auditSentTo: null, auditSentAt: null, auditSentBy: null, auditUpTo: null })
         .where(eq(schema.accounts.id, accountId)),
       db.insert(schema.auditLog).values({
         orgId: user.orgId, userId: user.id, action: "audit.withdrawn", entity: "account", entityId: accountId,

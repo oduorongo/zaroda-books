@@ -56,8 +56,9 @@ export async function paymentStatuses(txns: Txn[]): Promise<PaymentStatus[]> {
 export const needsHoi = (s: PaymentStatus) => s.status.state === "awaiting" || s.status.state === "changed";
 
 /** Voucher numbers of every payment not authorised as it now stands. */
-export async function unauthorisedVouchers(financialYearId: string): Promise<string[]> {
+export async function unauthorisedVouchers(financialYearId: string, upTo?: string): Promise<string[]> {
   return (await paymentStatuses(await getTxns(financialYearId)))
+    .filter((s) => !upTo || s.payment.date.slice(0, 7) <= upTo)
     .filter((s) => s.status.state !== "authorised")
     .map((s) => s.payment.vrNo ?? "—");
 }

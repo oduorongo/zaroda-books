@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq, isNull } from "drizzle-orm";
 import { db, schema } from "@/db";
 import {
-  auditBlockReason, auditorCanSee, missingDocumentsWarning, scdeAuditBlock, statementsAuditBlock, takesProject, yearClosed,
+  auditBlockReason, auditorCanSee, closedThrough, handoverCutoff, missingDocumentsWarning, scdeAuditBlock, statementsAuditBlock, takesProject, yearClosed,
   type AccountType, type Placed,
 } from "@/domain";
 import { loadBook } from "@/server/book-context";
@@ -10,6 +10,7 @@ import { unauthorisedVouchers } from "@/server/authorisation";
 import { documentsFor, monthsWithoutStatement, paymentsWithoutScde } from "@/server/documents";
 import { monthName } from "@/server/periods";
 import { getTxns } from "@/server/queries";
+import { latestHandover } from "@/server/audit-reports";
 import { emailLayout, sendEmail } from "@/server/email";
 import { SITE_URL } from "@/app/site-url";
 
@@ -28,12 +29,28 @@ export async function auditorsForSchool(school: Placed) {
   return grants.filter((g) => auditorCanSee(g.grant, school));
 }
 
-export async function sendForAudit(accountId: string, grantId: string) {
+/**
+ * Sends the book: the whole closed year, or, while a head hands over, the
+ * months up to the end of the handover month for the outgoing head's
+ * clearance. Either way, reopening a month takes it back.
+ */
+export async function sendForAudit(accountId: string, grantId: string, scope: "year" | "handover" = "year") {
   const { user, fy, school, account } = await loadBook(accountId, { write: true, require: "book.sendForAudit" });
 
   const periods = await db.select().from(schema.periods).where(eq(schema.periods.financialYearId, fy.id));
-  if (!yearClosed(periods)) throw new Error("Close the year, up to June, before sending the books for audit.");
-  const { blocked } = await auditChecks(account, school.id, fy.id);
+  let upTo: string | null = null;
+  let handover: typeof schema.hoiHandovers.$inferSelect | null = null;
+  if (scope === "handover") {
+    handover = await latestHandover(school.id);
+    upTo = handover ? handoverCutoff(handover.handoverDate, periods) : null;
+    if (!handover || !upTo) throw new Error("Record the head of institution handing over, in this book's year, first.");
+    if (!closedThrough(periods, upTo)) {
+      throw new Error(`Close every month up to ${monthName(`${upTo}-01`)} before sending the handover audit.`);
+    }
+  } else if (!yearClosed(periods)) {
+    throw new Error("Close the year, up to June, before sending the books for audit.");
+  }
+  const { blocked } = await auditChecks(account, school.id, fy.id, upTo ?? undefined);
   if (blocked) throw new Error(blocked);
 
   const [chosen] = await db
@@ -45,61 +62,76 @@ export async function sendForAudit(accountId: string, grantId: string) {
 
   await db.batch([
     db.update(schema.accounts)
-      .set({ auditSentTo: grantId, auditSentAt: new Date(), auditSentBy: user.id })
+      .set({ auditSentTo: grantId, auditSentAt: new Date(), auditSentBy: user.id, auditUpTo: upTo })
       .where(eq(schema.accounts.id, accountId)),
     db.insert(schema.auditLog).values({
       orgId: user.orgId, userId: user.id, action: "audit.sent", entity: "account", entityId: accountId,
-      before: JSON.stringify({ auditSentTo: account.auditSentTo }),
-      after: JSON.stringify({ auditSentTo: grantId, fy: fy.label }),
+      before: JSON.stringify({ auditSentTo: account.auditSentTo, auditUpTo: account.auditUpTo }),
+      after: JSON.stringify({ auditSentTo: grantId, fy: fy.label, auditUpTo: upTo }),
     }),
   ] as unknown as Parameters<typeof db.batch>[0]);
 
-  const book = `${school.name} — ${account.name} ${fy.label}`;
+  const book = `${school.name} — ${account.name} ${fy.label}`.replace(/</g, "&lt;");
+  const what = upTo && handover
+    ? `has been closed up to ${monthName(`${upTo}-01`)} and sent to you for a handover audit: `
+      + `${handover.officer.replace(/</g, "&lt;")} (TSC ${handover.tscNo.replace(/</g, "&lt;")}) is leaving on `
+      + `${handover.reason}, handing over on ${handover.handoverDate}.`
+    : "has been closed and sent to you for audit.";
   const url = `${SITE_URL}/audit`;
   try {
     await sendEmail({
       to: chosen.email,
-      subject: `${school.name} has sent its books for audit`,
+      subject: upTo ? `${school.name} has sent its books for a handover audit` : `${school.name} has sent its books for audit`,
       html: emailLayout({
-        heading: "Books sent for audit",
-        body: `<strong>${book.replace(/</g, "&lt;")}</strong> has been closed and sent to you for audit.`,
+        heading: upTo ? "Books sent for a handover audit" : "Books sent for audit",
+        body: `<strong>${book}</strong> ${what}`,
         buttonLabel: "Open your audit list",
         buttonUrl: url,
         footer: "Sent by Zaroda Books because a school chose you as its auditor.",
       }),
-      text: `${book} has been closed and sent to you for audit.\n\nOpen your audit list: ${url}`,
+      text: `${book} ${what.replace(/<[^>]+>/g, "")}
+
+Open your audit list: ${url}`,
     });
   } catch {
     // sendEmail records its own problems; the books are sent either way.
   }
 }
 
-/** Where a book stands with the audit: whether it may be sent, and to whom it went. */
 /**
- * What stops a book going for audit — payments the head has not authorised, and
- * infrastructure payments without an SCDE approval — and what only warns:
- * payments with no supporting documents. Exempt books predate all three.
+ * What stops a book going for audit — payments the head has not authorised,
+ * infrastructure payments without an SCDE approval, and months with no bank
+ * statement — and what only warns: payments with no supporting documents.
+ * A handover audit looks only at the months it covers, and there a missing
+ * statement only warns: statements are required at the year end.
+ * Exempt books predate all of this.
  */
-async function auditChecks(account: { id: string; type: string; authorisationExempt: boolean }, schoolId: string, fyId: string) {
+async function auditChecks(
+  account: { id: string; type: string; authorisationExempt: boolean }, schoolId: string, fyId: string, upTo?: string,
+) {
   if (account.authorisationExempt) return { blocked: null, warning: null };
-  const unauthorised = auditBlockReason(await unauthorisedVouchers(fyId));
+  const unauthorised = auditBlockReason(await unauthorisedVouchers(fyId, upTo));
   const scde = takesProject(account.type as AccountType)
-    ? scdeAuditBlock(await paymentsWithoutScde(account.id, schoolId, fyId)) : null;
+    ? scdeAuditBlock(await paymentsWithoutScde(account.id, schoolId, fyId, upTo)) : null;
   const statements = statementsAuditBlock(
-    (await monthsWithoutStatement(account.id, fyId)).map((m) => monthName(`${m}-01`)),
+    (await monthsWithoutStatement(account.id, fyId, upTo)).map((m) => monthName(`${m}-01`)),
   );
   const blocked = [
     unauthorised && `${unauthorised} Have the head authorise them from Payments first.`,
     scde && `${scde} Attach the approvals under Projects.`,
-    statements,
+    !upTo && statements,
   ].filter(Boolean).join(" ") || null;
 
-  const payments = (await getTxns(fyId)).filter((t) => t.kind === "payment");
+  const payments = (await getTxns(fyId)).filter((t) => t.kind === "payment" && (!upTo || t.date.slice(0, 7) <= upTo));
   const docs = await documentsFor(payments.map((p) => p.id));
-  const warning = missingDocumentsWarning(payments.filter((p) => !docs.has(p.id)).map((p) => (p.kind === "payment" && p.vrNo) || "—"));
+  const warning = [
+    missingDocumentsWarning(payments.filter((p) => !docs.has(p.id)).map((p) => (p.kind === "payment" && p.vrNo) || "—")),
+    upTo && statements && `${statements} It is needed before the year-end audit.`,
+  ].filter(Boolean).join(" ") || null;
   return { blocked, warning };
 }
 
+/** Where a book stands with the audit: whether it may be sent, whole or for a handover, and to whom it went. */
 export async function auditStatus(
   financialYearId: string, auditSentTo: string | null,
   account: { id: string; type: string; authorisationExempt: boolean }, schoolId: string,
@@ -112,9 +144,18 @@ export async function auditStatus(
       .innerJoin(schema.users, eq(schema.users.id, schema.auditors.userId))
       .where(eq(schema.auditors.id, auditSentTo))
     : [];
+  const handover = await latestHandover(schoolId);
+  const cutoff = handover ? handoverCutoff(handover.handoverDate, periods) : null;
   return {
     yearClosed: yearClosed(periods),
     ...(await auditChecks(account, schoolId, financialYearId)),
     sentTo: sentTo ?? null,
+    handover: handover && cutoff ? {
+      ...handover,
+      cutoff,
+      cutoffName: monthName(`${cutoff}-01`),
+      closed: closedThrough(periods, cutoff),
+      ...(await auditChecks(account, schoolId, financialYearId, cutoff)),
+    } : null,
   };
 }

@@ -174,10 +174,11 @@ export async function infrastructureCheck(
 }
 
 /** Payments in an infrastructure book whose project has no SCDE approval attached. */
-export async function paymentsWithoutScde(accountId: string, schoolId: string, fyId: string) {
+export async function paymentsWithoutScde(accountId: string, schoolId: string, fyId: string, upTo?: string) {
   const projects = await schoolProjects(schoolId);
   const approved = new Set(projects.filter((p) => p.letter).map((p) => p.key));
   return (await getTxns(fyId))
+    .filter((t) => !upTo || t.date.slice(0, 7) <= upTo)
     .flatMap((t) => t.kind === "payment" && !(t.project && approved.has(projectKey(t.project)))
       ? [{ vrNo: t.vrNo ?? "—", project: t.project ?? null }] : []);
 }
@@ -261,9 +262,9 @@ export async function bankStatementsFor(accountId: string) {
 }
 
 /** Months of the book no attached statement covers. The certificate does not stand in for a statement. */
-export async function monthsWithoutStatement(accountId: string, fyId: string) {
+export async function monthsWithoutStatement(accountId: string, fyId: string, upTo?: string) {
   const [months, statements] = await Promise.all([bookMonths(fyId), bankStatementsFor(accountId)]);
-  return uncoveredMonths(months, statements.filter((s) => s.kind === "statement")
+  return uncoveredMonths(months.filter((m) => !upTo || m <= upTo), statements.filter((s) => s.kind === "statement")
     .map((s) => ({ from: s.fromMonth, to: s.toMonth })));
 }
 

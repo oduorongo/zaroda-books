@@ -117,7 +117,7 @@ export async function saveSchoolAction(
 export async function sendForAuditAction(_prev: string | null, form: FormData): Promise<string | null> {
   const accountId = String(form.get("accountId") ?? "");
   try {
-    await sendForAudit(accountId, String(form.get("grantId") ?? ""));
+    await sendForAudit(accountId, String(form.get("grantId") ?? ""), form.get("scope") === "handover" ? "handover" : "year");
   } catch (e) {
     return e instanceof Error ? e.message : "The books could not be sent.";
   }

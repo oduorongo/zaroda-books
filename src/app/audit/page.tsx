@@ -76,6 +76,11 @@ export default async function AuditPage() {
                           <button type="submit" className="btn-link" style={{ fontSize: ".82rem", marginRight: ".8rem" }}>
                             {b.name}
                           </button>
+                          {b.upTo && (
+                            <span className="note" style={{ marginRight: ".8rem" }}>
+                              handover audit, to {new Date(`${b.upTo}-01T00:00:00Z`).toLocaleDateString("en-KE", { month: "short", year: "numeric", timeZone: "UTC" })}
+                            </span>
+                          )}
                         </form>
                       ))
                     )}

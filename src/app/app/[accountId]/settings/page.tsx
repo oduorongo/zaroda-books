@@ -8,6 +8,7 @@ import { issuedReportsOn, latestHandover } from "@/server/audit-reports";
 import { HandoverForm } from "./handover-form";
 import { AuthorisationForm } from "./authorisation-form";
 import { emailConfigured } from "@/server/email";
+import { monthName } from "@/server/periods";
 import { describeAuditScope } from "@/domain";
 import { getTxns } from "@/server/queries";
 import { AccountTypeForm } from "./account-type-form";
@@ -88,6 +89,7 @@ export default async function SettingsPage({
         {audit.sentTo ? (
           <p style={{ margin: 0 }}>
             <strong>Sent to {audit.sentTo.name}</strong> ({describeAuditScope(audit.sentTo.grant)})
+            {account.auditUpTo && <> for a handover audit, up to {monthName(`${account.auditUpTo}-01`)}</>}
             {account.auditSentAt ? ` on ${account.auditSentAt.toLocaleDateString("en-KE", { day: "numeric", month: "long", year: "numeric" })}` : ""}.
             Only that auditor can read this book. Reopening any month takes it back.
           </p>
@@ -102,9 +104,39 @@ export default async function SettingsPage({
           <p className="note" style={{ marginTop: ".9rem" }}>
             Set the school&apos;s county and sub-county above first: an auditor covers a place.
           </p>
+        ) : !audit.yearClosed && audit.handover ? (
+          <div style={{ marginTop: ".9rem" }}>
+            <p className="note" style={{ margin: 0, lineHeight: 1.6 }}>
+              <strong>{audit.handover.officer}</strong> is handing over on {audit.handover.handoverDate}. The outgoing
+              head&apos;s books can go for a handover audit now, up to the end of {audit.handover.cutoffName}; the rest of
+              the year follows at June.
+            </p>
+            {!audit.handover.closed ? (
+              <p className="note" style={{ marginTop: ".6rem" }}>
+                <Link href={`/app/${accountId}/bank-reconciliation?month=${audit.handover.cutoff}`}>Close every month up to {audit.handover.cutoffName}</Link> first.
+              </p>
+            ) : audit.handover.blocked ? (
+              <p className="note" style={{ marginTop: ".6rem" }}>{audit.handover.blocked}</p>
+            ) : auditors.length === 0 ? (
+              <p className="note" style={{ marginTop: ".6rem" }}>No auditor covers this school&apos;s area yet.</p>
+            ) : sends ? (
+              <>
+                {audit.handover.warning && <p className="note" style={{ marginTop: ".6rem", color: "var(--alarm)" }}>{audit.handover.warning}</p>}
+                <SendForAudit
+                  accountId={accountId}
+                  sentTo={account.auditSentTo}
+                  handoverTo={audit.handover.cutoffName}
+                  auditors={auditors.map((a) => ({ grantId: a.grant.id, label: `${a.name} — ${describeAuditScope(a.grant)}` }))}
+                />
+              </>
+            ) : (
+              <p className="note" style={{ marginTop: ".6rem" }}>The owner or accountant sends the books for audit.</p>
+            )}
+          </div>
         ) : !audit.yearClosed ? (
           <p className="note" style={{ marginTop: ".9rem" }}>
             The year is not closed yet. <Link href={`/app/${accountId}/bank-reconciliation`}>Close it up to June</Link> on the bank reconciliation.
+            If the head of institution is handing over, record it below to send their months for a handover audit.
           </p>
         ) : audit.blocked ? (
           <p className="note" style={{ marginTop: ".9rem" }}>
