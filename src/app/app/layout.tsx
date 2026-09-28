@@ -69,7 +69,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <BookSwitcher
             books={books.map((b) => ({
               accountId: b.account.id,
-              label: `${b.school.name} — ${b.account.name}${b.fyLabel ? ` ${b.fyLabel}` : ""}`,
+              schoolId: b.school.id,
+              school: b.school.name,
+              level: b.school.level,
+              account: b.account.name,
+              fyLabel: b.fyLabel ?? "",
             }))}
           />
           <div style={{ fontSize: ".78rem", color: "var(--on-dark-dim)", marginTop: ".5rem" }}>
