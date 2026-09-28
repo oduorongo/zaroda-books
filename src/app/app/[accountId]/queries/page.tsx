@@ -1,9 +1,10 @@
-import { can, QUERY_STATUS_LABEL } from "@/domain";
+import Link from "next/link";
+import { QUERY_STATUS_LABEL, queryPartyFor } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { queriesForAccount } from "@/server/audit-queries";
 import { getTxns } from "@/server/queries";
 import { ReportShell } from "../report-shell";
-import { RaiseQuery, Reply } from "./forms";
+import { RaiseQuery, Readdress, Reply } from "./forms";
 
 const when = (d: Date) =>
   d.toLocaleString("en-KE", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -18,7 +19,9 @@ export default async function QueriesPage({ params, searchParams }: {
   const queries = await queriesForAccount(accountId);
 
   const auditing = user.auditing;
-  const answers = !user.readOnly && can(user.role, "auditQuery.answer");
+  const partyOn = (addressedTo: "school" | "hoi") =>
+    auditing ? "auditor" as const : user.readOnly ? null : queryPartyFor(user, addressedTo);
+  const noHoiEmail = !school.hoiEmail && queries.some((q) => q.addressedTo === "hoi" && q.status !== "closed");
 
   // The entry the auditor clicked "Raise a query" on, if it is in this book.
   const entry = txn ? (await getTxns(fy.id)).find((t) => t.id === txn) : undefined;
@@ -38,31 +41,49 @@ export default async function QueriesPage({ params, searchParams }: {
     >
       {auditing && <RaiseQuery accountId={accountId} transactionId={entry?.id} subject={entrySubject} />}
 
+      {noHoiEmail && !auditing && (
+        <p className="error no-print">
+          A query is waiting for the head of institution, but the head has no email on record, so it has not reached
+          them. Set it in <Link href={`/app/${accountId}/settings`}>Book settings</Link>, under Authorisation of payments.
+        </p>
+      )}
+
       {queries.length === 0 && <p className="note">No audit queries on this book.</p>}
 
-      {queries.map((q) => (
-        <div key={q.id} className="card" style={{ marginBottom: "1.1rem", breakInside: "avoid" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "baseline", flexWrap: "wrap" }}>
-            <div style={{ fontWeight: 600 }}>⚑ {q.subject}</div>
-            <span className={`verdict ${q.status === "closed" ? "ok" : "off"}`} style={{ margin: 0 }}>
-              {QUERY_STATUS_LABEL[q.status]}
-              {q.status === "open" ? " — the school's turn" : q.status === "answered" ? " — the auditor's turn" : ""}
-            </span>
-          </div>
-          {q.messages.map((m) => (
-            <div key={m.id} style={{ marginTop: ".75rem", paddingLeft: ".8rem", borderLeft: `3px solid ${m.fromAuditor ? "var(--ink)" : "var(--gold)"}` }}>
-              <div className="note">{m.fromAuditor ? "Auditor" : "School"} · {m.name} · {when(m.at)}</div>
-              <div style={{ whiteSpace: "pre-wrap" }}>{m.body}</div>
+      {queries.map((q) => {
+        const party = partyOn(q.addressedTo);
+        const turn = q.status === "open" ? (q.addressedTo === "hoi" ? " — the head's turn" : " — the school's turn")
+          : q.status === "answered" ? " — the auditor's turn" : "";
+        return (
+          <div key={q.id} className="card" style={{ marginBottom: "1.1rem", breakInside: "avoid" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "baseline", flexWrap: "wrap" }}>
+              <div style={{ fontWeight: 600 }}>⚑ {q.subject}</div>
+              <span className={`verdict ${q.status === "closed" ? "ok" : "off"}`} style={{ margin: 0 }}>
+                {QUERY_STATUS_LABEL[q.status]}{turn}
+              </span>
             </div>
-          ))}
-          {q.status === "closed" && q.closedAt && (
-            <p className="note" style={{ marginTop: ".75rem" }}>Closed as settled on {when(q.closedAt)}.</p>
-          )}
-          {q.status !== "closed" && (auditing || answers) && (
-            <Reply accountId={accountId} queryId={q.id} asAuditor={auditing} />
-          )}
-        </div>
-      ))}
+            <div className="note" style={{ marginTop: ".3rem" }}>
+              For {q.addressedTo === "hoi" ? "the head of institution" : "whoever keeps the books"}
+              {auditing && q.status !== "closed" && <> · <Readdress accountId={accountId} queryId={q.id} addressedTo={q.addressedTo} /></>}
+            </div>
+            {q.messages.map((m) => (
+              <div key={m.id} style={{ marginTop: ".75rem", paddingLeft: ".8rem", borderLeft: `3px solid ${m.fromAuditor ? "var(--ink)" : "var(--gold)"}` }}>
+                <div className="note">
+                  {m.fromAuditor ? "Auditor" : m.fromHoi ? "Head of institution" : "School"} · {m.name}
+                  {m.via ? ` (${m.via})` : ""} · {when(m.at)}
+                </div>
+                <div style={{ whiteSpace: "pre-wrap" }}>{m.body}</div>
+              </div>
+            ))}
+            {q.status === "closed" && q.closedAt && (
+              <p className="note" style={{ marginTop: ".75rem" }}>Closed as settled on {when(q.closedAt)}.</p>
+            )}
+            {q.status !== "closed" && party && (
+              <Reply accountId={accountId} queryId={q.id} party={party} addressedTo={q.addressedTo} />
+            )}
+          </div>
+        );
+      })}
     </ReportShell>
   );
 }

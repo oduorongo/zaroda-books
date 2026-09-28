@@ -43,11 +43,12 @@ export function AuthorisationForm({ accountId, current, emailReady, canEdit }: {
           <label className="field">TSC number
             <input name="hoiTsc" defaultValue={current.hoiTsc ?? ""} />
           </label>
-          {route === "email" ? (
-            <label className="field">Head&apos;s own email
-              <input name="hoiEmail" type="email" defaultValue={current.hoiEmail ?? ""} required />
-            </label>
-          ) : <input type="hidden" name="hoiEmail" value={current.hoiEmail ?? ""} />}
+          <label className="field">Head&apos;s own email
+            <input name="hoiEmail" type="email" defaultValue={current.hoiEmail ?? ""} required={route === "email"} />
+            <span className="note">
+              {route === "email" ? "Authorisation codes and audit queries go here." : "Audit queries for the head go here."}
+            </span>
+          </label>
         </div>
         {canEdit && (
           <button type="submit" className="btn btn-primary" disabled={pending || !route}>

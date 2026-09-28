@@ -6,6 +6,7 @@ import { loadBook } from "@/server/book-context";
 import { auditorsForSchool, sendForAudit } from "@/server/audit-send";
 import { auditMail, escapeHtml } from "@/server/audit-mail";
 import { saveAuthorisationSettings } from "@/server/authorisation";
+import { sendOpenQueriesToHoi } from "@/server/audit-queries";
 import { isSubCountyOf, readHandover } from "@/domain";
 import { db, schema } from "@/db";
 import {
@@ -162,12 +163,14 @@ export async function saveAuthorisationAction(
 ): Promise<string | null> {
   const accountId = String(form.get("accountId") ?? "");
   try {
-    await saveAuthorisationSettings(accountId, {
+    const saved = await saveAuthorisationSettings(accountId, {
       route: String(form.get("route") ?? ""),
       hoiName: String(form.get("hoiName") ?? ""),
       hoiTsc: String(form.get("hoiTsc") ?? ""),
       hoiEmail: String(form.get("hoiEmail") ?? ""),
     });
+    // Queries already waiting on the head could not reach them before.
+    if (saved.emailChanged) await sendOpenQueriesToHoi(saved.schoolId);
   } catch (e) {
     return e instanceof Error ? e.message : "The settings could not be saved.";
   }

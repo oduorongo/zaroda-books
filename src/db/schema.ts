@@ -368,14 +368,24 @@ export const auditQueries = pgTable("audit_queries", {
   raisedAt: timestamp("raised_at").defaultNow().notNull(),
   closedBy: uuid("closed_by").references(() => users.id),
   closedAt: timestamp("closed_at"),
+  /** Whose answer the auditor wants: whoever keeps the books, or the head. */
+  addressedTo: text("addressed_to", { enum: ["school", "hoi"] }).default("school").notNull(),
+  /** Last reminder to the head, so it goes once a week and no more. */
+  remindedAt: timestamp("reminded_at"),
 }, (t) => [index("audit_queries_account_idx").on(t.accountId, t.status)]);
 
 /** The conversation on a query, the auditor's first message included. */
 export const auditQueryMessages = pgTable("audit_query_messages", {
   id: uuid("id").primaryKey().defaultRandom(),
   queryId: uuid("query_id").references(() => auditQueries.id).notNull(),
-  userId: uuid("user_id").references(() => users.id).notNull(),
+  // Null for a head answering by emailed link, who has no account.
+  userId: uuid("user_id").references(() => users.id),
   fromAuditor: boolean("from_auditor").notNull(),
+  /** The head of institution's own answer, not the bookkeeper's. */
+  fromHoi: boolean("from_hoi").default(false).notNull(),
+  /** The head's name and how they were known, e.g. "code emailed to …". */
+  authorName: text("author_name"),
+  via: text("via"),
   body: text("body").notNull(),
   at: timestamp("at").defaultNow().notNull(),
 }, (t) => [index("audit_query_messages_query_idx").on(t.queryId, t.at)]);
@@ -634,3 +644,22 @@ export const projectLetters = pgTable("project_letters", {
   removedAt: timestamp("removed_at"),
   removedBy: uuid("removed_by").references(() => users.id),
 }, (t) => [index("project_letters_school_idx").on(t.schoolId, t.projectKey)]);
+
+/**
+ * A link emailed to the head of institution for one audit query, so a head
+ * with no account can read it and answer. It works until the query closes;
+ * answering needs a code sent to the same address. Stored hashed.
+ */
+export const queryLinks = pgTable("query_links", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  queryId: uuid("query_id").references(() => auditQueries.id).notNull(),
+  tokenHash: text("token_hash").notNull().unique(),
+  sentTo: text("sent_to").notNull(),
+  hoiName: text("hoi_name").notNull(),
+  hoiTsc: text("hoi_tsc"),
+  codeHash: text("code_hash"),
+  codeIssuedAt: timestamp("code_issued_at"),
+  codeTries: integer("code_tries").default(0).notNull(),
+  codesSent: integer("codes_sent").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [index("query_links_query_idx").on(t.queryId)]);

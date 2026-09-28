@@ -1,14 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { closeQuery, raiseQuery, replyToQuery } from "@/server/audit-queries";
+import { closeQuery, raiseQuery, readdressQuery, replyToQuery } from "@/server/audit-queries";
 
 const done = (accountId: string) => revalidatePath(`/app/${accountId}`, "layout");
 
 export async function raiseQueryAction(_prev: string | null, form: FormData): Promise<string | null> {
   const accountId = String(form.get("accountId") ?? "");
   try {
-    await raiseQuery(accountId, String(form.get("transactionId") ?? "") || null, String(form.get("body") ?? ""));
+    await raiseQuery(
+      accountId, String(form.get("transactionId") ?? "") || null, String(form.get("body") ?? ""),
+      String(form.get("addressedTo") ?? "school"),
+    );
   } catch (e) {
     return e instanceof Error ? e.message : "The query could not be raised.";
   }
@@ -25,6 +28,17 @@ export async function replyAction(_prev: string | null, form: FormData): Promise
   }
   done(accountId);
   return "Sent.";
+}
+
+export async function readdressAction(_prev: string | null, form: FormData): Promise<string | null> {
+  const accountId = String(form.get("accountId") ?? "");
+  try {
+    await readdressQuery(String(form.get("queryId") ?? ""), String(form.get("addressedTo") ?? ""));
+  } catch (e) {
+    return e instanceof Error ? e.message : "The query could not be readdressed.";
+  }
+  done(accountId);
+  return null;
 }
 
 export async function closeAction(_prev: string | null, form: FormData): Promise<string | null> {

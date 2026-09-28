@@ -22,7 +22,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ acco
       columns: ["Date", "From", "Message"],
       rows: q.messages.map((m) => [
         m.at.toISOString().slice(0, 10),
-        `${m.fromAuditor ? "Auditor" : "School"}: ${m.name}`,
+        `${m.fromAuditor ? "Auditor" : m.fromHoi ? "Head of institution" : "School"}: ${m.name}${m.via ? ` (${m.via})` : ""}`,
         m.body,
       ]),
     })),

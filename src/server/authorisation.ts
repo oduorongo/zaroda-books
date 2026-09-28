@@ -1,5 +1,4 @@
 import "server-only";
-import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
 import {
@@ -12,17 +11,9 @@ import { emailConfigured, emailLayout, sendEmail } from "@/server/email";
 import { escapeHtml } from "@/server/audit-mail";
 import { getFinancialYear, getTxns, getVoteHeads } from "@/server/queries";
 import { SITE_URL } from "@/app/site-url";
+import { codeMatches, hashCode, hashToken, newCode, newToken } from "@/server/codes";
 
 /** The head of institution authorising payments. See src/domain/authorisation.ts. */
-
-const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
-
-/** Keyed, because six digits hashed plainly could be read back from a leaked table in moments. */
-function hashCode(requestId: string, code: string) {
-  const secret = process.env.AUTH_SECRET;
-  if (!secret) throw new Error("AUTH_SECRET is not set.");
-  return createHmac("sha256", secret).update(`${requestId}:${code}`).digest("hex");
-}
 
 export interface PaymentStatus {
   payment: Payment;
@@ -94,6 +85,7 @@ export async function saveAuthorisationSettings(accountId: string, input: {
       before: JSON.stringify(before), after: JSON.stringify(next),
     }),
   ]);
+  return { schoolId: school.id, emailChanged: Boolean(next.hoiEmail) && next.hoiEmail !== school.hoiEmail };
 }
 
 /** Every change to how the head authorises, oldest first, for the auditor. */
@@ -139,7 +131,7 @@ export async function sendToHoi(accountId: string) {
   if (!emailConfigured()) throw new Error("Email is not set up on Zaroda Books yet. Use the paper schedule for now.");
 
   const listed = await pendingFor(accountId);
-  const token = randomBytes(32).toString("base64url");
+  const token = newToken();
   const [req] = await db.insert(schema.authorisationRequests).values({
     accountId, route: "email", payments: JSON.stringify(listed),
     hoiName: school.hoiName, hoiTsc: school.hoiTsc, sentTo: school.hoiEmail,
@@ -198,7 +190,7 @@ export async function emailCode(token: string) {
   const { req, school } = found;
   if (req.codesSent >= MAX_CODES) throw new Error("Too many codes have been sent for this link. Ask for the payments to be sent again.");
 
-  const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+  const code = newCode();
   await db.update(schema.authorisationRequests)
     .set({ codeHash: hashCode(req.id, code), codeIssuedAt: new Date(), codeTries: 0, codesSent: req.codesSent + 1 })
     .where(eq(schema.authorisationRequests.id, req.id));
@@ -231,9 +223,7 @@ export async function decideByEmail(token: string, code: string, decisions: Deci
   if (!codeUsable({ issuedAt: req.codeIssuedAt, tries: req.codeTries, now: new Date() })) {
     throw new Error("Ask for a new code: the last one has lapsed or been tried too often.");
   }
-  const expected = Buffer.from(req.codeHash ?? "", "hex");
-  const given = Buffer.from(hashCode(req.id, code.trim()), "hex");
-  if (expected.length !== given.length || !timingSafeEqual(expected, given)) {
+  if (!codeMatches(req.codeHash, req.id, code)) {
     await db.update(schema.authorisationRequests).set({ codeTries: req.codeTries + 1 })
       .where(eq(schema.authorisationRequests.id, req.id));
     const left = MAX_CODE_TRIES - req.codeTries - 1;
