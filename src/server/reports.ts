@@ -208,8 +208,9 @@ export async function reportDoc(
     const payments = txns
       .filter((t) => t.kind === "payment")
       .sort((a, b) => a.date.localeCompare(b.date));
+    const docs = await documentsFor(payments.map((p) => p.id));
     sections = [{
-      columns: ["Date", "VR no.", "Particulars", "Vote heads", "Cash", "Bank"],
+      columns: ["Date", "VR no.", "Particulars", "Vote heads", "Cash", "Bank", "Evidence"],
       rows: payments.map((p) => [
         p.date, (p.kind === "payment" && p.vrNo) || "", p.particulars,
         p.kind === "payment"
@@ -217,10 +218,12 @@ export async function reportDoc(
           : "",
         csvAmount(p.kind === "payment" ? p.cash : 0),
         csvAmount(p.kind === "payment" ? p.bank : 0),
+        documentsLine(docs.get(p.id)),
       ]),
       total: ["", "", "Total paid", "",
         csvAmount(payments.reduce((a, p) => a + (p.kind === "payment" ? p.cash : 0), 0)),
-        csvAmount(payments.reduce((a, p) => a + (p.kind === "payment" ? p.bank : 0), 0))],
+        csvAmount(payments.reduce((a, p) => a + (p.kind === "payment" ? p.bank : 0), 0)),
+        `${docs.size} of ${payments.length} with evidence`],
     }];
   }
 

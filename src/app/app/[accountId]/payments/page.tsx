@@ -9,13 +9,30 @@ import { ReportShell } from "../report-shell";
 import { AuthorisationPanel } from "./authorisation-panel";
 import { decisionRow } from "../../../decision-table";
 import { needsHoi, paymentStatuses, requestsFor } from "@/server/authorisation";
-import { documentsFor, schoolProjects } from "@/server/documents";
+import { documentsFor, schoolProjects, type PaymentDocument } from "@/server/documents";
 
 function HoiStatus({ s }: { s: AuthorisationState | undefined }) {
   if (!s || s.state === "awaiting") return <span className="note">Awaiting</span>;
   if (s.state === "changed") return <span className="error">Amended since authorised</span>;
   if (s.state === "held") return <span className="error" title={s.reason}>Held back</span>;
   return <span title={authorisationLine(s.record)}>✓ Authorised</span>;
+}
+
+/** What the payment rests on: each attached file opens; an original kept on paper says so. */
+function Evidence({ accountId, docs }: { accountId: string; docs: PaymentDocument[] | undefined }) {
+  if (!docs?.length) return <span className="error">None</span>;
+  return (
+    <>
+      {docs.map((d, i) => (
+        <span key={d.id}>
+          {i > 0 && ", "}
+          {d.blobPath
+            ? <a href={`/app/${accountId}/documents/${d.id}`} target="_blank" rel="noreferrer">📎 {d.kind}</a>
+            : <span title="The original is on the paper file">{d.kind} (paper)</span>}
+        </span>
+      ))}
+    </>
+  );
 }
 
 /** Every receipt and payment line, so the form can date the balances. */
@@ -117,7 +134,7 @@ export default async function PaymentsPage({
           <thead>
             <tr>
               <th>Date</th><th>VR no.</th><th>Particulars</th><th>Vote heads</th>
-              <th className="n">Cash</th><th className="n">Bank</th><th>Head</th><th></th>
+              <th className="n">Cash</th><th className="n">Bank</th><th>Evidence</th><th>Head</th><th></th>
             </tr>
           </thead>
           <tbody>
@@ -137,6 +154,7 @@ export default async function PaymentsPage({
                 </td>
                 <td className="n">{p.kind === "payment" && p.cash ? formatKes(p.cash) : "—"}</td>
                 <td className="n">{p.kind === "payment" && p.bank ? formatKes(p.bank) : "—"}</td>
+                <td style={{ fontSize: ".84rem" }}><Evidence accountId={accountId} docs={docs.get(p.id)} /></td>
                 <td><HoiStatus s={statusOf.get(p.id)} /></td>
                 <td className="n">
                   <Link className="note" href={`/app/${accountId}/payments/${p.id}/voucher`}>View</Link>
@@ -150,6 +168,7 @@ export default async function PaymentsPage({
               <td colSpan={4}>Total paid</td>
               <td className="n">{formatKes(totalCash)}</td>
               <td className="n">{formatKes(totalBank)}</td>
+              <td className="note">{payments.filter((p) => docs.has(p.id)).length} of {payments.length}</td>
               <td></td>
               <td></td>
             </tr>
