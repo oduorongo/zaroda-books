@@ -4,7 +4,7 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { ROLES, ROLE_LABEL, can, type Role } from "@/domain";
 import { emailLayout, sendEmail } from "@/server/email";
-import { getCurrentUser } from "@/server/auth";
+import { chooseOrg, getCurrentUser } from "@/server/auth";
 
 /**
  * Who is in an org, and how someone else gets in.
@@ -216,4 +216,8 @@ export async function acceptInvite(code: string) {
     action: "people.joined", entity: "membership", entityId: null,
     before: null, after: JSON.stringify({ email: user.email, role: invite.role }),
   });
+
+  // Straight into the books they were invited to. Otherwise someone who has
+  // just signed up lands in their own empty books, the older membership.
+  await chooseOrg(invite.orgId);
 }
