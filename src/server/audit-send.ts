@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq, isNull } from "drizzle-orm";
 import { db, schema } from "@/db";
 import {
-  auditBlockReason, auditorCanSee, closedThrough, handoverCutoff, missingDocumentsWarning, scdeAuditBlock, statementsAuditBlock, takesProject, yearClosed,
+  auditBlockReason, auditorCanSee, closedThrough, handoverCutoff, missingDocumentsWarning, statementGaps, scdeAuditBlock, statementsAuditBlock, takesProject, yearClosed,
   type AccountType, type Placed,
 } from "@/domain";
 import { loadBook } from "@/server/book-context";
@@ -100,10 +100,10 @@ Open your audit list: ${url}`,
 
 /**
  * What stops a book going for audit — payments the head has not authorised,
- * infrastructure payments without an SCDE approval, and months with no bank
- * statement — and what only warns: payments with no supporting documents.
- * A handover audit looks only at the months it covers, and there a missing
- * statement only warns: statements are required at the year end.
+ * infrastructure payments without an SCDE approval, and no bank statement for
+ * the year's last month — and what only warns: payments with no supporting
+ * documents, and statements for other months. A handover audit looks only at
+ * the months it covers, and requires no statement at all.
  * Exempt books predate all of this.
  */
 async function auditChecks(
@@ -113,20 +113,26 @@ async function auditChecks(
   const unauthorised = auditBlockReason(await unauthorisedVouchers(fyId, upTo));
   const scde = takesProject(account.type as AccountType)
     ? scdeAuditBlock(await paymentsWithoutScde(account.id, schoolId, fyId, upTo)) : null;
-  const statements = statementsAuditBlock(
-    (await monthsWithoutStatement(account.id, fyId, upTo)).map((m) => monthName(`${m}-01`)),
-  );
+  const periods = await db.select({ month: schema.periods.month }).from(schema.periods)
+    .where(eq(schema.periods.financialYearId, fyId));
+  const lastMonth = periods.map((p) => p.month.slice(0, 7)).sort().at(-1) ?? "";
+  const gaps = statementGaps(await monthsWithoutStatement(account.id, fyId, upTo), lastMonth, Boolean(upTo));
+  const named = (months: string[]) => months.map((m) => monthName(`${m}-01`));
+  const statements = statementsAuditBlock(named(gaps.required));
+  const statementsAsked = gaps.optional.length
+    ? `No bank statement is attached for ${named(gaps.optional).join(", ")}. The auditor may ask for ${gaps.optional.length === 1 ? "it" : "them"}.`
+    : null;
   const blocked = [
     unauthorised && `${unauthorised} Have the head authorise them from Payments first.`,
     scde && `${scde} Attach the approvals under Projects.`,
-    !upTo && statements,
+    statements,
   ].filter(Boolean).join(" ") || null;
 
   const payments = (await getTxns(fyId)).filter((t) => t.kind === "payment" && (!upTo || t.date.slice(0, 7) <= upTo));
   const docs = await documentsFor(payments.map((p) => p.id));
   const warning = [
     missingDocumentsWarning(payments.filter((p) => !docs.has(p.id)).map((p) => (p.kind === "payment" && p.vrNo) || "—")),
-    upTo && statements && `${statements} It is needed before the year-end audit.`,
+    statementsAsked,
   ].filter(Boolean).join(" ") || null;
   return { blocked, warning };
 }

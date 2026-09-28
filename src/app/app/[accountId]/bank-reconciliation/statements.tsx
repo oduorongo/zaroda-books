@@ -17,11 +17,13 @@ export interface StatementView {
  * The bank's own statements for this book, beside the balance typed from
  * them. One file may cover one month or the whole year, as the bank issued it.
  */
-export function BankStatements({ accountId, statements, missing, months, month, canAttach }: {
+export function BankStatements({ accountId, statements, missing, yearEnd, months, month, canAttach }: {
   accountId: string;
   statements: StatementView[];
   /** Names of the months no statement covers. */
   missing: string[];
+  /** The year's last month, whose statement alone is required before the year-end audit. */
+  yearEnd: { name: string; missing: boolean };
   months: { value: string; label: string }[];
   /** The month being viewed, "yyyy-mm", which a new statement starts from. */
   month: string;
@@ -44,10 +46,11 @@ export function BankStatements({ accountId, statements, missing, months, month, 
           </li>
         ))}
       </ul>
-      <p className={missing.length ? "error" : "verdict ok"} style={{ margin: "0 0 1rem" }}>
-        {missing.length
-          ? `No statement yet for ${missing.join(", ")}. The book cannot be sent for audit until every month is covered.`
-          : "Every month of the year is covered by a statement."}
+      <p className={!missing.length ? "verdict ok" : yearEnd.missing ? "error" : "note"} style={{ margin: "0 0 1rem" }}>
+        {!missing.length ? "Every month of the year is covered by a statement."
+          : `No statement yet for ${missing.join(", ")}. ` + (yearEnd.missing
+            ? `The ${yearEnd.name} statement is required before the year-end audit; the others the auditor may ask for.`
+            : `Only the ${yearEnd.name} statement is required; the auditor may ask for these.`)}
       </p>
 
       {canAttach && (

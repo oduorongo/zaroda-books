@@ -22,3 +22,13 @@ export function statementsAuditBlock(missing: string[]): string | null {
   if (!missing.length) return null;
   return `No bank statement is attached for ${missing.join(", ")}. Attach them on the bank reconciliation.`;
 }
+
+/**
+ * Which uncovered months stop the audit. Only the year-end statement is
+ * required, since it proves the closing balance the whole audit rests on;
+ * the rest are asked for, never insisted on. A handover audit requires none.
+ */
+export function statementGaps(missing: string[], lastMonth: string, handover: boolean) {
+  const required = handover ? [] : missing.filter((m) => m === lastMonth);
+  return { required, optional: missing.filter((m) => !required.includes(m)) };
+}

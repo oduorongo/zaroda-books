@@ -185,6 +185,7 @@ export default async function Page({ params, searchParams }: {
             && !closedMonths.some((m) => s.fromMonth <= m && m <= s.toMonth),
         }))}
         missing={missing.map(nameOf)}
+        yearEnd={{ name: nameOf(book.endsOn.slice(0, 7)), missing: missing.includes(book.endsOn.slice(0, 7)) }}
         months={periods.map((p) => ({ value: p.month.slice(0, 7), label: monthName(p.month) }))}
         month={month}
         canAttach={can(user.role, "entry.post") && !user.readOnly}
