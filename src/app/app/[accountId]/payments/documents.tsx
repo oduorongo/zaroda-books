@@ -43,7 +43,8 @@ export function PaymentDocuments({ accountId, transactionId, docs, canAttach, ca
           <input type="hidden" name="accountId" value={accountId} />
           <input type="hidden" name="transactionId" value={transactionId} />
           <label className="field">What it is
-            <select name="kind" defaultValue="Receipt">
+            <select name="kind" defaultValue="" required>
+              <option value="" disabled>Choose…</option>
               {DOCUMENT_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
             </select>
           </label>
