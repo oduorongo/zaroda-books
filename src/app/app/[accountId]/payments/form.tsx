@@ -5,7 +5,8 @@ import { startTransition, useActionState, useEffect, useRef, useState } from "re
 import {
   cashAsAt, formatKes, parseAmount, type EntryDates, voteBalancesAsAt, type CashMove, type VoteEntry, type VoteHead,
 } from "@/domain";
-import { amendPayment, postPayment } from "./actions";
+import { amendPayment, attachDocumentAction, postPayment } from "./actions";
+import { DocumentRows, takeDocuments, type PendingDocument } from "./documents";
 import { NARRATION_STEM } from "./narration";
 
 /** A posted payment reopened for amendment. */
@@ -54,8 +55,16 @@ export function PaymentForm({
   const [chequeNo, setChequeNo] = useState(payment?.chequeNo ?? "");
   const [narration, setNarration] = useState(payment ? payment.narration || NARRATION_STEM : NARRATION_STEM);
   const dateBox = useRef<HTMLInputElement>(null);
+  // Supporting documents, new payments only: an amendment adds them from the voucher.
+  const [docRows, setDocRows] = useState([0]);
+  const nextRow = useRef(1);
+  const toAttach = useRef<PendingDocument[]>([]);
+  const [docProblem, setDocProblem] = useState<string | null>(null);
+  const [docNote, setDocNote] = useState<string | null>(null);
+  const [attaching, setAttaching] = useState(false);
 
-  // Posted: clear everything for the next voucher, the date included.
+  // Posted: clear everything for the next voucher, the date included, and
+  // attach the documents that came with it.
   const posted = state?.posted;
   useEffect(() => {
     if (!posted) return;
@@ -65,14 +74,43 @@ export function PaymentForm({
     setParticulars("");
     setChequeNo("");
     setNarration(NARRATION_STEM);
+    setDocRows([nextRow.current++]);
     dateBox.current?.focus();
-  }, [posted]);
+
+    const docs = toAttach.current;
+    toAttach.current = [];
+    setDocNote(null);
+    if (!docs.length) return;
+    setAttaching(true);
+    (async () => {
+      const failed: string[] = [];
+      for (const d of docs) {
+        const f = new FormData();
+        f.set("accountId", accountId);
+        f.set("transactionId", posted.id);
+        f.set("kind", d.kind);
+        if (d.file) f.set("file", d.file);
+        else f.set("onPaper", "on");
+        const err = await attachDocumentAction(null, f).catch(() => "The upload did not go through.");
+        if (err) failed.push(`${d.kind} — ${err}`);
+      }
+      setAttaching(false);
+      const done = docs.length - failed.length;
+      setDocNote(failed.length
+        ? `${done ? `${done} document${done === 1 ? "" : "s"} attached, but ` : ""}not attached: ${failed.join("; ")}. Attach ${failed.length === 1 ? "it" : "them"} from the voucher.`
+        : `${done} supporting document${done === 1 ? "" : "s"} attached.`);
+    })();
+  }, [posted, accountId]);
 
   // Submitted by hand rather than through the form's action, which would
   // reset the fields even when the save is refused and the figures are needed.
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
+    const { docs, error } = takeDocuments(data);
+    setDocProblem(error);
+    if (error) return;
+    toAttach.current = docs;
     startTransition(() => action(data));
   };
   const cashInHand = cashAsAt(openingCash, cashMoves, date);
@@ -115,6 +153,12 @@ export function PaymentForm({
           <Link href={`/app/${accountId}/payments/${posted.id}/voucher`}>View voucher</Link>
           {" · "}
           <Link href={`/app/${accountId}/payments/${posted.id}/edit`}>Amend</Link>
+          {attaching && <span className="note" style={{ display: "block", marginTop: ".25rem" }}>Attaching the supporting documents…</span>}
+          {docNote && (
+            <span className={docNote.includes("not attached") ? "error" : "note"} style={{ display: "block", marginTop: ".25rem" }}>
+              {docNote}
+            </span>
+          )}
           <span className="note" style={{ display: "block", marginTop: ".25rem" }}>
             Ready for the next payment.
           </span>
@@ -229,8 +273,21 @@ export function PaymentForm({
         </table>
       </div>
 
+      {!payment && (
+        <>
+          <div className="eyebrow" style={{ margin: "1.75rem 0 .6rem" }}>
+            Supporting documents <span style={{ textTransform: "none", letterSpacing: 0 }}>(optional)</span>
+          </div>
+          <DocumentRows
+            rows={docRows}
+            onAdd={() => setDocRows([...docRows, nextRow.current++])}
+            onRemove={(id) => setDocRows(docRows.filter((r) => r !== id))}
+          />
+        </>
+      )}
+
       <div style={{ display: "flex", alignItems: "center", gap: "1.1rem", marginTop: "1.4rem", flexWrap: "wrap" }}>
-        <button type="submit" className="btn btn-primary" disabled={pending || !total}>
+        <button type="submit" className="btn btn-primary" disabled={pending || attaching || !total}>
           {pending ? "Saving…" : payment ? "Save changes" : "Post payment"}
         </button>
         <div className="note">{note}</div>
@@ -243,7 +300,8 @@ export function PaymentForm({
           be closed while cash in hand is negative.
         </p>
       )}
-      {state?.error && <p className="error">{state.error}</p>}
+      {docProblem && <p className="error">{docProblem}</p>}
+      {state?.error && !docProblem && <p className="error">{state.error}</p>}
     </form>
   );
 }

@@ -62,6 +62,61 @@ export function PaymentDocuments({ accountId, transactionId, docs, canAttach, ca
   );
 }
 
+export interface PendingDocument { kind: string; file: File | null }
+
+/**
+ * Documents entered with a new payment. They cannot go in the same request:
+ * several photos or PDFs together pass what one request may carry. So they are
+ * taken off the form, and attached one by one once the payment is posted.
+ */
+export function takeDocuments(data: FormData): { docs: PendingDocument[]; error: string | null } {
+  const ids = [...data.keys()].filter((k) => k.startsWith("doc_kind_")).map((k) => k.slice("doc_kind_".length));
+  const docs: PendingDocument[] = [];
+  let error: string | null = null;
+  for (const id of ids) {
+    const kind = String(data.get(`doc_kind_${id}`) ?? "");
+    const file = data.get(`doc_file_${id}`);
+    const chosen = file instanceof File && file.size > 0 ? file : null;
+    const onPaper = data.get(`doc_paper_${id}`) === "on";
+    if (!chosen && !onPaper) {
+      if (kind) error ??= `Choose the ${kind.toLowerCase()} to attach, or tick that it is on the paper file.`;
+      continue;
+    }
+    if (!kind) error ??= "Choose what each supporting document is.";
+    else docs.push({ kind, file: onPaper ? null : chosen });
+  }
+  for (const k of [...data.keys()]) if (k.startsWith("doc_")) data.delete(k);
+  return { docs, error };
+}
+
+/** One document row per id, each optional; more can be added. */
+export function DocumentRows({ rows, onAdd, onRemove }: {
+  rows: number[]; onAdd: () => void; onRemove: (id: number) => void;
+}) {
+  return (
+    <div style={{ display: "grid", gap: ".75rem" }}>
+      {rows.map((id) => (
+        <div key={id} style={{ display: "flex", gap: ".75rem", alignItems: "center", flexWrap: "wrap" }}>
+          <select name={`doc_kind_${id}`} defaultValue="" aria-label="What the document is" style={{ flex: "0 1 16rem" }}>
+            <option value="" disabled>What it is…</option>
+            {DOCUMENT_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
+          </select>
+          <FileInput name={`doc_file_${id}`} />
+          <label style={{ display: "flex", gap: ".4rem", alignItems: "center", fontSize: ".86rem" }}>
+            <input type="checkbox" name={`doc_paper_${id}`} /> On the paper file only
+          </label>
+          {rows.length > 1 && (
+            <button type="button" className="btn-link note" onClick={() => onRemove(id)}>Remove</button>
+          )}
+        </div>
+      ))}
+      <button type="button" className="btn-link" style={{ justifySelf: "start" }} onClick={onAdd}>
+        + Add another document
+      </button>
+    </div>
+  );
+}
+
 function Remove({ accountId, documentId }: { accountId: string; documentId: string }) {
   const [error, action, pending] = useActionState(removeDocumentAction, null);
   return (
