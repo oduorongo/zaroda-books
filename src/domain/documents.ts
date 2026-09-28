@@ -8,7 +8,7 @@
  */
 
 export const DOCUMENT_KINDS = [
-  "Receipt", "Invoice", "Delivery note", "LPO/LSO", "Inspection & acceptance certificate", "Quotations", "SCDE approval", "Other",
+  "Receipt", "Invoice", "Delivery note", "LPO/LSO", "Inspection & acceptance certificate", "Quotations", "Other",
 ] as const;
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
 
