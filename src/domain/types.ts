@@ -25,6 +25,8 @@ export interface Payment extends Base {
   chequeNo?: string;
   /** Printed on the voucher only: "Being payment for ...". */
   narration?: string;
+  /** The infrastructure project paid for. See documents.ts. */
+  project?: string;
   cash: Cents;
   bank: Cents;
   allocations: Allocation[];

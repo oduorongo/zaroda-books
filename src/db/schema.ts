@@ -591,3 +591,46 @@ export const paymentAuthorisations = pgTable("payment_authorisations", {
   recordedBy: uuid("recorded_by").references(() => users.id),
   at: timestamp("at").defaultNow().notNull(),
 }, (t) => [index("payment_authorisations_txn_idx").on(t.transactionId, t.at)]);
+
+/**
+ * A document a payment rests on: a photo or PDF in the private blob store, or
+ * a note that the original is on the paper file. Removed rather than deleted,
+ * so what was once attached can still be answered for; `sha256` shows a file
+ * was never swapped. See src/domain/documents.ts.
+ */
+export const paymentDocuments = pgTable("payment_documents", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  transactionId: uuid("transaction_id").references(() => transactions.id, { onDelete: "cascade" }).notNull(),
+  kind: text("kind").notNull(),
+  /** Null when the original is on the paper file only. */
+  blobPath: text("blob_path"),
+  fileName: text("file_name"),
+  contentType: text("content_type"),
+  size: integer("size"),
+  sha256: text("sha256"),
+  addedBy: uuid("added_by").references(() => users.id).notNull(),
+  addedAt: timestamp("added_at").defaultNow().notNull(),
+  removedAt: timestamp("removed_at"),
+  removedBy: uuid("removed_by").references(() => users.id),
+}, (t) => [index("payment_documents_txn_idx").on(t.transactionId)]);
+
+/**
+ * The SCDE approval for an infrastructure project, one per project of the
+ * school, whichever year's book it was attached from. A project is known by
+ * its name on the receipts, compared by `projectKey`.
+ */
+export const projectLetters = pgTable("project_letters", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  schoolId: uuid("school_id").references(() => schools.id).notNull(),
+  projectKey: text("project_key").notNull(),
+  projectName: text("project_name").notNull(),
+  blobPath: text("blob_path").notNull(),
+  fileName: text("file_name").notNull(),
+  contentType: text("content_type").notNull(),
+  size: integer("size").notNull(),
+  sha256: text("sha256").notNull(),
+  addedBy: uuid("added_by").references(() => users.id).notNull(),
+  addedAt: timestamp("added_at").defaultNow().notNull(),
+  removedAt: timestamp("removed_at"),
+  removedBy: uuid("removed_by").references(() => users.id),
+}, (t) => [index("project_letters_school_idx").on(t.schoolId, t.projectKey)]);

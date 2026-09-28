@@ -11,6 +11,7 @@ import {
 import { getReportPeriod, monthKey, monthName } from "@/server/periods";
 import { getReconciliation } from "@/server/reconciliation";
 import { paymentStatuses } from "@/server/authorisation";
+import { documentsFor, documentsLine } from "@/server/documents";
 
 export type ReportName =
   | "cash-book" | "ledger" | "trial-balance" | "cash-flow"
@@ -395,6 +396,7 @@ export async function paymentVoucherDoc(
   const nameOf = (code: string) => heads.find((h) => h.code === code)?.name ?? code;
   const total = txn.cash + txn.bank;
   const authorisation = (await paymentStatuses(txns)).find((s) => s.payment.id === transactionId)?.status;
+  const docs = await documentsFor([transactionId]);
 
   return {
     title: "Payment voucher",
@@ -414,6 +416,8 @@ export async function paymentVoucherDoc(
           ["Cheque no.", txn.chequeNo ?? "—"],
           ["Payee / paid to", txn.particulars],
           ...(txn.narration ? [["Narration", txn.narration]] : []),
+          ...(txn.project ? [["Project", txn.project]] : []),
+          ["Supporting documents", documentsLine(docs.get(transactionId))],
           ["Paid from", txn.cash > 0 ? "Cash" : "Bank"],
           ["Amount paid", csvAmount(total)],
           ["Authorisation", voucherAuthorisationText(authorisation, account.authorisationExempt)],

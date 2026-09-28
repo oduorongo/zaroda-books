@@ -1,9 +1,14 @@
 import "server-only";
 import { and, eq, isNull } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { auditBlockReason, auditorCanSee, yearClosed, type Placed } from "@/domain";
+import {
+  auditBlockReason, auditorCanSee, missingDocumentsWarning, scdeAuditBlock, takesProject, yearClosed,
+  type AccountType, type Placed,
+} from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { unauthorisedVouchers } from "@/server/authorisation";
+import { documentsFor, paymentsWithoutScde } from "@/server/documents";
+import { getTxns } from "@/server/queries";
 import { emailLayout, sendEmail } from "@/server/email";
 import { SITE_URL } from "@/app/site-url";
 
@@ -27,8 +32,8 @@ export async function sendForAudit(accountId: string, grantId: string) {
 
   const periods = await db.select().from(schema.periods).where(eq(schema.periods.financialYearId, fy.id));
   if (!yearClosed(periods)) throw new Error("Close the year, up to June, before sending the books for audit.");
-  const blocked = account.authorisationExempt ? null : auditBlockReason(await unauthorisedVouchers(fy.id));
-  if (blocked) throw new Error(`${blocked} Have the head authorise them from Payments first.`);
+  const { blocked } = await auditChecks(account, school.id, fy.id);
+  if (blocked) throw new Error(blocked);
 
   const [chosen] = await db
     .select({ grant: schema.auditors, email: schema.users.email })
@@ -69,7 +74,31 @@ export async function sendForAudit(accountId: string, grantId: string) {
 }
 
 /** Where a book stands with the audit: whether it may be sent, and to whom it went. */
-export async function auditStatus(financialYearId: string, auditSentTo: string | null, exempt: boolean) {
+/**
+ * What stops a book going for audit — payments the head has not authorised, and
+ * infrastructure payments without an SCDE approval — and what only warns:
+ * payments with no supporting documents. Exempt books predate all three.
+ */
+async function auditChecks(account: { id: string; type: string; authorisationExempt: boolean }, schoolId: string, fyId: string) {
+  if (account.authorisationExempt) return { blocked: null, warning: null };
+  const unauthorised = auditBlockReason(await unauthorisedVouchers(fyId));
+  const scde = takesProject(account.type as AccountType)
+    ? scdeAuditBlock(await paymentsWithoutScde(account.id, schoolId, fyId)) : null;
+  const blocked = [
+    unauthorised && `${unauthorised} Have the head authorise them from Payments first.`,
+    scde && `${scde} Attach the approvals under Projects.`,
+  ].filter(Boolean).join(" ") || null;
+
+  const payments = (await getTxns(fyId)).filter((t) => t.kind === "payment");
+  const docs = await documentsFor(payments.map((p) => p.id));
+  const warning = missingDocumentsWarning(payments.filter((p) => !docs.has(p.id)).map((p) => (p.kind === "payment" && p.vrNo) || "—"));
+  return { blocked, warning };
+}
+
+export async function auditStatus(
+  financialYearId: string, auditSentTo: string | null,
+  account: { id: string; type: string; authorisationExempt: boolean }, schoolId: string,
+) {
   const periods = await db.select().from(schema.periods).where(eq(schema.periods.financialYearId, financialYearId));
   const [sentTo] = auditSentTo
     ? await db
@@ -80,7 +109,7 @@ export async function auditStatus(financialYearId: string, auditSentTo: string |
     : [];
   return {
     yearClosed: yearClosed(periods),
-    unauthorised: exempt ? null : auditBlockReason(await unauthorisedVouchers(financialYearId)),
+    ...(await auditChecks(account, schoolId, financialYearId)),
     sentTo: sentTo ?? null,
   };
 }

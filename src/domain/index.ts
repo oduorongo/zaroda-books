@@ -37,3 +37,4 @@ export * from "./projects";
 export * from "./handover";
 export * from "./period-statement";
 export * from "./authorisation";
+export * from "./documents";

@@ -34,7 +34,7 @@ describe("paymentTerms, what the head of institution approves", () => {
     const base = paymentTerms(pay());
     for (const change of [
       { date: "2025-02-11" }, { particulars: "Other" }, { narration: "x" }, { chequeNo: "9" },
-      { cash: 1_500_000, bank: 0 },
+      { cash: 1_500_000, bank: 0 }, { project: "Toilets" },
       { allocations: [{ voteHeadCode: "RMI", amount: 1_500_000 }] },
     ] as Partial<Payment>[]) {
       expect(paymentTerms(pay(change)), JSON.stringify(change)).not.toBe(base);

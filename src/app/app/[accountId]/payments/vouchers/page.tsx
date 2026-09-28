@@ -5,6 +5,7 @@ import { getTxns } from "@/server/queries";
 import { PrintButton } from "../../print-button";
 import { VoucherAuthorisation, VoucherSignatures } from "../signatures";
 import { paymentStatuses } from "@/server/authorisation";
+import { documentsFor, documentsLine } from "@/server/documents";
 import { LevelBand, PoweredBy } from "../../level-mark";
 
 /**
@@ -22,6 +23,7 @@ export default async function VoucherBookPage({
 
   const txns = await getTxns(fy.id);
   const statusOf = new Map((await paymentStatuses(txns)).map((s) => [s.payment.id, s.status]));
+  const docs = await documentsFor(txns.filter((t) => t.kind === "payment").map((t) => t.id));
   const vouchers = txns
     .filter((t) => t.kind === "payment")
     .sort((a, b) => Number(a.vrNo ?? 0) - Number(b.vrNo ?? 0));
@@ -72,6 +74,8 @@ export default async function VoucherBookPage({
                 <tr><td>Cheque no.</td><td className="n">{txn.chequeNo ?? "—"}</td></tr>
                 <tr><td>Payee / paid to</td><td className="n">{txn.particulars}</td></tr>
                 {txn.narration && <tr><td>Narration</td><td className="n">{txn.narration}</td></tr>}
+                {txn.project && <tr><td>Project</td><td className="n">{txn.project}</td></tr>}
+                <tr><td>Supporting documents</td><td className="n">{documentsLine(docs.get(txn.id))}</td></tr>
                 <tr><td>Paid from</td><td className="n">{txn.cash > 0 ? "Cash" : "Bank"}</td></tr>
                 <tr><td>Amount paid</td><td className="n">{formatKes(total)}</td></tr>
               </tbody>

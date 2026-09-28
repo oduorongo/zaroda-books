@@ -322,7 +322,12 @@ export function IpsasReport({ data, content, issuedAt }: {
                 {i === 0 && <td rowSpan={rows.length}>{y.label}</td>}
                 <td>{p.project}</td>
                 <td className="n">{kes(p.amount)}</td>
-                <td>{p.approval || "—"}</td>
+                <td>
+                  {p.approval || "—"}
+                  {"letterAttached" in p && p.letterAttached !== undefined && (
+                    <div className="note">{p.letterAttached ? "Approval attached" : "Approval not attached"}</div>
+                  )}
+                </td>
                 {i === 0 && <td className="n" rowSpan={rows.length}>{kes(spent)}</td>}
                 <td>{p.status || "—"}</td>
               </tr>

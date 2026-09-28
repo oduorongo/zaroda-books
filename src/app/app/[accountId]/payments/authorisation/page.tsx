@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { AUTH_ROUTE_LABEL, authorisationLine, formatKes } from "@/domain";
+import { AUTH_ROUTE_LABEL, authorisationLine, formatKes, projectKey, takesProject, type AccountType } from "@/domain";
+import { documentsFor, schoolProjects } from "@/server/documents";
 import { loadBook } from "@/server/book-context";
 import { getTxns } from "@/server/queries";
 import { paymentStatuses, requestsFor, settingsHistory } from "@/server/authorisation";
@@ -23,6 +24,13 @@ export default async function AuthorisationRegisterPage({ params }: {
     requestsFor(accountId),
   ]);
   const authorised = statuses.filter((s) => s.status.state === "authorised").length;
+  const infrastructure = takesProject(account.type as AccountType);
+  const [docs, projects] = await Promise.all([
+    documentsFor(statuses.map((s) => s.payment.id)),
+    infrastructure ? schoolProjects(school.id) : [],
+  ]);
+  const undocumented = statuses.filter((s) => !docs.has(s.payment.id));
+  const approved = new Set(projects.filter((p) => p.letter).map((p) => p.key));
 
   return (
     <ReportShell
@@ -65,6 +73,31 @@ export default async function AuthorisationRegisterPage({ params }: {
           {statuses.length === 0 && <tr><td colSpan={5} className="note">No payments yet.</td></tr>}
         </tbody>
       </table>
+
+      <h2>Payments with no supporting documents</h2>
+      {undocumented.length === 0 ? <p className="note">Every payment has a document attached or noted as on the paper file.</p> : (
+        <p>{undocumented.map((s) => `VR ${s.payment.vrNo ?? "—"}`).join(", ")}</p>
+      )}
+
+      {infrastructure && (
+        <>
+          <h2>SCDE approval of projects</h2>
+          <table>
+            <thead><tr><th>VR</th><th>Paid to</th><th>Project</th><th>SCDE approval</th></tr></thead>
+            <tbody>
+              {statuses.map(({ payment: p }) => (
+                <tr key={p.id}>
+                  <td className="mono">{p.vrNo ?? "—"}</td>
+                  <td>{p.particulars}</td>
+                  <td>{p.project ?? <span className="error">No project named</span>}</td>
+                  <td>{p.project && approved.has(projectKey(p.project)) ? "Attached" : <span className="error">Not attached</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="note"><Link href={`/app/${accountId}/projects`}>Projects and SCDE approvals →</Link></p>
+        </>
+      )}
 
       <h2>Changes to how the head authorises</h2>
       <table>

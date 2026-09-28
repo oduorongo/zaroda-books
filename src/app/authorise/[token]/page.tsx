@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { requestForToken } from "@/server/authorisation";
+import { documentsFor } from "@/server/documents";
 import { decisionRow } from "../../decision-table";
 import { AuthoriseForm } from "./form";
 
@@ -12,6 +13,7 @@ export const metadata: Metadata = { title: "Authorise payments", robots: { index
 export default async function AuthorisePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const found = await requestForToken(token);
+  const docs = await documentsFor(found?.payments.map((s) => s.payment.id) ?? []);
 
   return (
     <main className="wrap" style={{ padding: "2.5rem 1rem 5rem", maxWidth: 900, margin: "0 auto" }}>
@@ -36,7 +38,9 @@ export default async function AuthorisePage({ params }: { params: Promise<{ toke
             <AuthoriseForm
               token={token}
               sentTo={found.req.sentTo ?? ""}
-              rows={found.payments.map((s) => decisionRow(s.payment, s.terms))}
+              rows={found.payments.map((s) => decisionRow(s.payment, s.terms, (docs.get(s.payment.id) ?? []).map((d) => ({
+                label: d.kind, href: d.blobPath ? `/authorise/${token}/documents/${d.id}` : null,
+              }))))}
             />
           )}
         </>

@@ -73,6 +73,8 @@ export async function createTransaction(input: {
   rates?: LineRates;
   /** The project an infrastructure receipt funds. */
   project?: ReceiptProject;
+  /** The project an infrastructure payment is for. */
+  paymentProject?: string;
   /** Bank this receipt the same call: the contra lands in the same batch. */
   banking?: { date: string };
 }) {
@@ -113,7 +115,7 @@ export async function createTransaction(input: {
     cash: t.kind === "contra" ? t.amount : t.cash,
     bank: t.kind === "contra" ? t.amount : t.bank,
     enrolment: t.kind === "receipt" ? input.enrolment : undefined,
-    project: input.project?.project,
+    project: input.project?.project ?? input.paymentProject,
     projectApproval: input.project?.approval,
     projectStatus: input.project?.status,
     contraFrom: t.kind === "contra" ? t.from : undefined,
@@ -214,6 +216,8 @@ export async function updateTransaction(input: {
   rates?: LineRates;
   /** The project an infrastructure receipt funds. */
   project?: ReceiptProject;
+  /** The project an infrastructure payment is for. */
+  paymentProject?: string;
   /** A date rebanks the amended receipt; null leaves the money in the cash box. */
   banking?: { date: string } | null;
 }) {
@@ -269,7 +273,7 @@ export async function updateTransaction(input: {
     // frozen again. Rule 7 forbids recomputing when rates later change; this is
     // the entry itself being corrected.
     enrolment: t.kind === "receipt" ? input.enrolment ?? null : null,
-    project: input.project?.project ?? null,
+    project: input.project?.project ?? input.paymentProject ?? null,
     projectApproval: input.project?.approval ?? null,
     projectStatus: input.project?.status ?? null,
     contraFrom: t.kind === "contra" ? t.from : null,

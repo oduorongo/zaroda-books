@@ -4,7 +4,7 @@ import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { db, schema } from "@/db";
 import {
   auditorCanSee, buildIpsasYear, buildPeriodStatement, compareIpsas, disbursementRows, previousFinancialYear,
-  priorPeriod, IPSAS_FUND_OF,
+  priorPeriod, projectKey, IPSAS_FUND_OF,
   type AccountType, type AccountYear, type BookYear, type Cents, type DisbursementRow, type Grant, type IpsasComparison,
   type PeriodStatement,
 } from "@/domain";
@@ -55,7 +55,11 @@ async function accountYear(account: Account, label: string) {
 }
 
 /** A project the infrastructure account received money for, as the school recorded it. */
-export interface FundedProject { project: string; amount: Cents; approval: string; status: string }
+export interface FundedProject {
+  project: string; amount: Cents; approval: string; status: string;
+  /** Whether the SCDE approval itself is attached. Absent from reports issued before it was kept. */
+  letterAttached?: boolean;
+}
 
 /** A tuition payment large enough to list under procurement. */
 export interface MajorPayment { amount: Cents; payee: string; chequeNo: string }
@@ -99,6 +103,9 @@ export async function ipsasData(schoolId: string, labels: string[], grantId: str
   const accounts = await db.select().from(schema.accounts)
     .where(and(eq(schema.accounts.schoolId, schoolId), isNull(schema.accounts.archivedAt)));
 
+  const letters = new Set((await db.select({ key: schema.projectLetters.projectKey }).from(schema.projectLetters)
+    .where(and(eq(schema.projectLetters.schoolId, schoolId), isNull(schema.projectLetters.removedAt)))).map((l) => l.key));
+
   const years: IpsasYearData[] = [];
   for (const label of [...labels].sort()) {
     const current: AccountYear[] = [];
@@ -129,6 +136,7 @@ export async function ipsasData(schoolId: string, labels: string[], grantId: str
             amount: (was?.amount ?? 0) + t.cash + t.bank,
             approval: p.approval ?? "",
             status: p.status ?? "",
+            letterAttached: letters.has(projectKey(p.project)),
           });
         }
       }

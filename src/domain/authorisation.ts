@@ -30,12 +30,12 @@ export const MAX_CODES = 5;
 export const LINK_DAYS = 7;
 
 /** Everything that makes the payment, except its voucher number, which renumbering changes. */
-export function paymentTerms(p: Pick<Payment, "date" | "particulars" | "narration" | "chequeNo" | "cash" | "bank" | "allocations">): string {
+export function paymentTerms(p: Pick<Payment, "date" | "particulars" | "narration" | "chequeNo" | "project" | "cash" | "bank" | "allocations">): string {
   const lines = p.allocations
     .map((a) => [a.voteHeadCode, a.amount] as const)
     .sort((a, b) => a[0].localeCompare(b[0]));
   return JSON.stringify({
-    date: p.date, payee: p.particulars, narration: p.narration ?? "", cheque: p.chequeNo ?? "",
+    date: p.date, payee: p.particulars, narration: p.narration ?? "", cheque: p.chequeNo ?? "", project: p.project ?? "",
     cash: p.cash, bank: p.bank, lines,
   });
 }

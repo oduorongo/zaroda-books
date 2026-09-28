@@ -26,7 +26,7 @@ export default async function SettingsPage({
   const { user, fy, school, account } = await loadBook(accountId);
   const [auditors, audit, reports, handover] = await Promise.all([
     auditorsForSchool(school),
-    auditStatus(fy.id, account.auditSentTo, account.authorisationExempt),
+    auditStatus(fy.id, account.auditSentTo, account, school.id),
     issuedReportsOn(school.id),
     latestHandover(school.id),
   ]);
@@ -106,19 +106,22 @@ export default async function SettingsPage({
           <p className="note" style={{ marginTop: ".9rem" }}>
             The year is not closed yet. <Link href={`/app/${accountId}/bank-reconciliation`}>Close it up to June</Link> on the bank reconciliation.
           </p>
-        ) : audit.unauthorised ? (
+        ) : audit.blocked ? (
           <p className="note" style={{ marginTop: ".9rem" }}>
-            {audit.unauthorised}{" "}
+            {audit.blocked}{" "}
             <Link href={`/app/${accountId}/payments`}>Go to Payments</Link>.
           </p>
         ) : auditors.length === 0 ? (
           <p className="note" style={{ marginTop: ".9rem" }}>No auditor covers this school&apos;s area yet.</p>
         ) : sends ? (
+          <>
+          {audit.warning && <p className="note" style={{ marginTop: ".9rem", color: "var(--alarm)" }}>{audit.warning}</p>}
           <SendForAudit
             accountId={accountId}
             sentTo={account.auditSentTo}
             auditors={auditors.map((a) => ({ grantId: a.grant.id, label: `${a.name} — ${describeAuditScope(a.grant)}` }))}
           />
+          </>
         ) : (
           <p className="note" style={{ marginTop: ".9rem" }}>The owner or accountant sends the books for audit.</p>
         )}

@@ -8,6 +8,9 @@ import { PdfButton } from "../../../pdf-button";
 import { PrintButton } from "../../../print-button";
 import { VoucherAuthorisation, VoucherSignatures } from "../../signatures";
 import { paymentStatuses } from "@/server/authorisation";
+import { closedMonths, documentsFor } from "@/server/documents";
+import { PaymentDocuments } from "../../documents";
+import { can } from "@/domain";
 import { LevelBand, PoweredBy } from "../../../level-mark";
 
 export default async function VoucherPage({
@@ -24,6 +27,7 @@ export default async function VoucherPage({
   if (!txn || txn.kind !== "payment") notFound();
 
   const status = (await paymentStatuses(txns)).find((s) => s.payment.id === transactionId)?.status;
+  const [docs, closed] = await Promise.all([documentsFor([transactionId]), closedMonths(fy.id)]);
   const nameOf = (code: string) => heads.find((h) => h.code === code)?.name ?? code;
   const total = txn.cash + txn.bank;
   const voucherExport = `/app/${accountId}/payments/${transactionId}/voucher/export`;
@@ -68,6 +72,7 @@ export default async function VoucherPage({
             <tr><td>Cheque no.</td><td className="n">{txn.chequeNo ?? "—"}</td></tr>
             <tr><td>Payee / paid to</td><td className="n">{txn.particulars}</td></tr>
             {txn.narration && <tr><td>Narration</td><td className="n">{txn.narration}</td></tr>}
+            {txn.project && <tr><td>Project</td><td className="n">{txn.project}</td></tr>}
             <tr><td>Paid from</td><td className="n">{txn.cash > 0 ? "Cash" : "Bank"}</td></tr>
             <tr><td>Amount paid</td><td className="n">{formatKes(total)}</td></tr>
           </tbody>
@@ -92,6 +97,15 @@ export default async function VoucherPage({
           </tbody>
         </table>
 
+        <PaymentDocuments
+          accountId={accountId}
+          transactionId={transactionId}
+          docs={(docs.get(transactionId) ?? []).map((d) => ({
+            id: d.id, kind: d.kind, fileName: d.fileName, onPaper: !d.blobPath, addedOn: d.addedAt.toISOString().slice(0, 10),
+          }))}
+          canAttach={can(user.role, "entry.post") && !user.readOnly}
+          canRemove={can(user.role, "entry.amend") && !user.readOnly && !closed.has(txn.date.slice(0, 7))}
+        />
         <VoucherAuthorisation status={status} exempt={account.authorisationExempt} />
         <VoucherSignatures />
         <PoweredBy />

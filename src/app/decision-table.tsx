@@ -9,6 +9,8 @@ export interface DecisionRow {
   detail: string;
   amount: number;
   terms: string;
+  /** What the payment rests on, for the head to open before deciding. */
+  docs?: { label: string; href: string | null }[];
 }
 
 /**
@@ -33,7 +35,18 @@ export function DecisionTable({ rows }: { rows: DecisionRow[] }) {
               </td>
               <td className="mono">{r.vrNo ?? "—"}</td>
               <td className="mono">{r.date}</td>
-              <td>{r.payee}<div className="note">{r.detail}</div></td>
+              <td>
+                {r.payee}<div className="note">{r.detail}</div>
+                {r.docs && (
+                  <div className="note">
+                    {r.docs.length === 0 ? "No documents attached" : r.docs.map((d, i) => (
+                      <span key={i}>{i > 0 && ", "}{d.href
+                        ? <a href={d.href} target="_blank" rel="noreferrer">{d.label}</a>
+                        : `${d.label} (on paper file)`}</span>
+                    ))}
+                  </div>
+                )}
+              </td>
               <td className="n">{formatKes(r.amount)}</td>
               <td><input name={`reason_${r.id}`} placeholder="e.g. no delivery note" style={{ width: "100%" }} /></td>
             </tr>
@@ -49,8 +62,8 @@ export function DecisionTable({ rows }: { rows: DecisionRow[] }) {
   );
 }
 
-export const decisionRow = (p: Payment, terms: string): DecisionRow => ({
-  id: p.id, vrNo: p.vrNo, date: p.date, payee: p.particulars, terms, amount: p.cash + p.bank,
-  detail: [p.allocations.map((a) => `${a.voteHeadCode} ${formatKes(a.amount)}`).join(", "), p.narration]
+export const decisionRow = (p: Payment, terms: string, docs?: DecisionRow["docs"]): DecisionRow => ({
+  id: p.id, docs, vrNo: p.vrNo, date: p.date, payee: p.particulars, terms, amount: p.cash + p.bank,
+  detail: [p.allocations.map((a) => `${a.voteHeadCode} ${formatKes(a.amount)}`).join(", "), p.project, p.narration]
     .filter(Boolean).join(" · "),
 });

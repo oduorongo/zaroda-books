@@ -17,11 +17,12 @@ export interface PaymentDraft {
   particulars: string;
   narration: string;
   method: string;
+  project: string;
   amounts: Record<string, string>;
 }
 
 export function PaymentForm({
-  accountId, heads, entries, openingCash, cashMoves, dates, payment,
+  accountId, heads, entries, openingCash, cashMoves, dates, payment, projects,
 }: {
   accountId: string;
   heads: VoteHead[];
@@ -39,6 +40,8 @@ export function PaymentForm({
   /** The book's year, which the calendar is held to. */
   dates: EntryDates;
   payment?: PaymentDraft;
+  /** The school's infrastructure projects, on an infrastructure book only. */
+  projects?: { name: string; approved: boolean }[];
 }) {
   const [state, action, pending] = useActionState(payment ? amendPayment : postPayment, null);
   // Chosen on every voucher, never defaulted: a payment carried on the day
@@ -153,6 +156,23 @@ export function PaymentForm({
         <input name="particulars" placeholder="Text Book Centre — exercise books" required
           value={particulars} onChange={(e) => setParticulars(e.target.value)} />
       </label>
+
+      {projects && (
+        <label className="field" style={{ marginTop: "1.25rem" }}>Project
+          <select name="project" defaultValue={payment?.project ?? ""} key={posted?.id ?? "project"}>
+            <option value="">— choose the project —</option>
+            {projects.map((p) => (
+              <option key={p.name} value={p.name}>
+                {p.name}{p.approved ? "" : " — SCDE approval not attached"}
+              </option>
+            ))}
+          </select>
+          <span className="note">
+            A payment can be made only for a project whose SCDE approval is attached.{" "}
+            <Link href={`/app/${accountId}/projects`}>Projects and approvals</Link>
+          </span>
+        </label>
+      )}
 
       <label className="field" style={{ marginTop: "1.25rem" }}>Narration <span className="note">(optional — printed on the voucher)</span>
         <input name="narration" placeholder={`${NARRATION_STEM}the purchase of exams`}

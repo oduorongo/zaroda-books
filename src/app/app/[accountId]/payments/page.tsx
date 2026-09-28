@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { cashMoves, entryDates, buildLedger, formatKes, can, mayAuthorise, authorisationLine, type AuthorisationState } from "@/domain";
+import { cashMoves, entryDates, buildLedger, formatKes, can, mayAuthorise, authorisationLine, takesProject, type AccountType, type AuthorisationState } from "@/domain";
 import type { Txn, VoteEntry } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { queriedEntries } from "@/server/audit-queries";
@@ -9,6 +9,7 @@ import { ReportShell } from "../report-shell";
 import { AuthorisationPanel } from "./authorisation-panel";
 import { decisionRow } from "../../../decision-table";
 import { needsHoi, paymentStatuses, requestsFor } from "@/server/authorisation";
+import { documentsFor, schoolProjects } from "@/server/documents";
 
 function HoiStatus({ s }: { s: AuthorisationState | undefined }) {
   if (!s || s.state === "awaiting") return <span className="note">Awaiting</span>;
@@ -46,8 +47,15 @@ export default async function PaymentsPage({
   const totalCash = payments.reduce((a, p) => a + (p.kind === "payment" ? p.cash : 0), 0);
   const totalBank = payments.reduce((a, p) => a + (p.kind === "payment" ? p.bank : 0), 0);
 
-  const [statuses, requests] = await Promise.all([paymentStatuses(txns), requestsFor(accountId)]);
+  const infrastructure = takesProject(account.type as AccountType);
+  const [statuses, requests, projects] = await Promise.all([
+    paymentStatuses(txns), requestsFor(accountId), infrastructure ? schoolProjects(school.id) : null,
+  ]);
   const statusOf = new Map(statuses.map((s) => [s.payment.id, s.status]));
+  const docs = await documentsFor(statuses.map((s) => s.payment.id));
+  const docLinks = (id: string) => (docs.get(id) ?? []).map((d) => ({
+    label: d.kind, href: d.blobPath ? `/app/${accountId}/documents/${d.id}` : null,
+  }));
   const pending = statuses.filter(needsHoi);
   const held = statuses.flatMap((s) =>
     s.status.state === "held" ? [{ vrNo: s.payment.vrNo, payee: s.payment.particulars, reason: s.status.reason }] : []);
@@ -65,6 +73,9 @@ export default async function PaymentsPage({
     >
 
       <p className="no-print" style={{ margin: "0 0 1.4rem" }}>
+        {infrastructure && (
+          <><Link href={`/app/${accountId}/projects`}>Projects and SCDE approvals →</Link>{" · "}</>
+        )}
         <Link href={`/app/${accountId}/payments/vouchers`}>
           Print the year's voucher book →
         </Link>{" "}
@@ -77,7 +88,7 @@ export default async function PaymentsPage({
       <AuthorisationPanel
         accountId={accountId}
         counts={{ authorised: statuses.length - pending.length - held.length, pending: pending.length, held: held.length }}
-        pending={pending.map((s) => decisionRow(s.payment, s.terms))}
+        pending={pending.map((s) => decisionRow(s.payment, s.terms, docLinks(s.payment.id)))}
         held={held}
         iAuthorise={mayAuthorise(user.role, user.position) && !user.readOnly}
         iPost={can(user.role, "entry.post") && !user.readOnly}
@@ -96,6 +107,7 @@ export default async function PaymentsPage({
           openingCash={fy.openingCash}
           cashMoves={cashMoves(txns)}
           dates={entryDates(fy, txns.map((t) => t.date))}
+          projects={projects?.map((p) => ({ name: p.name, approved: Boolean(p.letter) }))}
         />
       )}
 

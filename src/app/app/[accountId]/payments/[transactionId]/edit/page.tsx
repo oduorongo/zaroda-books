@@ -6,6 +6,8 @@ import { loadBook } from "@/server/book-context";
 import { getPaymentForEdit, getTxns } from "@/server/queries";
 import { DeletePayment } from "../../delete-button";
 import { PaymentForm } from "../../form";
+import { schoolProjects } from "@/server/documents";
+import { takesProject, type AccountType } from "@/domain";
 
 /** Every receipt and payment line, so the form can date the balances. */
 const voteEntries = (txns: Txn[]): VoteEntry[] =>
@@ -28,9 +30,10 @@ export default async function AmendPaymentPage({
   const { accountId, transactionId } = await params;
   const { heads, fy, school, account } = await loadBook(accountId);
 
-  const [payment, txns] = await Promise.all([
+  const [payment, txns, projects] = await Promise.all([
     getPaymentForEdit(transactionId, accountId),
     getTxns(fy.id),
+    takesProject(account.type as AccountType) ? schoolProjects(school.id) : null,
   ]);
   if (!payment) notFound();
 
@@ -58,6 +61,7 @@ export default async function AmendPaymentPage({
         openingCash={fy.openingCash}
         cashMoves={cashMoves(others)}
         dates={entryDates(fy, [])}
+        projects={projects?.map((p) => ({ name: p.name, approved: Boolean(p.letter) }))}
         payment={{
           id: payment.id,
           date: payment.date,
@@ -66,6 +70,7 @@ export default async function AmendPaymentPage({
           particulars: payment.particulars,
           narration: payment.narration,
           method: payment.method,
+          project: payment.project,
           amounts: Object.fromEntries(
             heads.map((h) => [h.code, payment.amounts[h.code] ? String(toKes(payment.amounts[h.code])) : ""]),
           ),

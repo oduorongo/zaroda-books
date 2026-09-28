@@ -9,6 +9,7 @@ import { getPeriodForDate } from "@/server/periods";
 import { getPaymentForEdit } from "@/server/queries";
 import { createTransaction, deleteTransaction, updateTransaction } from "@/server/transactions";
 import { resequenceVouchers } from "@/server/voucher-numbers";
+import { attachPaymentDocument, infrastructureCheck, removePaymentDocument } from "@/server/documents";
 import { authoriseSignedIn, preparePaperSchedule, recordSignedSchedule, sendToHoi } from "@/server/authorisation";
 import { NARRATION_STEM } from "./narration";
 
@@ -86,10 +87,13 @@ export async function postPayment(
   form: FormData,
 ): Promise<PaymentState> {
   const accountId = String(form.get("accountId") ?? "");
-  const { user, heads, fy } = await loadBook(accountId, { write: true, require: "entry.post" });
+  const { user, heads, fy, account, school } = await loadBook(accountId, { write: true, require: "entry.post" });
 
   const p = readPaymentForm(form, heads);
   if (p.error) return { error: p.error };
+  const project = String(form.get("project") ?? "").trim();
+  const refused = await infrastructureCheck(account, school.id, project);
+  if (refused) return { error: refused };
 
   let id: string;
   try {
@@ -111,6 +115,7 @@ export async function postPayment(
         bank: p.method === "bank" ? p.total : 0,
         allocations: p.allocations,
       },
+      paymentProject: project || undefined,
     });
     await resequenceVouchers({ financialYearId: fy.id, orgId: user.orgId, userId: user.id });
   } catch (e) {
@@ -129,10 +134,13 @@ export async function amendPayment(
 ): Promise<PaymentState> {
   const accountId = String(form.get("accountId") ?? "");
   const transactionId = String(form.get("transactionId") ?? "");
-  const { user, heads, fy } = await loadBook(accountId, { write: true, require: "entry.amend" });
+  const { user, heads, fy, account, school } = await loadBook(accountId, { write: true, require: "entry.amend" });
 
   const p = readPaymentForm(form, heads);
   if (p.error) return { error: p.error };
+  const project = String(form.get("project") ?? "").trim();
+  const refused = await infrastructureCheck(account, school.id, project);
+  if (refused) return { error: refused };
 
   try {
     await updateTransaction({
@@ -152,6 +160,7 @@ export async function amendPayment(
         bank: p.method === "bank" ? p.total : 0,
         allocations: p.allocations,
       },
+      paymentProject: project || undefined,
     });
     await resequenceVouchers({ financialYearId: fy.id, orgId: user.orgId, userId: user.id });
   } catch (e) {
@@ -231,4 +240,32 @@ export async function recordScheduleAction(_prev: string | null, form: FormData)
   }
   revalidatePath(`/app/${accountId}`, "layout");
   redirect(`/app/${accountId}/payments/authorisation`);
+}
+
+export async function attachDocumentAction(_prev: string | null, form: FormData): Promise<string | null> {
+  const accountId = String(form.get("accountId") ?? "");
+  const file = form.get("file");
+  const onPaper = form.get("onPaper") === "on";
+  if (!onPaper && !(file instanceof File && file.size)) return "Choose a photo or PDF, or tick that it is on the paper file.";
+  try {
+    await attachPaymentDocument(
+      accountId, String(form.get("transactionId") ?? ""), String(form.get("kind") ?? ""),
+      onPaper ? null : file as File,
+    );
+  } catch (e) {
+    return e instanceof Error ? e.message : "The document could not be attached.";
+  }
+  revalidatePath(`/app/${accountId}`, "layout");
+  return null;
+}
+
+export async function removeDocumentAction(_prev: string | null, form: FormData): Promise<string | null> {
+  const accountId = String(form.get("accountId") ?? "");
+  try {
+    await removePaymentDocument(accountId, String(form.get("documentId") ?? ""));
+  } catch (e) {
+    return e instanceof Error ? e.message : "The document could not be removed.";
+  }
+  revalidatePath(`/app/${accountId}`, "layout");
+  return null;
 }
