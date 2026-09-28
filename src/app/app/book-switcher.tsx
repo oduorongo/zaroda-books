@@ -11,7 +11,7 @@ export function BookSwitcher({ books }: { books: { accountId: string; label: str
   return (
     <select
       value={accountId ?? ""}
-      onChange={(e) => router.push(`/app/${e.target.value}/receipts`)}
+      onChange={(e) => router.push(`/app/${e.target.value}/progress`)}
       aria-label="School and book"
     >
       {/* Nothing is open until a book is chosen: opening the first one on the

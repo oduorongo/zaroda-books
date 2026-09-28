@@ -18,11 +18,12 @@ export function SideNav({ queries = {} }: { queries?: Record<string, number> }) 
         { no: "03", label: "Cash and bank", href: `/app/${accountId}/cash-and-bank` },
         { no: "04", label: "Payments", href: `/app/${accountId}/payments` },
         { no: "05", label: "Final books", href: `/app/${accountId}/cash-book` },
-        { no: "06", label: "Audit queries", href: `/app/${accountId}/queries`, count: queries[accountId] },
-        { no: "07", label: "Vote heads", href: `/app/${accountId}/vote-heads` },
-        { no: "08", label: "Book settings", href: `/app/${accountId}/settings` },
-        { no: "09", label: "People", href: "/app/people" },
-        { no: "10", label: "Subscription", href: "/app/subscribe" },
+        { no: "06", label: "Book progress", href: `/app/${accountId}/progress` },
+        { no: "07", label: "Audit queries", href: `/app/${accountId}/queries`, count: queries[accountId] },
+        { no: "08", label: "Vote heads", href: `/app/${accountId}/vote-heads` },
+        { no: "09", label: "Book settings", href: `/app/${accountId}/settings` },
+        { no: "10", label: "People", href: "/app/people" },
+        { no: "11", label: "Subscription", href: "/app/subscribe" },
       ]
     : [
         { no: "01", label: "Create the book", href: "/app/new" },

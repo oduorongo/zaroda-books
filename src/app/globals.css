@@ -80,6 +80,16 @@ button { font: inherit; cursor: pointer; }
 .note { font-size: .84rem; color: var(--muted); }
 .error { color: var(--alarm); font-size: .88rem; }
 
+/* Book progress: where a stage stands */
+.step-chip {
+  display: inline-block; padding: .1rem .55rem; border-radius: 10px; white-space: nowrap;
+  font-size: .74rem; font-weight: 600; border: 1px solid var(--rule);
+}
+.step-done { background: #e6f0e6; border-color: #b9d3b9; color: #24542c; }
+.step-doing { background: #fbf1d6; border-color: #e6cf8f; color: #6b4f07; }
+.step-todo { background: var(--band); color: var(--muted); }
+.step-alarm { background: #f8e3de; border-color: #e6b3a8; color: var(--alarm); }
+
 /* Tabs */
 nav.tabs { display: flex; gap: 1.5rem; border-bottom: 1px solid var(--rule); margin-bottom: 1.75rem; }
 nav.tabs a { color: var(--muted); text-decoration: none; padding: .55rem 0; border-bottom: 2px solid transparent; }

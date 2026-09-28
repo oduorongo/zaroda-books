@@ -3,6 +3,7 @@ import Link from "next/link";
 import { describeAuditScope } from "@/domain";
 import { auditorScope, getCurrentUser } from "@/server/auth";
 import { getOrgBooks } from "@/server/queries";
+import { bookStages } from "@/server/book-progress";
 import { BookChooser } from "./book-chooser";
 
 /**
@@ -19,6 +20,7 @@ export default async function AppIndex() {
   ]);
   // An auditor with no books of their own came to audit, not to open one.
   if (!books.length) redirect(grant ? "/audit" : "/app/new");
+  const stages = await bookStages(books);
 
   return (
     <div style={{ maxWidth: 820 }}>
@@ -37,6 +39,7 @@ export default async function AppIndex() {
           level: b.school.level,
           account: b.account.name,
           fyLabel: b.fyLabel ?? "",
+          stage: stages[b.account.id],
         }))}
       />
     </div>

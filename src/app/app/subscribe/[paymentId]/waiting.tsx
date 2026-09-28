@@ -48,7 +48,7 @@ export function Waiting({ paymentId, initial, accountId }: {
         </p>
         <div style={{ display: "flex", gap: ".7rem", flexWrap: "wrap" }}>
           <Link
-            href={accountId ? `/app/${accountId}/receipts` : "/app/new"}
+            href={accountId ? `/app/${accountId}/progress` : "/app/new"}
             className="btn btn-gold"
             style={{ color: "#fff", textDecoration: "none" }}
           >

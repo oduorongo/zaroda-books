@@ -11,7 +11,14 @@ interface Book {
   level: SchoolLevel;
   account: string;
   fyLabel: string;
+  stage?: { key: string; label: string };
 }
+
+/** The colour of a book's stage in the list: done once audited, a warning once reopened. */
+const STAGE_TONE: Record<string, string> = {
+  audited: "done", sent: "doing", handover: "doing", closed: "doing", closing: "doing", writing: "doing",
+  reopened: "alarm", "not-started": "todo",
+};
 
 export function BookChooser({ books }: { books: Book[] }) {
   const [query, setQuery] = useState("");
@@ -50,10 +57,13 @@ export function BookChooser({ books }: { books: Book[] }) {
                 {rows.map((b) => (
                   <tr key={b.accountId}>
                     <td>
-                      <Link href={`/app/${b.accountId}/receipts`} style={{ fontWeight: 500 }}>{b.account}</Link>
+                      <Link href={`/app/${b.accountId}/progress`} style={{ fontWeight: 500 }}>{b.account}</Link>
                     </td>
                     <td className="n mono">FY {b.fyLabel || "—"}</td>
-                    <td className="n"><Link href={`/app/${b.accountId}/receipts`}>Open →</Link></td>
+                    <td>
+                      {b.stage && <span className={`step-chip step-${STAGE_TONE[b.stage.key] ?? "todo"}`}>{b.stage.label}</span>}
+                    </td>
+                    <td className="n"><Link href={`/app/${b.accountId}/progress`}>Open →</Link></td>
                   </tr>
                 ))}
               </tbody>
