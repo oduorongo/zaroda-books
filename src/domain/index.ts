@@ -38,3 +38,4 @@ export * from "./handover";
 export * from "./period-statement";
 export * from "./authorisation";
 export * from "./documents";
+export * from "./bank-statements";

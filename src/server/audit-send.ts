@@ -2,12 +2,13 @@ import "server-only";
 import { and, eq, isNull } from "drizzle-orm";
 import { db, schema } from "@/db";
 import {
-  auditBlockReason, auditorCanSee, missingDocumentsWarning, scdeAuditBlock, takesProject, yearClosed,
+  auditBlockReason, auditorCanSee, missingDocumentsWarning, scdeAuditBlock, statementsAuditBlock, takesProject, yearClosed,
   type AccountType, type Placed,
 } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { unauthorisedVouchers } from "@/server/authorisation";
-import { documentsFor, paymentsWithoutScde } from "@/server/documents";
+import { documentsFor, monthsWithoutStatement, paymentsWithoutScde } from "@/server/documents";
+import { monthName } from "@/server/periods";
 import { getTxns } from "@/server/queries";
 import { emailLayout, sendEmail } from "@/server/email";
 import { SITE_URL } from "@/app/site-url";
@@ -84,9 +85,13 @@ async function auditChecks(account: { id: string; type: string; authorisationExe
   const unauthorised = auditBlockReason(await unauthorisedVouchers(fyId));
   const scde = takesProject(account.type as AccountType)
     ? scdeAuditBlock(await paymentsWithoutScde(account.id, schoolId, fyId)) : null;
+  const statements = statementsAuditBlock(
+    (await monthsWithoutStatement(account.id, fyId)).map((m) => monthName(`${m}-01`)),
+  );
   const blocked = [
     unauthorised && `${unauthorised} Have the head authorise them from Payments first.`,
     scde && `${scde} Attach the approvals under Projects.`,
+    statements,
   ].filter(Boolean).join(" ") || null;
 
   const payments = (await getTxns(fyId)).filter((t) => t.kind === "payment");

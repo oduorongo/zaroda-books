@@ -663,3 +663,27 @@ export const queryLinks = pgTable("query_links", {
   codesSent: integer("codes_sent").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => [index("query_links_query_idx").on(t.queryId)]);
+
+/**
+ * A bank statement the bank issued, or its certificate of balance at the
+ * year end, attached to the book it proves. A statement covers the months
+ * it was issued for, from one to the whole year. Removed rather than
+ * deleted, and never once a month it covers is closed.
+ */
+export const bankStatements = pgTable("bank_statements", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  accountId: uuid("account_id").references(() => accounts.id).notNull(),
+  kind: text("kind", { enum: ["statement", "certificate"] }).notNull(),
+  /** "yyyy-mm". A certificate carries the year's last month in both. */
+  fromMonth: text("from_month").notNull(),
+  toMonth: text("to_month").notNull(),
+  blobPath: text("blob_path").notNull(),
+  fileName: text("file_name").notNull(),
+  contentType: text("content_type").notNull(),
+  size: integer("size").notNull(),
+  sha256: text("sha256").notNull(),
+  addedBy: uuid("added_by").references(() => users.id).notNull(),
+  addedAt: timestamp("added_at").defaultNow().notNull(),
+  removedAt: timestamp("removed_at"),
+  removedBy: uuid("removed_by").references(() => users.id),
+}, (t) => [index("bank_statements_account_idx").on(t.accountId)]);

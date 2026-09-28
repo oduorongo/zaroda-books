@@ -11,6 +11,8 @@ import { StatementForm } from "./statement-form";
 import { ClearToggle } from "./clear-toggle";
 import { CloseMonth } from "./close-month";
 import { unsettledCount } from "@/server/audit-queries";
+import { bankStatementsFor, monthsWithoutStatement } from "@/server/documents";
+import { BankStatements } from "./statements";
 
 export default async function Page({ params, searchParams }: {
   params: Promise<{ accountId: string }>;
@@ -39,6 +41,11 @@ export default async function Page({ params, searchParams }: {
         school: school.name, level: school.level, type: account.type, fy: nextLabel,
       })}`,
     };
+
+  const [statements, missing] = await Promise.all([bankStatementsFor(accountId), monthsWithoutStatement(accountId, book.id)]);
+  const closedMonths = periods.filter((p) => p.status === "closed").map((p) => p.month.slice(0, 7));
+  const nameOf = (m: string) => monthName(`${m}-01`);
+  const coversName = (from: string, to: string) => from === to ? nameOf(from) : `${nameOf(from)} to ${nameOf(to)}`;
 
   const outstanding = new Set([...r.uncredited, ...r.unpresented].map((i) => i.id));
 
@@ -169,7 +176,22 @@ export default async function Page({ params, searchParams }: {
         </>
       )}
 
+      <BankStatements
+        accountId={accountId}
+        statements={statements.map((s) => ({
+          id: s.id, kind: s.kind, covers: coversName(s.fromMonth, s.toMonth), fileName: s.fileName,
+          addedOn: s.addedAt.toISOString().slice(0, 10),
+          removable: can(user.role, "entry.amend") && !user.readOnly
+            && !closedMonths.some((m) => s.fromMonth <= m && m <= s.toMonth),
+        }))}
+        missing={missing.map(nameOf)}
+        months={periods.map((p) => ({ value: p.month.slice(0, 7), label: monthName(p.month) }))}
+        month={month}
+        canAttach={can(user.role, "entry.post") && !user.readOnly}
+      />
+
       <CloseMonth
+        missingStatements={(monthsToClose(periods, period.month).months ?? []).filter((m) => missing.includes(m.slice(0, 7))).map(monthName)}
         accountId={accountId}
         month={period.month}
         monthName={monthName(period.month)}

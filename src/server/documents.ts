@@ -4,7 +4,8 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import { get, put } from "@vercel/blob";
 import { db, schema } from "@/db";
 import {
-  DOCUMENT_KINDS, documentProblem, infrastructurePaymentProblem, projectKey, takesProject,
+  DOCUMENT_KINDS, documentProblem, infrastructurePaymentProblem, projectKey, statementCoverageProblem, takesProject,
+  uncoveredMonths,
   type AccountType,
 } from "@/domain";
 import { loadBook } from "@/server/book-context";
@@ -243,3 +244,72 @@ export async function closedMonths(fyId: string) {
 /** "Receipt (attached), Invoice (on paper file)", for printing. */
 export const documentsLine = (docs: PaymentDocument[] | undefined) =>
   docs?.length ? docs.map((d) => `${d.kind} (${d.blobPath ? "attached" : "on paper file"})`).join(", ") : "None";
+
+export type BankStatement = typeof schema.bankStatements.$inferSelect;
+
+/** The book's months, "yyyy-mm", in order. */
+async function bookMonths(fyId: string) {
+  const rows = await db.select({ month: schema.periods.month }).from(schema.periods)
+    .where(eq(schema.periods.financialYearId, fyId));
+  return rows.map((r) => r.month.slice(0, 7)).sort();
+}
+
+export async function bankStatementsFor(accountId: string) {
+  return db.select().from(schema.bankStatements)
+    .where(and(eq(schema.bankStatements.accountId, accountId), isNull(schema.bankStatements.removedAt)))
+    .orderBy(schema.bankStatements.fromMonth, schema.bankStatements.addedAt);
+}
+
+/** Months of the book no attached statement covers. The certificate does not stand in for a statement. */
+export async function monthsWithoutStatement(accountId: string, fyId: string) {
+  const [months, statements] = await Promise.all([bookMonths(fyId), bankStatementsFor(accountId)]);
+  return uncoveredMonths(months, statements.filter((s) => s.kind === "statement")
+    .map((s) => ({ from: s.fromMonth, to: s.toMonth })));
+}
+
+export async function attachBankStatement(accountId: string, input: {
+  kind: string; from: string; to: string; file: File;
+}) {
+  const { user, fy, school } = await loadBook(accountId, { write: true, require: "entry.post" });
+  const months = await bookMonths(fy.id);
+  const kind = input.kind === "certificate" ? "certificate" : "statement";
+  // The certificate speaks for the balance at the year end, so it sits on the last month.
+  const [from, to] = kind === "certificate" ? [months.at(-1)!, months.at(-1)!] : [input.from, input.to];
+  const problem = statementCoverageProblem(from, to, months);
+  if (problem) throw new Error(problem);
+  const stored = await store(school.id, input.file);
+  const [row] = await db.insert(schema.bankStatements).values({
+    accountId, kind, fromMonth: from, toMonth: to, addedBy: user.id, ...stored,
+  }).returning();
+  await db.insert(schema.auditLog).values({
+    orgId: user.orgId, userId: user.id, action: "statement.added", entity: "bank_statement", entityId: row.id,
+    after: JSON.stringify({ kind, from, to, sha256: stored.sha256 }),
+  });
+}
+
+export async function removeBankStatement(accountId: string, statementId: string) {
+  const { user, fy } = await loadBook(accountId, { write: true, require: "entry.amend" });
+  const [row] = await db.select().from(schema.bankStatements)
+    .where(and(eq(schema.bankStatements.id, statementId), eq(schema.bankStatements.accountId, accountId)));
+  if (!row || row.removedAt) throw new Error("Statement not found.");
+  const closed = await closedMonths(fy.id);
+  if ([...closed].some((m) => row.fromMonth <= m && m <= row.toMonth)) {
+    throw new Error("A month this statement covers is closed. It can be added to, not removed.");
+  }
+  await db.batch([
+    db.update(schema.bankStatements).set({ removedAt: new Date(), removedBy: user.id })
+      .where(eq(schema.bankStatements.id, row.id)),
+    db.insert(schema.auditLog).values({
+      orgId: user.orgId, userId: user.id, action: "statement.removed", entity: "bank_statement", entityId: row.id,
+      before: JSON.stringify({ kind: row.kind, from: row.fromMonth, to: row.toMonth, sha256: row.sha256 }),
+    }),
+  ]);
+}
+
+export async function openBankStatement(accountId: string, statementId: string) {
+  await loadBook(accountId);
+  const [row] = await db.select().from(schema.bankStatements)
+    .where(and(eq(schema.bankStatements.id, statementId), eq(schema.bankStatements.accountId, accountId)));
+  if (!row || row.removedAt) throw new Error("Statement not found.");
+  return stream(row.blobPath, row.fileName);
+}

@@ -6,6 +6,7 @@ import { closeMonthAction, reopenMonthAction } from "./actions";
 
 export function CloseMonth({
   accountId, month, monthName, closed, reconciled, closes, reopens, canClose, canReopen, nextYear, openQueries,
+  missingStatements,
 }: {
   accountId: string;
   month: string;
@@ -22,6 +23,8 @@ export function CloseMonth({
   nextYear: { label: string; href: string; exists: boolean } | null;
   /** Audit queries not yet closed — a warning, never a bar to closing. */
   openQueries: number;
+  /** Months being closed with no bank statement attached — a warning, never a bar. */
+  missingStatements: string[];
 }) {
   const [closeError, close, closing] = useActionState(closeMonthAction, null);
   const [reopenError, reopen, reopening] = useActionState(reopenMonthAction, null);
@@ -50,6 +53,11 @@ export function CloseMonth({
           <p className="note" style={{ color: "var(--alarm)", marginTop: ".6rem" }}>
             ⚑ {openQueries} audit quer{openQueries === 1 ? "y is" : "ies are"} still open on this book.{" "}
             <Link href={`/app/${accountId}/queries`}>See the queries</Link>. You can still close.
+          </p>
+        )}
+        {missingStatements.length > 0 && (
+          <p className="note" style={{ color: "var(--alarm)", marginTop: ".6rem" }}>
+            No bank statement is attached for {missingStatements.join(", ")}. You can still close; attach it before sending for audit.
           </p>
         )}
         {closeError && <p className="error">{closeError}</p>}
