@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   LETTER_DEFAULTS, buildLetter, countWords, letterAmount, letterDate, maskAccountNo, programmeFor,
-  termRoman, type LetterInput,
+  receiptTerm, termRoman, type LetterInput,
 } from "../capitation-letter";
 import { toCents } from "../money";
 
@@ -165,5 +165,38 @@ describe("buildLetter", () => {
 
   it("names account rows in capitals, as the Ministry's forms do", () => {
     expect(letter.rows.map((r) => r.name)).toEqual(["OPERATIONS", "TUITION"]);
+  });
+});
+
+describe("receiptTerm", () => {
+  it("takes the term a receipt names, in figures or numerals", () => {
+    expect(receiptTerm({ date: "2025-10-21", particulars: "TERM 3 DISBURSEMENT" })).toEqual({ term: 3, year: 2025 });
+    expect(receiptTerm({ date: "2026-04-24", particulars: "Term II capitation" })).toEqual({ term: 2, year: 2026 });
+    expect(receiptTerm({ date: "2026-01-05", particulars: "T1 FPE" })).toEqual({ term: 1, year: 2026 });
+  });
+
+  it("takes a named term over the month it arrived in", () => {
+    // Term 2 money that came late, in August.
+    expect(receiptTerm({ date: "2026-08-03", particulars: "TERM 2 DISBURSEMENT" })).toEqual({ term: 2, year: 2026 });
+  });
+
+  it("puts term 1 money paid in December in the year after", () => {
+    expect(receiptTerm({ date: "2025-12-18", particulars: "Term 1 disbursement" })).toEqual({ term: 1, year: 2026 });
+  });
+
+  it("takes a year the receipt names", () => {
+    expect(receiptTerm({ date: "2026-01-10", particulars: "Term 3 2025 balance" })).toEqual({ term: 3, year: 2025 });
+  });
+
+  it("reads capitation that names no term from the month", () => {
+    expect(receiptTerm({ date: "2026-02-10", particulars: "Capitation" })).toEqual({ term: 1, year: 2026 });
+    expect(receiptTerm({ date: "2026-06-10", particulars: "FDJS funds" })).toEqual({ term: 2, year: 2026 });
+    expect(receiptTerm({ date: "2026-09-10", particulars: "Funds received", capitation: true })).toEqual({ term: 3, year: 2026 });
+  });
+
+  it("leaves out a receipt that is not capitation", () => {
+    expect(receiptTerm({ date: "2026-02-10", particulars: "Bank interest" })).toBeNull();
+    // "Tuition" must not read as a term.
+    expect(receiptTerm({ date: "2026-02-10", particulars: "Tuition refund" })).toBeNull();
   });
 });

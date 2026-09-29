@@ -1,6 +1,6 @@
 import "server-only";
 import { notFound } from "next/navigation";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import { db, schema } from "@/db";
 import {
   LETTER_DEFAULTS, TERMS, buildLetter, isCapitationAccount, seesCapitationLetter,
@@ -11,8 +11,8 @@ import { getFinancialYear, getTxns } from "@/server/queries";
 
 /**
  * The book the letter was opened from, refused as not found to anyone who
- * should not know it exists: an auditor, a freelancer, a person with no
- * position yet, a view-as session, or a book the Ministry does not fund.
+ * should not know it exists: an auditor, a person with no position yet,
+ * a view-as session, or a book the Ministry does not fund.
  */
 export async function loadLetterBook(accountId: string, opts: { write?: boolean } = {}) {
   const book = await loadBook(accountId, opts.write ? { write: true, require: "letter.edit" } : {});
@@ -35,9 +35,18 @@ export async function letterBooks(schoolId: string, level: typeof schema.schools
       .filter((a) => isCapitationAccount(level, a.type as AccountType))
       .map(async (account) => {
         const fy = await getFinancialYear(account.id);
-        const receipts = (await getTxns(fy.id))
+        const posted = (await getTxns(fy.id))
           .filter((t): t is Receipt => t.kind === "receipt")
           .sort((a, b) => a.date.localeCompare(b.date));
+        // Worked from a circular's rates: capitation, whatever it is called.
+        const rated = posted.length ? await db.selectDistinct({ id: schema.allocations.transactionId })
+          .from(schema.allocations)
+          .where(and(
+            inArray(schema.allocations.transactionId, posted.map((r) => r.id)),
+            or(isNotNull(schema.allocations.perLearner), isNotNull(schema.allocations.flatAmount)),
+          )) : [];
+        const capitation = new Set(rated.map((r) => r.id));
+        const receipts = posted.map((r) => ({ ...r, capitation: capitation.has(r.id) }));
         return { account, fy, receipts };
       }),
   );

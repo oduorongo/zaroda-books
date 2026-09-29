@@ -22,6 +22,36 @@ export const programmeFor = (level: SchoolLevel) => PROGRAMME[level];
 
 export const termRoman = (term: Term) => ["I", "II", "III"][term - 1];
 
+const NAMED_TERM = /\b(?:term|t)\s*[-.]?\s*(1|2|3|iii|ii|i)\b/i;
+const NAMED_YEAR = /\b(20\d\d)\b/;
+const LOOKS_CAPITATION = /capitation|disburs|\bfpe\b|\bfdj|\bfds|tranche|grant/i;
+
+/**
+ * Which term's capitation a receipt is, or null for one that is not
+ * capitation. Receipts do not record it, so it is read from the receipt:
+ * the term it names ("TERM 2 DISBURSEMENT"), else the month it arrived in —
+ * term 1 money from December to March, term 2 from April to July, term 3
+ * from August to November. The year is the one named, else the term's own:
+ * term 1 money paid in December belongs to the year after.
+ */
+export function receiptTerm(r: { date: string; particulars: string; capitation?: boolean }): { term: Term; year: number } | null {
+  const month = Number(r.date.slice(5, 7));
+  const dateYear = Number(r.date.slice(0, 4));
+  const named = r.particulars.match(NAMED_TERM)?.[1]?.toLowerCase();
+  const namedYear = Number(r.particulars.match(NAMED_YEAR)?.[1]) || null;
+
+  let term: Term;
+  if (named) {
+    term = ({ "1": 1, i: 1, "2": 2, ii: 2, "3": 3, iii: 3 } as Record<string, Term>)[named];
+  } else if (r.capitation || LOOKS_CAPITATION.test(r.particulars)) {
+    term = month === 12 || month <= 3 ? 1 : month <= 7 ? 2 : 3;
+  } else {
+    return null;
+  }
+  const year = namedYear ?? (term === 1 && month === 12 ? dateYear + 1 : dateYear);
+  return { term, year };
+}
+
 const WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
 export const countWords = (n: number) => WORDS[n] ?? String(n);
 

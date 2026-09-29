@@ -1,5 +1,5 @@
 import {
-  TERMS, can, formatKes, maskAccountNo, termRoman,
+  can, maskAccountNo, receiptTerm,
 } from "@/domain";
 import {
   letterBooks, letterDetailsFor, letterFor, loadLetterBook, parseLetterChoice,
@@ -7,6 +7,7 @@ import {
 import { BackLink } from "../../back-link";
 import { LetterDetailsForm } from "./details-form";
 import { LetterPdfButton } from "./letter-pdf-button";
+import { ChooseLetterForm } from "./choose-form";
 
 export default async function CapitationLetterPage({
   params,
@@ -33,7 +34,6 @@ export default async function CapitationLetterPage({
   const exportHref = `/app/${accountId}/capitation-letter/export?${query.toString()}`;
 
   const today = new Date().toISOString().slice(0, 10);
-  const ticked = new Set(choice?.receiptIds ?? []);
 
   return (
     <div style={{ maxWidth: 820 }}>
@@ -69,43 +69,29 @@ export default async function CapitationLetterPage({
           </div>
         </details>
 
-        <form method="get" className="card stack" style={{ marginBottom: "1.35rem" }}>
-          <div className="grid-2">
-            <label className="field">Term
-              <select name="term" defaultValue={choice?.term ?? ""} required>
-                <option value="" disabled>Choose…</option>
-                {TERMS.map((t) => <option key={t} value={t}>Term {termRoman(t)}</option>)}
-              </select>
-            </label>
-            <label className="field">Year
-              <input name="year" type="number" min={2000} max={2100} defaultValue={choice?.year ?? today.slice(0, 4)} required />
-            </label>
-            <label className="field">Date of the letter
-              <input name="date" type="date" defaultValue={choice?.date ?? today} required />
-            </label>
-          </div>
-
-          {books.map(({ account, fy, receipts }) => (
-            <fieldset key={account.id} style={{ border: 0, padding: 0, margin: 0 }}>
-              <legend className="eyebrow">{account.name} · FY {fy.label}</legend>
-              {receipts.length === 0 && <p className="note">No receipts posted in this book.</p>}
-              {receipts.map((r) => (
-                <label key={r.id} style={{ display: "flex", gap: ".6rem", alignItems: "baseline", padding: ".3rem 0" }}>
-                  <input type="checkbox" name="r" value={r.id} defaultChecked={ticked.has(r.id)} />
-                  <span style={{ flex: 1 }}>
-                    {r.date} · {r.particulars}{r.receiptNo ? ` · ${r.receiptNo}` : ""}
-                  </span>
-                  <span className="mono">{formatKes(r.cash + r.bank)}</span>
-                </label>
-              ))}
-            </fieldset>
-          ))}
-
-          <button type="submit" className="btn btn-primary">Prepare letter</button>
-          {query.size > 0 && !choice && (
-            <p className="error">Choose the term, the year, the date and at least one receipt.</p>
-          )}
-        </form>
+        <ChooseLetterForm
+          // A new choice from the address starts the form afresh.
+          key={query.toString()}
+          books={books.map(({ account, fy, receipts }) => ({
+            id: account.id,
+            name: account.name,
+            fyLabel: fy.label,
+            receipts: receipts.map((r) => {
+              const read = receiptTerm(r);
+              return {
+                id: r.id, date: r.date, particulars: r.particulars, receiptNo: r.receiptNo,
+                amount: r.cash + r.bank, term: read?.term ?? null, year: read?.year ?? null,
+              };
+            }),
+          }))}
+          initial={{
+            term: choice ? String(choice.term) : (query.get("term") ?? ""),
+            year: choice ? String(choice.year) : (query.get("year") ?? today.slice(0, 4)),
+            date: choice?.date ?? today,
+            ticked: choice?.receiptIds ?? [],
+          }}
+          invalid={query.size > 0 && !choice}
+        />
       </div>
 
       {letter && (
