@@ -5,31 +5,37 @@ import { useParams, usePathname } from "next/navigation";
 
 const BOOKS = ["cash-book", "ledger", "trial-balance", "cash-flow", "bank-reconciliation"];
 
-/** Audit queries waiting on whoever is looking, per book. */
-export function SideNav({ queries = {} }: { queries?: Record<string, number> }) {
+/**
+ * Audit queries waiting on whoever is looking, per book; and the books whose
+ * capitation letter this person prepares.
+ */
+export function SideNav({ queries = {}, letterBooks = [] }: { queries?: Record<string, number>; letterBooks?: string[] }) {
   const pathname = usePathname();
   const { accountId } = useParams<{ accountId?: string }>();
 
-  const items = accountId
+  const entries: { label: string; href: string; count?: number }[] = accountId
     ? [
-        { no: "01", label: "Create the book", href: "/app/new" },
-        { no: "02", label: "Receipts", href: `/app/${accountId}/receipts` },
+        { label: "Create the book", href: "/app/new" },
+        { label: "Receipts", href: `/app/${accountId}/receipts` },
+        ...(letterBooks.includes(accountId)
+          ? [{ label: "Capitation letter", href: `/app/${accountId}/capitation-letter` }] : []),
         // Money is received, then banked, then spent. The nav follows the work.
-        { no: "03", label: "Cash and bank", href: `/app/${accountId}/cash-and-bank` },
-        { no: "04", label: "Payments", href: `/app/${accountId}/payments` },
-        { no: "05", label: "Final books", href: `/app/${accountId}/cash-book` },
-        { no: "06", label: "Book progress", href: `/app/${accountId}/progress` },
-        { no: "07", label: "Audit queries", href: `/app/${accountId}/queries`, count: queries[accountId] },
-        { no: "08", label: "Vote heads", href: `/app/${accountId}/vote-heads` },
-        { no: "09", label: "Book settings", href: `/app/${accountId}/settings` },
-        { no: "10", label: "People", href: "/app/people" },
-        { no: "11", label: "Subscription", href: "/app/subscribe" },
+        { label: "Cash and bank", href: `/app/${accountId}/cash-and-bank` },
+        { label: "Payments", href: `/app/${accountId}/payments` },
+        { label: "Final books", href: `/app/${accountId}/cash-book` },
+        { label: "Book progress", href: `/app/${accountId}/progress` },
+        { label: "Audit queries", href: `/app/${accountId}/queries`, count: queries[accountId] },
+        { label: "Vote heads", href: `/app/${accountId}/vote-heads` },
+        { label: "Book settings", href: `/app/${accountId}/settings` },
+        { label: "People", href: "/app/people" },
+        { label: "Subscription", href: "/app/subscribe" },
       ]
     : [
-        { no: "01", label: "Create the book", href: "/app/new" },
-        { no: "02", label: "People", href: "/app/people" },
-        { no: "03", label: "Subscription", href: "/app/subscribe" },
+        { label: "Create the book", href: "/app/new" },
+        { label: "People", href: "/app/people" },
+        { label: "Subscription", href: "/app/subscribe" },
       ];
+  const items = entries.map((e, i) => ({ ...e, no: String(i + 1).padStart(2, "0") }));
 
   const current = (href: string) => {
     if (href.endsWith("/cash-book")) return BOOKS.some((b) => pathname.endsWith(`/${b}`));

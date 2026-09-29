@@ -2,14 +2,14 @@ import { describe, expect, it } from "vitest";
 import { POSITIONS, seesCapitationLetter } from "../positions";
 
 describe("seesCapitationLetter", () => {
-  it("is shown to the head of institution and the bursar", () => {
+  it("is shown to the head of institution, the bursar and the freelancer keeping the books", () => {
     expect(seesCapitationLetter("hoi")).toBe(true);
     expect(seesCapitationLetter("bursar")).toBe(true);
+    expect(seesCapitationLetter("freelancer")).toBe(true);
   });
 
-  it("is hidden from auditors and freelancers", () => {
+  it("is hidden from auditors", () => {
     expect(seesCapitationLetter("auditor")).toBe(false);
-    expect(seesCapitationLetter("freelancer")).toBe(false);
   });
 
   it("is hidden from someone who has not been given a position", () => {

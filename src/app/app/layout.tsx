@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { auditorScope, getCurrentUser, isPlatformAdmin, myOrgs } from "@/server/auth";
-import { describeAuditScope } from "@/domain";
+import { describeAuditScope, isCapitationAccount, seesCapitationLetter, type AccountType } from "@/domain";
 import { getOrgBooks } from "@/server/queries";
 import { waitingCounts } from "@/server/audit-queries";
 import { logout } from "../login/actions";
@@ -81,7 +81,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </div>
 
-        <SideNav queries={await waitingCounts(books.map((b) => b.account.id), user.auditing)} />
+        <SideNav
+          queries={await waitingCounts(books.map((b) => b.account.id), user.auditing)}
+          letterBooks={seesCapitationLetter(user.position) && !user.readOnly
+            ? books.filter((b) => isCapitationAccount(b.school.level, b.account.type as AccountType)).map((b) => b.account.id)
+            : []}
+        />
 
         <div className="sidebar-foot">
           <div className="who">

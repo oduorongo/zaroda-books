@@ -21,6 +21,10 @@ export const POSITION_LABEL: Record<Position, string> = {
   freelancer: "Freelance accountant",
 };
 
-/** The letter goes out over the school's signature, so only its own officers see it. */
+/**
+ * The letter goes out over the head's signature. The school's own officers
+ * prepare it, and so does the freelance accountant who keeps its books; the
+ * head still signs what is printed. An auditor never does.
+ */
 export const seesCapitationLetter = (position: Position | null): boolean =>
-  position === "hoi" || position === "bursar";
+  position === "hoi" || position === "bursar" || position === "freelancer";
