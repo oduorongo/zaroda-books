@@ -245,6 +245,62 @@ export async function decideByEmail(token: string, code: string, decisions: Deci
       after: JSON.stringify({ route: "email", sentTo: req.sentTo, decisions: decisions.map(({ id, decision, reason }) => ({ id, decision, reason })) }),
     }),
   ] as unknown as Parameters<typeof db.batch>[0]);
+  await tellOfDecision({ accountId: req.accountId, decisions, hoiName: req.hoiName, also: req.createdBy });
+}
+
+/**
+ * Tells whoever sent the payments to the head, and whoever entered them, what
+ * the head decided — so the bursar or freelancer need not keep checking.
+ * The head is never told of their own decision. Never throws: the decision
+ * stands whether or not the email goes.
+ */
+async function tellOfDecision(input: {
+  accountId: string; decisions: Decision[]; hoiName: string; also?: string | null; except?: string | null;
+}) {
+  try {
+    const ids = input.decisions.map((d) => d.id);
+    const txns = await db.select({ id: schema.transactions.id, vrNo: schema.transactions.vrNo, createdBy: schema.transactions.createdBy })
+      .from(schema.transactions).where(inArray(schema.transactions.id, ids));
+    const userIds = [...new Set([...txns.map((t) => t.createdBy), input.also]
+      .filter((u): u is string => !!u && u !== input.except))];
+    if (!userIds.length) return;
+    const people = await db.select({ email: schema.users.email }).from(schema.users).where(inArray(schema.users.id, userIds));
+    const [book] = await db.select({ account: schema.accounts, school: schema.schools }).from(schema.accounts)
+      .innerJoin(schema.schools, eq(schema.schools.id, schema.accounts.schoolId))
+      .where(eq(schema.accounts.id, input.accountId));
+
+    const vr = new Map(txns.map((t) => [t.id, t.vrNo ?? "—"]));
+    const authorised = input.decisions.filter((d) => d.decision === "authorised").map((d) => `VR ${vr.get(d.id)}`);
+    const held = input.decisions.filter((d) => d.decision === "held");
+    const where = `${escapeHtml(book.school.name)} — ${escapeHtml(book.account.name)}`;
+    const body = [
+      `${escapeHtml(input.hoiName)} has decided on ${input.decisions.length} payment${input.decisions.length === 1 ? "" : "s"} in <strong>${where}</strong>.`,
+      authorised.length ? `<strong>Authorised (${authorised.length}):</strong> ${authorised.join(", ")}.` : "",
+      held.length ? `<strong>Held back (${held.length}):</strong><br>${held
+        .map((d) => `VR ${escapeHtml(vr.get(d.id) ?? "—")} — ${escapeHtml(d.reason ?? "no reason given")}`).join("<br>")}` : "",
+    ].filter(Boolean).join("<br><br>");
+    const subject = held.length
+      ? `${book.school.name}: the head held back ${held.length} payment${held.length === 1 ? "" : "s"}`
+      : `${book.school.name}: the head authorised ${authorised.length} payment${authorised.length === 1 ? "" : "s"}`;
+    const url = `${SITE_URL}/app/${input.accountId}/payments/authorisation`;
+
+    for (const p of people) {
+      await sendEmail({
+        to: p.email,
+        subject,
+        html: emailLayout({
+          heading: held.length ? "The head has decided — some payments held" : "Payments authorised",
+          body,
+          buttonLabel: "Open the authorisation register",
+          buttonUrl: url,
+          footer: "Sent by Zaroda Books because you entered or sent these payments.",
+        }),
+        text: `${body.replace(/<br>/g, "\n").replace(/<[^>]+>/g, "")}\n\nOpen the authorisation register: ${url}`,
+      }).catch(() => undefined);
+    }
+  } catch {
+    // sendEmail records its own problems; the decision stands either way.
+  }
 }
 
 /** Refuses a decision on a payment that has changed since the head was shown it. */
@@ -342,5 +398,6 @@ export async function authoriseSignedIn(accountId: string, decisions: Decision[]
       after: JSON.stringify({ route: "login", decisions: decisions.map(({ id, decision, reason }) => ({ id, decision, reason })) }),
     }),
   ] as unknown as Parameters<typeof db.batch>[0]);
+  await tellOfDecision({ accountId, decisions, hoiName: user.name, except: user.id });
 }
 
