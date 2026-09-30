@@ -47,12 +47,31 @@ const voteEntries = (txns: Txn[]): VoteEntry[] =>
         isPayment: t.kind === "payment",
       })),
   );
+
+/** An amount as a bursar might type it: 2500, 2500.00 or 2,500.00. */
+const amountForms = (c: number) => c ? [String(c / 100), (c / 100).toFixed(2), formatKes(c)] : [];
+
+/** True when every word searched for appears somewhere on the payment. */
+function matches(p: Txn, words: string[]): boolean {
+  if (p.kind !== "payment") return false;
+  const text = [
+    p.date, p.vrNo, p.chequeNo, p.particulars, p.narration,
+    ...p.allocations.flatMap((a) => [a.voteHeadCode, ...amountForms(a.amount)]),
+    ...amountForms(p.cash), ...amountForms(p.bank),
+  ].filter(Boolean).join(" ").toLowerCase();
+  return words.every((w) => text.includes(w));
+}
+
 export default async function PaymentsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ accountId: string }>;
+  searchParams: Promise<{ q?: string }>;
 }) {
   const { accountId } = await params;
+  const q = ((await searchParams).q ?? "").trim();
+  const words = q.toLowerCase().split(/\s+/).filter(Boolean);
   const { user, heads, fy, school, account } = await loadBook(accountId);
   const queried = await queriedEntries(accountId);
   const txns = await getTxns(fy.id);
@@ -61,8 +80,9 @@ export default async function PaymentsPage({
   const payments = txns
     .filter((t) => t.kind === "payment")
     .sort((a, b) => a.date.localeCompare(b.date));
-  const totalCash = payments.reduce((a, p) => a + (p.kind === "payment" ? p.cash : 0), 0);
-  const totalBank = payments.reduce((a, p) => a + (p.kind === "payment" ? p.bank : 0), 0);
+  const shown = words.length ? payments.filter((p) => matches(p, words)) : payments;
+  const totalCash = shown.reduce((a, p) => a + (p.kind === "payment" ? p.cash : 0), 0);
+  const totalBank = shown.reduce((a, p) => a + (p.kind === "payment" ? p.bank : 0), 0);
 
   const infrastructure = takesProject(account.type as AccountType);
   const [statuses, requests, projects] = await Promise.all([
@@ -130,6 +150,12 @@ export default async function PaymentsPage({
 
       <div className="card" style={{ marginTop: "1.6rem" }}>
         <h2 style={{ marginTop: 0, fontSize: "1.05rem" }}>Payments recorded</h2>
+        <form method="get" className="no-print" style={{ display: "flex", gap: ".6rem", alignItems: "center", flexWrap: "wrap", margin: "0 0 1rem" }}>
+          <input name="q" type="search" defaultValue={q} style={{ flex: "1 1 16rem", maxWidth: "28rem" }}
+            placeholder="Payee, VR no., cheque, vote head, amount or date" aria-label="Search payments" />
+          <button className="btn btn-quiet" type="submit">Search</button>
+          {q && <Link className="note" href={`/app/${accountId}/payments`}>Clear</Link>}
+        </form>
         <table>
           <thead>
             <tr>
@@ -138,7 +164,10 @@ export default async function PaymentsPage({
             </tr>
           </thead>
           <tbody>
-            {payments.map((p) => (
+            {q && shown.length === 0 && (
+              <tr><td colSpan={9} className="note">No payment matches “{q}”.</td></tr>
+            )}
+            {shown.map((p) => (
               <tr key={p.id}>
                 <td className="mono" style={{ color: "var(--muted)" }}>{p.date}</td>
                 <td className="mono">{p.kind === "payment" ? p.vrNo ?? "—" : "—"}</td>
@@ -165,10 +194,10 @@ export default async function PaymentsPage({
               </tr>
             ))}
             <tr className="total">
-              <td colSpan={4}>Total paid</td>
+              <td colSpan={4}>{q ? `Total of ${shown.length} found` : "Total paid"}</td>
               <td className="n">{formatKes(totalCash)}</td>
               <td className="n">{formatKes(totalBank)}</td>
-              <td className="note">{payments.filter((p) => docs.has(p.id)).length} of {payments.length}</td>
+              <td className="note">{shown.filter((p) => docs.has(p.id)).length} of {shown.length}</td>
               <td></td>
               <td></td>
             </tr>
