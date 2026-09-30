@@ -5,6 +5,7 @@ import { loadBook } from "@/server/book-context";
 import { queriedEntries } from "@/server/audit-queries";
 import { getTxns } from "@/server/queries";
 import { PaymentForm } from "./form";
+import { SearchBox } from "./search-box";
 import { ReportShell } from "../report-shell";
 import { AuthorisationPanel } from "./authorisation-panel";
 import { decisionRow } from "../../../decision-table";
@@ -151,10 +152,7 @@ export default async function PaymentsPage({
       <div className="card" style={{ marginTop: "1.6rem" }}>
         <h2 style={{ marginTop: 0, fontSize: "1.05rem" }}>Payments recorded</h2>
         <form method="get" className="no-print" style={{ display: "flex", gap: ".6rem", alignItems: "center", flexWrap: "wrap", margin: "0 0 1rem" }}>
-          <input name="q" type="search" defaultValue={q} style={{ flex: "1 1 16rem", maxWidth: "28rem" }}
-            placeholder="Payee, VR no., cheque, vote head, amount or date" aria-label="Search payments" />
-          <button className="btn btn-quiet" type="submit">Search</button>
-          {q && <Link className="note" href={`/app/${accountId}/payments`}>Clear</Link>}
+          <SearchBox initial={q} />
         </form>
         <table>
           <thead>
