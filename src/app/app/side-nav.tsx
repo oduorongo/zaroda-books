@@ -22,7 +22,7 @@ export function SideNav({ queries = {}, letterBooks = [] }: { queries?: Record<s
         // Money is received, then banked, then spent. The nav follows the work.
         { label: "Cash and bank", href: `/app/${accountId}/cash-and-bank` },
         { label: "Payments", href: `/app/${accountId}/payments` },
-        { label: "Final books", href: `/app/${accountId}/cash-book` },
+        { label: "FINAL BOOKS", href: `/app/${accountId}/cash-book` },
         { label: "Book progress", href: `/app/${accountId}/progress` },
         { label: "Audit queries", href: `/app/${accountId}/queries`, count: queries[accountId] },
         { label: "Vote heads", href: `/app/${accountId}/vote-heads` },

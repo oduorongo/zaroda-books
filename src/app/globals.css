@@ -176,10 +176,10 @@ a:hover { color: var(--gold); }
 .side-nav { display: flex; flex-direction: column; gap: 2px; }
 .side-nav a {
   display: flex; align-items: center; gap: .75rem;
-  padding: .75rem .85rem; border-radius: 4px; font-size: .88rem;
+  padding: .75rem .85rem; border-radius: 4px; font-size: .88rem; font-weight: 700;
 }
 .side-nav a[aria-current="page"] {
-  background: var(--ink-deep); color: var(--paper); font-weight: 600;
+  background: var(--ink-deep); color: var(--paper);
   box-shadow: inset 3px 0 0 var(--gold);
 }
 .side-nav .no { font-family: var(--font-mono), ui-monospace, monospace; font-size: .7rem; opacity: .6; }
