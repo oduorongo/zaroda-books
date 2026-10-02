@@ -65,3 +65,10 @@ export function parseTumaCallback(body: unknown): TumaCallback {
     mpesaReceipt: mpesaReceipt === undefined ? undefined : String(mpesaReceipt),
   };
 }
+
+/**
+ * Whether Tuma's status check says the money arrived. Whole words only: a
+ * substring test read "unsuccessful" as paid.
+ */
+export const tumaStatusIsSuccess = (status: string | undefined): boolean =>
+  /^(success|successful|completed)$/i.test(status?.trim() ?? "");

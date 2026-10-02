@@ -57,3 +57,12 @@ export function describeWait(seconds: number): string {
   const minutes = Math.ceil(seconds / 60);
   return `in ${minutes} minute${minutes === 1 ? "" : "s"}`;
 }
+
+/**
+ * Invitations a practice may send in 24 hours. Each one is an email from
+ * Zaroda to any address the owner types, and signing up is free.
+ */
+export const MAX_INVITES_PER_DAY = 20;
+
+export const inviteLimitReached = (sentInLastDay: number): boolean =>
+  sentInLastDay >= MAX_INVITES_PER_DAY;

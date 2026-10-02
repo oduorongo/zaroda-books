@@ -98,6 +98,10 @@ export const emailRedirectedTo = (): string | null => {
   return redirectedFrom ? to : null;
 };
 
+/** For anything a user typed that goes into an email's HTML: names, schools, practices. */
+export const escapeHtml = (s: string) =>
+  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
 /** The house style: navy band, one clear action, plain text alongside. */
 export function emailLayout(opts: {
   heading: string;

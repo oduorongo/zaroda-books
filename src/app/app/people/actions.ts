@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { SITE_URL } from "@/app/site-url";
 import type { Role } from "@/domain";
 import { changeRole, inviteToOrg, removeFromOrg, revokeInvite } from "@/server/people";
@@ -15,14 +14,12 @@ const message = (e: unknown) => (e instanceof Error ? e.message : "That could no
 export async function inviteAction(_prev: string | null, form: FormData): Promise<string | null> {
   try {
     const schoolId = String(form.get("schoolId") ?? "").trim();
-    const h = await headers();
-    const origin = h.get("host") ? `https://${h.get("host")}` : SITE_URL;
-
+    // SITE_URL, not the request's Host, which the sender controls.
     const { code, emailed } = await inviteToOrg(
       String(form.get("email") ?? ""),
       String(form.get("role") ?? "") as Role,
       schoolId || null,
-      origin,
+      SITE_URL,
     );
     revalidatePath("/app/people");
     // The link comes back whether or not the email went, so a failure there

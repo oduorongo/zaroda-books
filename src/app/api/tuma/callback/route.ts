@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
-import { parseTumaCallback } from "@/domain";
+import { parseTumaCallback, tumaStatusIsSuccess } from "@/domain";
 import { recordProblem } from "@/server/problems";
+import { checkPaymentStatus } from "@/server/tuma";
 import {
   findPaymentByMerchantRequest, markPaymentFailed, markPaymentSucceeded,
 } from "@/server/billing";
 
 /**
  * Tuma calls this server-to-server with no session, so it cannot be behind
- * auth. What makes it safe is that it carries no instruction: the only thing
- * taken from the body is which payment it refers to, and the amount and what
- * it buys come from the row we wrote when the push went out. A forged callback
- * can therefore settle a payment we already initiated, but cannot invent one,
- * change a price, or name a different level.
+ * auth. The body carries no instruction: the amount and what it buys come
+ * from the row we wrote when the push went out. And a callback saying the
+ * money arrived is not believed on its own word — Tuma is asked first, so a
+ * forged one cannot settle a payment that was never made.
  *
  * It always answers 200. A gateway that gets an error retries, and a retry
  * loop on a body we cannot parse helps nobody — the body is stored instead, to
@@ -41,7 +41,18 @@ export async function POST(request: Request) {
   }
 
   if (parsed.success) {
-    await markPaymentSucceeded(payment.id, parsed.mpesaReceipt, body);
+    const confirmed = await checkPaymentStatus(parsed.merchantRequestId);
+    if (!confirmed.ok || !tumaStatusIsSuccess(confirmed.status)) {
+      // Left pending, not failed: if the money did arrive, the waiting page's
+      // own check with Tuma credits it.
+      await recordProblem({
+        area: "payment",
+        message: "A callback said a payment succeeded but Tuma did not confirm it, so nothing was credited.",
+        detail: { merchantRequestId: parsed.merchantRequestId, body, tuma: confirmed.raw ?? confirmed.detail },
+      });
+      return NextResponse.json({ received: true });
+    }
+    await markPaymentSucceeded(payment.id, parsed.mpesaReceipt ?? confirmed.mpesaReceipt, body);
   } else {
     await markPaymentFailed(payment.id, body);
   }

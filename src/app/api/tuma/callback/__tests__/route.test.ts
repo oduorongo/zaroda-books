@@ -15,6 +15,7 @@ const markPaymentSucceeded = vi.fn();
 const markPaymentFailed = vi.fn();
 
 const recordProblem = vi.fn();
+const checkPaymentStatus = vi.fn();
 
 vi.mock("@/server/billing", () => ({
   findPaymentByMerchantRequest,
@@ -22,6 +23,7 @@ vi.mock("@/server/billing", () => ({
   markPaymentFailed,
 }));
 vi.mock("@/server/problems", () => ({ recordProblem }));
+vi.mock("@/server/tuma", () => ({ checkPaymentStatus }));
 
 const { POST } = await import("@/app/api/tuma/callback/route");
 
@@ -35,6 +37,7 @@ const post = (body: unknown) =>
 beforeEach(() => {
   vi.clearAllMocks();
   findPaymentByMerchantRequest.mockResolvedValue({ id: "pay1" });
+  checkPaymentStatus.mockResolvedValue({ ok: true, status: "completed" });
 });
 
 describe("a completed payment", () => {
@@ -63,6 +66,27 @@ describe("a completed payment", () => {
   it("keeps the whole body, so a misread can be recovered from", async () => {
     await post(completed);
     expect(markPaymentSucceeded.mock.calls[0][2]).toEqual(completed);
+  });
+});
+
+describe("a callback Tuma does not confirm", () => {
+  const forged = { status: "completed", merchant_request_id: "m1", result_code: 0 };
+
+  it("credits nothing when Tuma says the payment is not complete", async () => {
+    // Anyone can post to this route. Only Tuma's own answer settles money.
+    checkPaymentStatus.mockResolvedValue({ ok: true, status: "pending" });
+    await post(forged);
+    expect(checkPaymentStatus).toHaveBeenCalledWith("m1");
+    expect(markPaymentSucceeded).not.toHaveBeenCalled();
+    expect(recordProblem).toHaveBeenCalledWith(expect.objectContaining({ area: "payment" }));
+  });
+
+  it("credits nothing, and fails nothing, when Tuma cannot be reached", async () => {
+    // Left pending so the waiting page's own check can still credit it.
+    checkPaymentStatus.mockResolvedValue({ ok: false, detail: "timeout" });
+    await post(forged);
+    expect(markPaymentSucceeded).not.toHaveBeenCalled();
+    expect(markPaymentFailed).not.toHaveBeenCalled();
   });
 });
 

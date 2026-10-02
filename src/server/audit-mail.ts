@@ -39,8 +39,7 @@ export async function auditMail(to: string[], input: {
   }
 }
 
-export const escapeHtml = (s: string) =>
-  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+export { escapeHtml } from "@/server/email";
 
 /**
  * Who hears from the auditor on a school's behalf: its owners and accountants —

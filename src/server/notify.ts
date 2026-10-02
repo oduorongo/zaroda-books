@@ -1,5 +1,5 @@
 import "server-only";
-import { emailLayout, sendEmail } from "@/server/email";
+import { emailLayout, escapeHtml, sendEmail } from "@/server/email";
 import { SITE_URL } from "@/app/site-url";
 
 /**
@@ -57,8 +57,10 @@ export async function notifyNewTenant(input: {
     subject: `New signup: ${input.orgName}`,
     heading: "Somebody has signed up",
     body:
-      `<strong>${input.personName}</strong> (${input.email}) has created `
-      + `<strong>${input.orgName}</strong> in ${input.subCounty}, ${input.county}.`
+      // Typed by a stranger at signup, so escaped: this email goes to the
+      // one inbox that holds the keys to every tenant.
+      `<strong>${escapeHtml(input.personName)}</strong> (${escapeHtml(input.email)}) has created `
+      + `<strong>${escapeHtml(input.orgName)}</strong> in ${escapeHtml(input.subCounty)}, ${escapeHtml(input.county)}.`
       + "<br><br>Their free school is held back until you approve the account.",
     linkLabel: "Review and approve",
     linkPath: `/admin/${input.orgId}`,

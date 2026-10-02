@@ -3,7 +3,7 @@ import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import {
   LEVEL_PRICE, chargeAmount, normalisePhoneForTuma, priceLabel, subscriptionReceiptNo,
-  type SchoolLevel,
+  tumaStatusIsSuccess, type SchoolLevel,
 } from "@/domain";
 import {
   checkPaymentStatus, initiateStkPush, tumaCallbackUrl, tumaConfigured,
@@ -223,7 +223,7 @@ export async function pollPayment(paymentId: string, orgId: string) {
   }
 
   const result = await checkPaymentStatus(payment.merchantRequestId);
-  if (result.ok && result.status && /success|completed/i.test(result.status)) {
+  if (result.ok && tumaStatusIsSuccess(result.status)) {
     await markPaymentSucceeded(payment.id, result.mpesaReceipt, result.raw);
     return { status: "success" as const };
   }

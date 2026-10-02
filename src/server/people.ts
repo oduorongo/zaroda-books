@@ -1,9 +1,9 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { ROLES, ROLE_LABEL, can, type Role } from "@/domain";
-import { emailLayout, sendEmail } from "@/server/email";
+import { ROLES, ROLE_LABEL, can, inviteLimitReached, type Role } from "@/domain";
+import { emailLayout, escapeHtml, sendEmail } from "@/server/email";
 import { chooseOrg, getCurrentUser } from "@/server/auth";
 
 /**
@@ -66,6 +66,17 @@ export async function inviteToOrg(
     .where(and(eq(schema.memberships.orgId, owner.orgId), eq(schema.users.email, address)));
   if (already) throw new Error("That person is already on these books.");
 
+  const [{ sent: lately } = { sent: 0 }] = await db
+    .select({ sent: sql<number>`count(*)::int` })
+    .from(schema.invitations)
+    .where(and(
+      eq(schema.invitations.orgId, owner.orgId),
+      gt(schema.invitations.createdAt, new Date(Date.now() - 24 * 60 * 60 * 1000)),
+    ));
+  if (inviteLimitReached(lately)) {
+    throw new Error("That is as many invitations as can be sent in a day. Try again tomorrow, or reach us on WhatsApp 0781 230 805.");
+  }
+
   // A school-scoped invitation must name a school of this org, or it would
   // silently widen to the whole practice when taken up.
   if (schoolId) {
@@ -101,10 +112,10 @@ export async function inviteToOrg(
     to: address,
     subject: `${owner.name} has invited you to ${orgName}`,
     html: emailLayout({
-      heading: `Join ${orgName}`,
+      heading: `Join ${escapeHtml(orgName)}`,
       body:
-        `<strong>${owner.name}</strong> has invited you to keep the books at `
-        + `<strong>${orgName}</strong> as ${asRole}.`,
+        `<strong>${escapeHtml(owner.name)}</strong> has invited you to keep the books at `
+        + `<strong>${escapeHtml(orgName)}</strong> as ${asRole}.`,
       buttonLabel: "Take up the invitation",
       buttonUrl: url,
       footer:

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalisePhoneForTuma, parseTumaCallback } from "../tuma";
+import { normalisePhoneForTuma, parseTumaCallback, tumaStatusIsSuccess } from "../tuma";
 
 describe("normalisePhoneForTuma", () => {
   it("turns the way a number is written in Kenya into the bare form Tuma wants", () => {
@@ -122,5 +122,21 @@ describe("parseTumaCallback, against real Tuma bodies", () => {
       result_desc: "Request Cancelled by user.",
       failure_reason: "Transaction cancelled by user",
     }).success).toBe(false);
+  });
+});
+
+describe("tumaStatusIsSuccess", () => {
+  it("takes Tuma's own word that the money arrived", () => {
+    expect(tumaStatusIsSuccess("completed")).toBe(true);
+    expect(tumaStatusIsSuccess("Success")).toBe(true);
+  });
+
+  it("treats anything else, or nothing, as not paid", () => {
+    // A forged callback is believed only once Tuma confirms it, so a status
+    // that cannot be read must never count as that confirmation.
+    expect(tumaStatusIsSuccess("pending")).toBe(false);
+    expect(tumaStatusIsSuccess("failed")).toBe(false);
+    expect(tumaStatusIsSuccess("unsuccessful")).toBe(false);
+    expect(tumaStatusIsSuccess(undefined)).toBe(false);
   });
 });

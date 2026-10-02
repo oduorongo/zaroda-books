@@ -15,7 +15,6 @@ export async function forgotAction(_prev: string | null, form: FormData): Promis
   if (!email.includes("@")) return "Enter your email address.";
 
   const h = await headers();
-  const origin = h.get("host") ? `https://${h.get("host")}` : SITE_URL;
   const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
 
   // Throttled under its own key: a burst of reset requests must not lock the
@@ -27,7 +26,9 @@ export async function forgotAction(_prev: string | null, form: FormData): Promis
   await recordResetRequest(email.toLowerCase(), ip);
 
   try {
-    await requestPasswordReset(email, origin, ip);
+    // SITE_URL, never the request's Host: the sender chooses that, and could
+    // have the victim's reset link point at their own site.
+    await requestPasswordReset(email, SITE_URL, ip);
   } catch {
     // Swallowed on purpose: a failure here must not reveal anything either.
   }
