@@ -22,6 +22,38 @@ const outputs = [
   { name: "Acknowledgement receipt", note: "Enrolment used and the split, to return to the Ministry", tag: "Per receipt" },
 ];
 
+// Answers are plain text because the same words go to search engines as
+// FAQPage data below. `contact` appends the WhatsApp and call links.
+const faqs: { q: string; a: string; contact?: boolean }[] = [
+  { q: "Who is Zaroda Books for?", a: "Heads of institution, bursars and freelance book keepers who keep the books of accounts for public primary, junior and senior schools in Kenya." },
+  { q: "Is there a free school?", a: "Yes. Your first school is free for one school level and one financial year. Create an account, and once Zaroda approves it you can open that school's books without paying." },
+  { q: "What does one subscription cover?", a: "Every account at one school level for one financial year, 1 July to 30 June: tuition, operations, infrastructure, boarding and lunch. A school running primary and junior levels subscribes to both." },
+  { q: "How do I pay?", a: "By M-Pesa. A prompt comes to your phone, you enter your PIN, and you receive a Zaroda receipt number to quote." },
+  { q: "I keep books for several schools. Do I need several logins?", a: "No. One login holds as many schools as you keep books for. Each school level is paid for its financial year." },
+  { q: "Can I move a subscription to another school?", a: "No. A subscription belongs to the first school that opens a book with it. The school's name can be corrected until the first entry is posted." },
+  { q: "Do I need the enrolment before entering capitation?", a: "No. The enrolment is worked out from the amount received and the per-learner rates in the circular. The amount is split across the vote heads to the shilling, and you get an acknowledgement receipt to return to the Ministry." },
+  { q: "What if I'm stuck with an entry?", a: "An entry in an open month can be amended or deleted. In a closed month, reopen the month first; the system asks for a reason and keeps it on record. If the trial balance will not agree, the system shows the difference and the entries to check. Still stuck? Send us a screenshot on WhatsApp or call, and we will work through it with you.", contact: true },
+  { q: "Must I reconcile the bank every month?", a: "No. One reconciliation at the June year end is enough. You can still reconcile monthly if you prefer." },
+  { q: "Who authorises payment vouchers?", a: "Only the head of institution. They authorise by an emailed link, by signing a printed schedule, or through their own login. A book keeper cannot authorise on their behalf." },
+  { q: "How does an auditor see my books?", a: "Only when you send them. Once the year is closed up to June, you send it to one auditor covering your area. Reopening any month takes the book back. Auditors pay nothing to audit." },
+  { q: "What documents must I upload?", a: "Documents on payments are optional, and you are reminded of any missing. Two are required: the SCDE approval letter for each infrastructure project, and the June bank statement before the year is sent for audit." },
+  { q: "What happens to my books after the year ends?", a: "Closed years stay readable at no further cost." },
+  { q: "Can I print the books?", a: "Yes. The cash book, ledger, trial balance, income and expenditure, and cash flow statement all print or save as PDF." },
+];
+
+const faqData = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqs.map((f) => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: f.contact ? `${f.a} WhatsApp 0781 230 805, call 0724 282 065.` : f.a,
+    },
+  })),
+};
+
 // Canonical here rather than in the root layout: metadata is inherited, so a
 // canonical on the layout would have every page claim to be the homepage.
 export const metadata = { alternates: { canonical: "/" } };
@@ -41,6 +73,7 @@ export default function Home() {
             <a href="#how">How it works</a>
             <a href="#books">What it produces</a>
             <a href="#pricing">Pricing</a>
+            <a href="#faq">Questions</a>
             <Link href="/login" style={{ color: "var(--paper)" }}>Log in</Link>
             <Link href="/signup" className="btn btn-gold" style={{ color: "#fff", textDecoration: "none", padding: ".7rem 1.25rem", fontSize: ".9rem" }}>
               Create account
@@ -167,6 +200,33 @@ export default function Home() {
             <div>Acknowledgement receipts for the Ministry</div>
           </div>
         </div>
+      </section>
+
+      <section id="faq" className="wrap" style={{ padding: "4.75rem 2.5rem 6rem" }}>
+        <h2 style={{ fontSize: "2rem", margin: "0 0 .75rem" }}>Questions schools ask</h2>
+        <p style={{ color: "var(--muted)", fontSize: "1.05rem", margin: "0 0 2.25rem", maxWidth: "60ch" }}>
+          Not answered here? WhatsApp <a href="https://wa.me/254781230805">0781 230 805</a> or
+          call <a href="tel:+254724282065">0724 282 065</a>.
+        </p>
+        <div className="card" style={{ padding: 0 }}>
+          {faqs.map((f) => (
+            <details key={f.q} className="faq">
+              <summary>{f.q}</summary>
+              <p>{f.a}</p>
+              {f.contact && (
+                <p className="faq-contact">
+                  <a href="https://wa.me/254781230805">WhatsApp 0781 230 805</a>
+                  <a href="tel:+254724282065">Call 0724 282 065</a>
+                </p>
+              )}
+            </details>
+          ))}
+        </div>
+        <script
+          type="application/ld+json"
+          // "<" escaped so no answer text can close the script tag.
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqData).replace(/</g, "\\u003c") }}
+        />
       </section>
 
       <footer className="dark-band">

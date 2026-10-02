@@ -430,6 +430,25 @@ a:hover { color: var(--gold); }
   .output-tag { order: -1; }
 }
 
+/* Questions on the landing page. Native <details>, so it opens without script. */
+.faq { border-bottom: 1px solid var(--rule-soft); }
+.faq:last-child { border-bottom: 0; }
+.faq summary {
+  cursor: pointer; list-style: none;
+  display: flex; justify-content: space-between; align-items: center; gap: 1.25rem;
+  padding: 1.1rem 1.5rem;
+  font-family: var(--font-heading), Georgia, serif; font-size: 1rem; font-weight: 600;
+}
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; color: var(--gold); font-size: 1.25rem; line-height: 1; }
+.faq[open] summary::after { content: "−"; }
+.faq p { margin: 0; padding: 0 1.5rem 1.2rem; color: var(--muted); font-size: .92rem; line-height: 1.65; max-width: 75ch; }
+.faq-contact { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+@media (max-width: 720px) {
+  .faq summary { padding: 1rem 1.15rem; }
+  .faq p { padding: 0 1.15rem 1.1rem; }
+}
+
 /* A row of fields with a button at the end. Inline grids here could not be
    collapsed by a media query, so on a phone the boxes were a few characters
    wide — on forms a bursar fills in from a handset. */
