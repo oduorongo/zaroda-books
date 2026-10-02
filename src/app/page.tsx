@@ -26,7 +26,7 @@ const outputs = [
 // FAQPage data below. `contact` appends the WhatsApp and call links.
 const faqs: { q: string; a: string; contact?: boolean }[] = [
   { q: "Who is Zaroda Books for?", a: "Heads of institution, bursars and freelance book keepers who keep the books of accounts for public primary, junior and senior schools in Kenya." },
-  { q: "Is there a free school?", a: "Yes. Your first school is free for one school level and one financial year. Create an account, and once Zaroda approves it you can open that school's books without paying." },
+  { q: "Is there a free book?", a: "Yes. The first book you open is free. Create an account, and once Zaroda approves it you can open your first book without paying." },
   { q: "What does one subscription cover?", a: "Every account at one school level for one financial year, 1 July to 30 June: tuition, operations, infrastructure, boarding and lunch. A school running primary and junior levels subscribes to both." },
   { q: "How do I pay?", a: "By M-Pesa. A prompt comes to your phone, you enter your PIN, and you receive a Zaroda receipt number to quote." },
   { q: "I keep books for several schools. Do I need several logins?", a: "No. One login holds as many schools as you keep books for. Each school level is paid for its financial year." },
