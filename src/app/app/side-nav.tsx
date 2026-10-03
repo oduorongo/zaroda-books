@@ -9,7 +9,10 @@ const BOOKS = ["cash-book", "ledger", "trial-balance", "cash-flow", "bank-reconc
  * Audit queries waiting on whoever is looking, per book; and the books whose
  * capitation letter this person prepares.
  */
-export function SideNav({ queries = {}, letterBooks = [] }: { queries?: Record<string, number>; letterBooks?: string[] }) {
+export function SideNav({ queries = {}, letterBooks = [], showPeople = false }: {
+  queries?: Record<string, number>; letterBooks?: string[]; showPeople?: boolean;
+}) {
+  const people = showPeople ? [{ label: "People", href: "/app/people" }] : [];
   const pathname = usePathname();
   const { accountId } = useParams<{ accountId?: string }>();
 
@@ -27,12 +30,12 @@ export function SideNav({ queries = {}, letterBooks = [] }: { queries?: Record<s
         { label: "Audit queries", href: `/app/${accountId}/queries`, count: queries[accountId] },
         { label: "Vote heads", href: `/app/${accountId}/vote-heads` },
         { label: "Book settings", href: `/app/${accountId}/settings` },
-        { label: "People", href: "/app/people" },
+        ...people,
         { label: "Subscription", href: "/app/subscribe" },
       ]
     : [
         { label: "Create the book", href: "/app/new" },
-        { label: "People", href: "/app/people" },
+        ...people,
         { label: "Subscription", href: "/app/subscribe" },
       ];
   const items = entries.map((e, i) => ({ ...e, no: String(i + 1).padStart(2, "0") }));

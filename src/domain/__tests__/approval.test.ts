@@ -18,13 +18,20 @@ describe("bookEntitlement, when the books are on hold", () => {
     expect(d.allowed).toBe(false);
   });
 
-  it("says the books are on hold, and how to reach us", () => {
-    // Accounts are approved on creation now, so this only happens when Zaroda
-    // has deliberately suspended one. The wording has to say so.
+  it("says the free book waits on Zaroda's approval, and how to reach us", () => {
+    // Every new account waits for approval, so one person cannot open a
+    // free book on each throwaway account. Most who read this are new.
     const d = bookEntitlement(args({ orgApproved: false }));
     if (d.allowed) throw new Error("expected a refusal");
-    expect(d.reason).toMatch(/on hold/i);
+    expect(d.reason).toMatch(/approv/i);
+    expect(d.reason).not.toMatch(/on hold/i);
     expect(d.reason).toMatch(/0781 230 805/);
+  });
+
+  it("tells someone waiting that subscribing opens a book now", () => {
+    const d = bookEntitlement(args({ orgApproved: false }));
+    if (d.allowed) throw new Error("expected a refusal");
+    expect(d.reason).toMatch(/subscri/i);
   });
 
   it("grants the free school once the hold is lifted", () => {

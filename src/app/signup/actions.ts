@@ -32,9 +32,10 @@ export async function signup(_prev: string | null, form: FormData): Promise<stri
       name: practice || name,
       county,
       subCounty,
-      // Approved on creation. The column stays so an account can still be
-      // put on hold from the console, but nobody now waits to be let in.
-      approvedAt: new Date(),
+      // Left unapproved: the free book waits until Zaroda approves the
+      // account, so it cannot be had again by signing up again. Paying
+      // opens books without waiting.
+      approvedAt: null,
     })
     .returning();
   const [user] = await db.insert(schema.users).values({

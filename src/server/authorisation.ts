@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, lt, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import {
   AUTH_ROUTES, CODE_MINUTES, LINK_DAYS, MAX_CODES, MAX_CODE_TRIES, authorisationState, codeUsable,
@@ -224,10 +224,15 @@ export async function decideByEmail(token: string, code: string, decisions: Deci
   if (!codeUsable({ issuedAt: req.codeIssuedAt, tries: req.codeTries, now: new Date() })) {
     throw new Error("Ask for a new code: the last one has lapsed or been tried too often.");
   }
+  // The try is claimed in the same statement that checks the limit, so
+  // guesses sent all at once cannot each see the count before it rises.
+  const t = schema.authorisationRequests;
+  const [claimed] = await db.update(t).set({ codeTries: sql`${t.codeTries} + 1` })
+    .where(and(eq(t.id, req.id), lt(t.codeTries, MAX_CODE_TRIES)))
+    .returning({ tries: t.codeTries });
+  if (!claimed) throw new Error("Ask for a new code: the last one has lapsed or been tried too often.");
   if (!codeMatches(req.codeHash, req.id, code)) {
-    await db.update(schema.authorisationRequests).set({ codeTries: req.codeTries + 1 })
-      .where(eq(schema.authorisationRequests.id, req.id));
-    const left = MAX_CODE_TRIES - req.codeTries - 1;
+    const left = MAX_CODE_TRIES - claimed.tries;
     throw new Error(left > 0 ? `That code is not right. ${left} tr${left === 1 ? "y" : "ies"} left.` : "That code is not right. Ask for a new one.");
   }
   if (!decisions.length) throw new Error("Tick the payments you authorise, or give a reason for holding one back.");

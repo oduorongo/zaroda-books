@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lt, ne, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import {
   CODE_MINUTES, MAX_CODES, MAX_CODE_TRIES, auditorCanSee, closeRefusal, codeUsable, formatKes, queryPartyFor,
@@ -386,9 +386,14 @@ export async function replyByToken(token: string, code: string, body: string) {
   if (!codeUsable({ issuedAt: link.codeIssuedAt, tries: link.codeTries, now: new Date() })) {
     throw new Error("Ask for a new code: the last one has lapsed or been tried too often.");
   }
+  // Claimed and checked in one statement: see decideByEmail.
+  const t = schema.queryLinks;
+  const [claimed] = await db.update(t).set({ codeTries: sql`${t.codeTries} + 1` })
+    .where(and(eq(t.id, link.id), lt(t.codeTries, MAX_CODE_TRIES)))
+    .returning({ tries: t.codeTries });
+  if (!claimed) throw new Error("Ask for a new code: the last one has lapsed or been tried too often.");
   if (!codeMatches(link.codeHash, link.id, code)) {
-    await db.update(schema.queryLinks).set({ codeTries: link.codeTries + 1 }).where(eq(schema.queryLinks.id, link.id));
-    const left = MAX_CODE_TRIES - link.codeTries - 1;
+    const left = MAX_CODE_TRIES - claimed.tries;
     throw new Error(left > 0 ? `That code is not right. ${left} tr${left === 1 ? "y" : "ies"} left.` : "That code is not right. Ask for a new one.");
   }
   await db.update(schema.queryLinks).set({ codeHash: null }).where(eq(schema.queryLinks.id, link.id));

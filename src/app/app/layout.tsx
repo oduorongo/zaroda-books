@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { auditorScope, getCurrentUser, isPlatformAdmin, myOrgs } from "@/server/auth";
-import { describeAuditScope, isCapitationAccount, seesCapitationLetter, type AccountType } from "@/domain";
+import { can, describeAuditScope, isCapitationAccount, seesCapitationLetter, type AccountType } from "@/domain";
 import { getOrgBooks } from "@/server/queries";
 import { waitingCounts } from "@/server/audit-queries";
 import { logout } from "../login/actions";
@@ -86,6 +86,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           letterBooks={seesCapitationLetter(user.position) && !user.readOnly
             ? books.filter((b) => isCapitationAccount(b.school.level, b.account.type as AccountType)).map((b) => b.account.id)
             : []}
+          showPeople={can(user.role, "people.manage") && !user.readOnly}
         />
 
         <div className="sidebar-foot">

@@ -1,8 +1,13 @@
 import type { Cents } from "./money";
 
-/** RFC 4180: a field is quoted only when it holds a comma, quote or newline. */
+/**
+ * RFC 4180: a field is quoted only when it holds a comma, quote or newline.
+ * Text Excel would run as a formula gets a leading apostrophe first; an
+ * amount, negative or not, is left a number.
+ */
 const cell = (v: string | number) => {
-  const s = String(v);
+  let s = String(v);
+  if (/^[=+\-@\t\r]/.test(s) && !/^-?\d+(\.\d+)?$/.test(s)) s = `'${s}`;
   return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 

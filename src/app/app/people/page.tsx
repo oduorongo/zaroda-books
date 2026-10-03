@@ -1,4 +1,3 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ROLE_DESCRIPTION, ROLE_LABEL, can } from "@/domain";
 import { getCurrentUser } from "@/server/auth";
@@ -15,6 +14,19 @@ const day = (d: Date) =>
 export default async function PeoplePage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  const owner = can(user.role, "people.manage") && !user.readOnly;
+
+  // The list names everyone in the practice and every school they keep. A
+  // bursar tied to one school, or an auditor, has no business seeing that.
+  if (!owner) {
+    return (
+      <div style={{ maxWidth: 820 }}>
+        <div style={{ marginBottom: ".75rem" }}><BackLink /></div>
+        <h1>People</h1>
+        <p className="note">Only the owner of these books can see who has access, invite people, or change what someone may do.</p>
+      </div>
+    );
+  }
 
   const { members, invites } = await orgPeople(user.orgId);
   const schools = await db
@@ -24,12 +36,8 @@ export default async function PeoplePage() {
     .orderBy(schema.schools.name);
   const schoolName = (id: string | null) =>
     schools.find((s) => s.id === id)?.name ?? null;
-  const owner = can(user.role, "people.manage") && !user.readOnly;
-
-  // Whatever host they are actually on, so the link works from a preview
-  // deployment as well as the live domain.
-  const host = (await headers()).get("host");
-  const origin = host ? `https://${host}` : SITE_URL;
+  // The same address the invitation email carries (see actions.ts).
+  const origin = SITE_URL;
 
   return (
     <div style={{ maxWidth: 820 }}>

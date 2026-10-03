@@ -61,7 +61,7 @@ export async function notifyNewTenant(input: {
       // one inbox that holds the keys to every tenant.
       `<strong>${escapeHtml(input.personName)}</strong> (${escapeHtml(input.email)}) has created `
       + `<strong>${escapeHtml(input.orgName)}</strong> in ${escapeHtml(input.subCounty)}, ${escapeHtml(input.county)}.`
-      + "<br><br>Their free school is held back until you approve the account.",
+      + "<br><br>Their free book is held back until you approve the account.",
     linkLabel: "Review and approve",
     linkPath: `/admin/${input.orgId}`,
   });
