@@ -1,4 +1,4 @@
-import { bankEffect, can, formatKes, monthsToClose, monthsToReopen, toKes } from "@/domain";
+import { bankEffect, can, formatKes, monthsToClose, monthsToReopen, toKes, formatDate } from "@/domain";
 import { nextFinancialYear, nextYearBook } from "@/server/books";
 import { getReconciliation } from "@/server/reconciliation";
 import { getTxns, upTo } from "@/server/queries";
@@ -152,7 +152,7 @@ export default async function Page({ params, searchParams }: {
                   const isOut = outstanding.has(t.id);
                   return (
                     <tr key={t.id} className={isOut ? "carry" : undefined}>
-                      <td className="mono" style={{ color: "var(--muted)" }}>{t.date}</td>
+                      <td className="mono" style={{ color: "var(--muted)" }}>{formatDate(t.date)}</td>
                       <td>{t.particulars}</td>
                       <td className="mono">
                         {(t.kind === "receipt" ? t.receiptNo : t.chequeNo) ?? "—"}

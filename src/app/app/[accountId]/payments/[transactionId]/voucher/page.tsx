@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { formatKes } from "@/domain";
+import { formatKes, formatDate } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { queriedEntries } from "@/server/audit-queries";
 import { getTxns } from "@/server/queries";
@@ -68,7 +68,7 @@ export default async function VoucherPage({
 
         <table>
           <tbody>
-            <tr><td>Date paid</td><td className="n">{txn.date}</td></tr>
+            <tr><td>Date paid</td><td className="n">{formatDate(txn.date)}</td></tr>
             <tr><td>Cheque no.</td><td className="n">{txn.chequeNo ?? "—"}</td></tr>
             <tr><td>Payee / paid to</td><td className="n">{txn.particulars}</td></tr>
             {txn.narration && <tr><td>Narration</td><td className="n">{txn.narration}</td></tr>}

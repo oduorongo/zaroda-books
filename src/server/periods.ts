@@ -1,7 +1,7 @@
 import "server-only";
 import { db, schema } from "@/db";
 import { and, eq } from "drizzle-orm";
-import { buildTrialBalance } from "@/domain";
+import { buildTrialBalance, formatDate } from "@/domain";
 import type { Balances, Reconciliation, Txn, VoteHead } from "@/domain";
 
 /** "2026-05-01" -> "2026-05", the prefix the report filters match on. */
@@ -26,9 +26,9 @@ export function assertClosable(
   const tb = buildTrialBalance(asAt, yearOpening, txnsToDate, heads);
   if (!tb.balanced)
     throw new Error(
-      `The trial balance at ${asAt} is out by ${tb.difference / 100}. Find the entry before closing.`,
+      `The trial balance at ${formatDate(asAt)} is out by ${tb.difference / 100}. Find the entry before closing.`,
     );
-  if (tb.closingCash < 0) throw new Error(`Cash in hand is negative at ${asAt}. Draw cash from the bank first.`);
+  if (tb.closingCash < 0) throw new Error(`Cash in hand is negative at ${formatDate(asAt)}. Draw cash from the bank first.`);
   return tb;
 }
 

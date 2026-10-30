@@ -1,12 +1,11 @@
+import { formatDateTime } from "@/domain";
 import Link from "next/link";
 import { requirePlatformAdmin } from "@/server/platform";
 import { unseenProblems } from "@/server/problems";
 import { MarkAllSeen, MarkSeen } from "./forms";
 
 const stamp = (d: Date) =>
-  new Date(d).toLocaleString("en-KE", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
-  });
+  formatDateTime(d);
 
 /** Payment first: it is the one where somebody is out of pocket. */
 const TONE: Record<string, string> = {

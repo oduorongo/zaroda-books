@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { TERMS, formatKes, termRoman, type Term } from "@/domain";
+import { TERMS, formatKes, termRoman, type Term, formatDate } from "@/domain";
 
 export interface LetterReceipt {
   id: string;
@@ -58,7 +58,7 @@ export function ChooseLetterForm({ books, initial, invalid }: {
     <label key={r.id} style={{ display: "flex", gap: ".6rem", alignItems: "baseline", padding: ".3rem 0" }}>
       <input type="checkbox" name="r" value={r.id} checked={ticked.has(r.id)} onChange={() => toggle(r.id)} />
       <span style={{ flex: 1 }}>
-        {r.date} · {r.particulars}{r.receiptNo ? ` · ${r.receiptNo}` : ""}
+        {formatDate(r.date)} · {r.particulars}{r.receiptNo ? ` · ${r.receiptNo}` : ""}
       </span>
       <span className="mono">{formatKes(r.amount)}</span>
     </label>

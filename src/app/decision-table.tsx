@@ -1,4 +1,4 @@
-import { formatKes, type Payment } from "@/domain";
+import { formatKes, type Payment, formatDate } from "@/domain";
 
 export interface DecisionRow {
   id: string;
@@ -34,7 +34,7 @@ export function DecisionTable({ rows }: { rows: DecisionRow[] }) {
                 <input type="hidden" name={`terms_${r.id}`} value={r.terms} />
               </td>
               <td className="mono">{r.vrNo ?? "—"}</td>
-              <td className="mono">{r.date}</td>
+              <td className="mono">{formatDate(r.date)}</td>
               <td>
                 {r.payee}<div className="note">{r.detail}</div>
                 {r.docs && (

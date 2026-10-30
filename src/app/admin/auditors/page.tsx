@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { describeAuditScope } from "@/domain";
+import { describeAuditScope, formatDate } from "@/domain";
 import { listAuditors } from "@/server/platform";
 import { GrantAuditorForm, RevokeButton } from "./forms";
 
 const day = (d: Date | null) =>
-  d ? new Date(d).toLocaleDateString("en-KE", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+  d ? formatDate(new Date(d)) : "—";
 
 export default async function AuditorsPage() {
   const auditors = await listAuditors();

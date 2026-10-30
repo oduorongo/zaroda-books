@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { circularsFor, circularYear, LEVEL_LABEL, entryDates, flatOnlyHeadCodes, isCapitationAccount, takesProject, toKes } from "@/domain";
+import { circularsFor, circularYear, LEVEL_LABEL, entryDates, flatOnlyHeadCodes, isCapitationAccount, takesProject, toKes, formatDate } from "@/domain";
 import type { AccountType } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getReceiptForEdit } from "@/server/queries";
@@ -41,7 +41,7 @@ export default async function AmendReceiptPage({
         dates={entryDates(fy, [])}
         circulars={circularsFor(school.level, account.type as AccountType).map((c) => ({
           key: `${c.ref}|${c.date}`,
-          label: `${c.programme} ${c.term} — ${c.ref}, ${c.date}`,
+          label: `${c.programme} ${c.term} — ${c.ref}, ${formatDate(c.date)}`,
           note: c.note,
           year: circularYear(c.date),
           date: c.date,

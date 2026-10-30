@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/domain";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser, listSessions } from "@/server/auth";
@@ -5,9 +6,7 @@ import { BackLink } from "../back-link";
 import { SignOutDevice, SignOutOthers } from "./forms";
 
 const stamp = (d: Date | null) =>
-  d ? new Date(d).toLocaleString("en-KE", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
-  }) : "—";
+  d ? formatDateTime(d) : "—";
 
 /**
  * A user agent is a long, unreadable string. This is not identification, only

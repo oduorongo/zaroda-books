@@ -10,6 +10,7 @@
  * amendment afterwards shows as such instead of silently keeping the approval.
  */
 
+import { formatDate, formatDateTime } from "./dates";
 import type { Payment } from "./types";
 import type { Role } from "./permissions";
 import type { Position } from "./positions";
@@ -80,10 +81,8 @@ export const mayAuthorise = (role: Role, position: Position | null): boolean =>
 
 export function authorisationLine(r: AuthorisationRecord): string {
   const who = `${r.hoiName} (Head of institution${r.hoiTsc ? `, TSC ${r.hoiTsc}` : ""})`;
-  const when = r.at.toLocaleString("en-KE", {
-    day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Africa/Nairobi",
-  });
-  if (r.route === "paper") return `Authorised on a signed schedule dated ${r.signedOn}, by ${who}`;
+  const when = formatDateTime(r.at);
+  if (r.route === "paper") return `Authorised on a signed schedule dated ${formatDate(r.signedOn)}, by ${who}`;
   if (r.route === "email") return `Authorised by ${who}, by code emailed to ${r.sentTo}, ${when}`;
   return `Authorised by ${who}, signed in, ${when}`
     + (r.selfAuthorised ? ". Entered and authorised by the same person" : "");

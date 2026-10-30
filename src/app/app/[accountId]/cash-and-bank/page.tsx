@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { balancesAfter, entryDates, formatKes } from "@/domain";
+import { entryDates, formatDate, formatKes, moneyMoves } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { queriedEntries } from "@/server/audit-queries";
 import { getReceiptBankings, getTxns } from "@/server/queries";
@@ -15,7 +15,6 @@ export default async function CashAndBankPage({
   const queried = await queriedEntries(accountId);
   const [txns, bankings] = await Promise.all([getTxns(fy.id), getReceiptBankings(fy.id)]);
 
-  const balances = balancesAfter({ cash: fy.openingCash, bank: fy.openingBank }, txns);
   const transfers = txns
     .filter((t) => t.kind === "contra")
     .sort((a, b) => b.date.localeCompare(a.date));
@@ -29,22 +28,8 @@ export default async function CashAndBankPage({
         it appears on both sides of the cash book and nets to nothing.
       </p>
 
-      <div className="grid-2" style={{ marginBottom: "1.6rem" }}>
-        <div className="card">
-          <div className="note">Cash in hand</div>
-          <div className="mono" style={{ fontSize: "1.5rem", marginTop: ".35rem" }}>
-            {formatKes(balances.cash)}
-          </div>
-        </div>
-        <div className="card">
-          <div className="note">Balance at bank</div>
-          <div className="mono" style={{ fontSize: "1.5rem", marginTop: ".35rem" }}>
-            {formatKes(balances.bank)}
-          </div>
-        </div>
-      </div>
-
-      <TransferForm accountId={accountId} cash={balances.cash} bank={balances.bank}
+      <TransferForm accountId={accountId}
+        opening={{ cash: fy.openingCash, bank: fy.openingBank }} moves={moneyMoves(txns)}
         dates={entryDates(fy, txns.map((t) => t.date))} />
 
       <div className="card" style={{ marginTop: "1.6rem" }}>
@@ -61,7 +46,7 @@ export default async function CashAndBankPage({
             <tbody>
               {transfers.map((t) => (
                 <tr key={t.id}>
-                  <td className="mono" style={{ color: "var(--muted)" }}>{t.date}</td>
+                  <td className="mono" style={{ color: "var(--muted)" }}>{formatDate(t.date)}</td>
                   <td>{queried.has(t.id) && <span title="An audit query on this entry is not yet closed" style={{ color: "var(--alarm)" }}>⚑ </span>}{t.particulars}</td>
                   <td className="mono">{t.kind === "contra" ? t.chequeNo ?? "—" : "—"}</td>
                   <td>{t.kind === "contra" && t.from === "cash" ? "Cash to bank" : "Cash from bank"}</td>

@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { formatKes } from "@/domain";
+import { formatKes, formatDate } from "@/domain";
 import { gatewayStatus, listTenants, platformTotals } from "@/server/platform";
 
 const day = (d: Date | null) =>
-  d ? new Date(d).toLocaleDateString("en-KE", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+  d ? formatDate(new Date(d)) : "—";
 
 function Figure({ label, value, note }: { label: string; value: string; note?: string }) {
   return (

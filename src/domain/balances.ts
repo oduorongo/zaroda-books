@@ -37,21 +37,24 @@ export function cashAvailableAsAt(
   return balancesAfter({ cash: openingCash, bank: 0 }, upTo).cash;
 }
 
-/** One entry's effect on the cash box, without the rest of the entry. */
-export interface CashMove {
+/** One entry's effect on cash and bank, without the rest of the entry. */
+export interface MoneyMove {
   date: string;
-  amount: Cents;
+  cash: Cents;
+  bank: Cents;
 }
 
 /**
- * The cash side of each entry, small enough to hand to a form so it can show
- * cash in hand as at the date being typed — the date the server judges by.
+ * The cash and bank side of each entry, small enough to hand to a form so it
+ * can show the balances as at the date being typed — the date the server
+ * judges by.
  */
-export const cashMoves = (txns: Txn[]): CashMove[] =>
-  txns
-    .map((t) => ({ date: t.date, amount: balancesAfter({ cash: 0, bank: 0 }, [t]).cash }))
-    .filter((m) => m.amount !== 0);
+export const moneyMoves = (txns: Txn[]): MoneyMove[] =>
+  txns.map((t) => ({ date: t.date, ...balancesAfter({ cash: 0, bank: 0 }, [t]) }));
 
-/** `cashAvailableAsAt`, worked from `cashMoves`. */
-export const cashAsAt = (openingCash: Cents, moves: CashMove[], asAt: string): Cents =>
-  moves.reduce((a, m) => (m.date <= asAt ? a + m.amount : a), openingCash);
+/** `balancesAfter` the entries up to and including the date, worked from `moneyMoves`. */
+export const balancesAsAt = (opening: Balances, moves: MoneyMove[], asAt: string): Balances =>
+  moves.reduce(
+    (a, m) => (m.date <= asAt ? { cash: a.cash + m.cash, bank: a.bank + m.bank } : a),
+    opening,
+  );

@@ -1,3 +1,4 @@
+import { formatDate } from "@/domain";
 import type { ReactNode } from "react";
 import type { SchoolLevel } from "@/domain";
 import { LevelBand, PoweredBy } from "./level-mark";
@@ -23,9 +24,7 @@ export function ReportShell({
   landscape?: boolean;
   children: ReactNode;
 }) {
-  const printed = new Date().toLocaleDateString("en-KE", {
-    day: "numeric", month: "long", year: "numeric",
-  });
+  const printed = formatDate(new Date());
 
   return (
     <div className={`report level-${level}${landscape ? " print-landscape" : ""}`}>

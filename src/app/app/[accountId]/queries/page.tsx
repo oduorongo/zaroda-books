@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { QUERY_STATUS_LABEL, queryPartyFor } from "@/domain";
+import { QUERY_STATUS_LABEL, queryPartyFor, formatDateTime, formatDate } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { queriesForAccount } from "@/server/audit-queries";
 import { getTxns } from "@/server/queries";
@@ -7,7 +7,7 @@ import { ReportShell } from "../report-shell";
 import { RaiseQuery, Readdress, Reply } from "./forms";
 
 const when = (d: Date) =>
-  d.toLocaleString("en-KE", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  formatDateTime(d);
 
 export default async function QueriesPage({ params, searchParams }: {
   params: Promise<{ accountId: string }>;
@@ -27,7 +27,7 @@ export default async function QueriesPage({ params, searchParams }: {
   const entry = txn ? (await getTxns(fy.id)).find((t) => t.id === txn) : undefined;
   const entrySubject = !entry ? "The book as a whole"
     : `${entry.kind === "payment" ? `VR ${entry.vrNo ?? "—"}`
-      : entry.kind === "receipt" ? `Receipt ${entry.receiptNo || "—"}` : "Transfer"} · ${entry.date} · ${entry.particulars}`;
+      : entry.kind === "receipt" ? `Receipt ${entry.receiptNo || "—"}` : "Transfer"} · ${formatDate(entry.date)} · ${entry.particulars}`;
 
   return (
     <ReportShell

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { can, formatKes, projectKey, takesProject, type AccountType } from "@/domain";
+import { can, formatDate, formatKes, projectKey, takesProject, type AccountType } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getTxns } from "@/server/queries";
 import { schoolProjects, storageReady } from "@/server/documents";
@@ -43,7 +43,7 @@ export default async function ProjectsPage({ params }: { params: Promise<{ accou
                     <a href={`/app/${accountId}/projects/letters/${p.letter.id}`} target="_blank" rel="noreferrer">
                       {p.letter.fileName}
                     </a>
-                    <span className="note"> — attached {p.letter.addedAt.toISOString().slice(0, 10)}</span>
+                    <span className="note"> — attached {formatDate(p.letter.addedAt)}</span>
                     {can(user.role, "entry.delete") && !user.readOnly && (
                       <span className="no-print"> · <RemoveLetter accountId={accountId} letterId={p.letter.id} /></span>
                     )}

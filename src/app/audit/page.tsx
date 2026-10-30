@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { describeAuditScope, QUERY_STATUS_LABEL } from "@/domain";
+import { describeAuditScope, QUERY_STATUS_LABEL, formatDateTime } from "@/domain";
 import { queriesRaisedBy } from "@/server/audit-queries";
 import { auditTrail, requireAuditor, schoolsInScope } from "@/server/audit";
 import { Logo } from "../logo";
@@ -7,9 +7,7 @@ import { logout } from "../login/actions";
 import { openSchoolAction } from "./actions";
 
 const stamp = (d: Date) =>
-  new Date(d).toLocaleString("en-KE", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
-  });
+  formatDateTime(d);
 
 export default async function AuditPage() {
   const { user, scope } = await requireAuditor();

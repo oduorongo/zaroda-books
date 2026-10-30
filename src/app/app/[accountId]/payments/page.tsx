@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { cashMoves, entryDates, buildLedger, formatKes, can, mayAuthorise, authorisationLine, takesProject, type AccountType, type AuthorisationState } from "@/domain";
+import { moneyMoves, entryDates, buildLedger, formatKes, can, mayAuthorise, authorisationLine, takesProject, type AccountType, type AuthorisationState, formatDate } from "@/domain";
 import type { Txn, VoteEntry } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { queriedEntries } from "@/server/audit-queries";
@@ -56,7 +56,7 @@ const amountForms = (c: number) => c ? [String(c / 100), (c / 100).toFixed(2), f
 function matches(p: Txn, words: string[]): boolean {
   if (p.kind !== "payment") return false;
   const text = [
-    p.date, p.vrNo, p.chequeNo, p.particulars, p.narration,
+    p.date, formatDate(p.date), p.vrNo, p.chequeNo, p.particulars, p.narration,
     ...p.allocations.flatMap((a) => [a.voteHeadCode, ...amountForms(a.amount)]),
     ...amountForms(p.cash), ...amountForms(p.bank),
   ].filter(Boolean).join(" ").toLowerCase();
@@ -134,7 +134,7 @@ export default async function PaymentsPage({
         hoi={{ name: school.hoiName, email: school.hoiEmail }}
         openSchedules={requests
           .filter((r) => r.route === "paper" && !r.completedAt)
-          .map((r) => ({ id: r.id, printed: r.createdAt.toISOString().slice(0, 10), count: JSON.parse(r.payments).length }))}
+          .map((r) => ({ id: r.id, printed: formatDate(r.createdAt), count: JSON.parse(r.payments).length }))}
       />
 
       {can(user.role, "entry.post") && (
@@ -142,8 +142,8 @@ export default async function PaymentsPage({
           accountId={accountId}
           heads={heads}
           entries={entries}
-          openingCash={fy.openingCash}
-          cashMoves={cashMoves(txns)}
+          opening={{ cash: fy.openingCash, bank: fy.openingBank }}
+          moves={moneyMoves(txns)}
           dates={entryDates(fy, txns.map((t) => t.date))}
           projects={projects?.map((p) => ({ name: p.name, approved: Boolean(p.letter) }))}
         />
@@ -167,7 +167,7 @@ export default async function PaymentsPage({
             )}
             {shown.map((p) => (
               <tr key={p.id}>
-                <td className="mono" style={{ color: "var(--muted)" }}>{p.date}</td>
+                <td className="mono" style={{ color: "var(--muted)" }}>{formatDate(p.date)}</td>
                 <td className="mono">{p.kind === "payment" ? p.vrNo ?? "—" : "—"}</td>
                 <td>{queried.has(p.id) && <span title="An audit query on this entry is not yet closed" style={{ color: "var(--alarm)" }}>⚑ </span>}{p.particulars}</td>
                 <td>

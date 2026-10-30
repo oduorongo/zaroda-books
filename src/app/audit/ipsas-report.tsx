@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { formatKes, previousFinancialYear, type Balances, type Cents, type IpsasFund, type IpsasRow } from "@/domain";
+import { formatKes, previousFinancialYear, type Balances, type Cents, type IpsasFund, type IpsasRow, formatDate } from "@/domain";
 import type { IpsasContent, IpsasData, IpsasYearData } from "@/server/audit-reports";
 
 /**
@@ -381,7 +381,7 @@ export function IpsasReport({ data, content, issuedAt }: {
           <strong>{data.auditor}</strong><br />Schools Auditor
           <div className="note" style={{ marginTop: ".5rem" }}>Official stamp</div>
         </div>
-        <div>Date {issuedAt ? issuedAt.toLocaleDateString("en-KE", { day: "2-digit", month: "2-digit", year: "numeric" }) : "...................................."}</div>
+        <div>Date {issuedAt ? formatDate(issuedAt) : "...................................."}</div>
       </div>
 
       {data.years.some((y) => y.notSent.length > 0) && (

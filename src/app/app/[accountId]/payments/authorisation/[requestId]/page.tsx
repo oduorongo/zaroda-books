@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { can, formatKes } from "@/domain";
+import { can, formatKes, formatDate } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { paperSchedule } from "@/server/authorisation";
 import { ReportShell } from "../../../report-shell";
@@ -28,7 +28,7 @@ export default async function SchedulePage({ params }: {
       school={school.name} level={school.level} account={account.name} fyLabel={fy.label}
     >
       <p style={{ margin: "0 0 1rem" }}>
-        Ref. <span className="mono">{ref}</span> · prepared {req.createdAt.toISOString().slice(0, 10)}
+        Ref. <span className="mono">{ref}</span> · prepared {formatDate(req.createdAt)}
       </p>
       <table>
         <thead>
@@ -38,7 +38,7 @@ export default async function SchedulePage({ params }: {
           {lines.map((l) => (
             <tr key={l.id}>
               <td className="mono">{l.removed ? "deleted" : l.vrNo ?? "—"}</td>
-              <td className="mono">{l.date}</td>
+              <td className="mono">{formatDate(l.date)}</td>
               <td>{l.payee}{l.narration && <div className="note">{l.narration}</div>}</td>
               <td className="note">{heads(l)}</td>
               <td className="n">{formatKes(l.cash + l.bank)}</td>
@@ -65,7 +65,7 @@ export default async function SchedulePage({ params }: {
       </div>
 
       {req.completedAt ? (
-        <p className="verdict ok no-print">Recorded as signed on {req.signedOn}.</p>
+        <p className="verdict ok no-print">Recorded as signed on {formatDate(req.signedOn)}.</p>
       ) : user.readOnly || !can(user.role, "entry.post") ? null : (
         <RecordScheduleForm
           accountId={accountId}

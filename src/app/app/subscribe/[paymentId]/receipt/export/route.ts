@@ -1,14 +1,12 @@
 import { notFound, redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { formatKes } from "@/domain";
+import { formatKes, formatDateTime } from "@/domain";
 import { getCurrentUser } from "@/server/auth";
 import { csvResponse, docToCsv } from "@/server/reports";
 
 const stamp = (d: Date | null) =>
-  d ? new Date(d).toLocaleString("en-KE", {
-    day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
-  }) : "—";
+  d ? formatDateTime(d) : "—";
 
 export async function GET(
   request: Request,

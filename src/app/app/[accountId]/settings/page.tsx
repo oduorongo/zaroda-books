@@ -9,7 +9,7 @@ import { HandoverForm } from "./handover-form";
 import { AuthorisationForm } from "./authorisation-form";
 import { emailConfigured } from "@/server/email";
 import { monthName } from "@/server/periods";
-import { describeAuditScope } from "@/domain";
+import { describeAuditScope, formatDate } from "@/domain";
 import { getTxns } from "@/server/queries";
 import { AccountTypeForm } from "./account-type-form";
 import { FinancialYearForm } from "./form";
@@ -90,7 +90,7 @@ export default async function SettingsPage({
           <p style={{ margin: 0 }}>
             <strong>Sent to {audit.sentTo.name}</strong> ({describeAuditScope(audit.sentTo.grant)})
             {account.auditUpTo && <> for a handover audit, up to {monthName(`${account.auditUpTo}-01`)}</>}
-            {account.auditSentAt ? ` on ${account.auditSentAt.toLocaleDateString("en-KE", { day: "numeric", month: "long", year: "numeric" })}` : ""}.
+            {account.auditSentAt ? ` on ${formatDate(account.auditSentAt)}` : ""}.
             Only that auditor can read this book. Reopening any month takes it back.
           </p>
         ) : (
@@ -107,7 +107,7 @@ export default async function SettingsPage({
         ) : !audit.yearClosed && audit.handover ? (
           <div style={{ marginTop: ".9rem" }}>
             <p className="note" style={{ margin: 0, lineHeight: 1.6 }}>
-              <strong>{audit.handover.officer}</strong> is handing over on {audit.handover.handoverDate}. The outgoing
+              <strong>{audit.handover.officer}</strong> is handing over on {formatDate(audit.handover.handoverDate)}. The outgoing
               head&apos;s books can go for a handover audit now, up to the end of {audit.handover.cutoffName}; the rest of
               the year follows at June.
             </p>
@@ -175,12 +175,12 @@ export default async function SettingsPage({
               <p key={r.id} style={{ margin: ".4rem 0" }}>
                 <Link href={`/app/${accountId}/audit-reports/${r.id}`}>
                   {r.kind === "clearance"
-                    ? `Clearance memo, for the years up to ${r.periodTo}`
+                    ? `Clearance memo, for the years up to ${formatDate(r.periodTo)}`
                     : r.kind === "primary"
-                    ? `Audited financial statements, ${r.periodFrom} to ${r.periodTo}`
+                    ? `Audited financial statements, ${formatDate(r.periodFrom)} to ${formatDate(r.periodTo)}`
                     : `IPSAS internal audit report, ${r.years ? JSON.parse(r.years).join(" and ") : ""}`}
                 </Link>
-                <span className="note"> — issued {r.issuedAt?.toLocaleDateString("en-KE")}</span>
+                <span className="note"> — issued {formatDate(r.issuedAt)}</span>
               </p>
             ))}
           </div>

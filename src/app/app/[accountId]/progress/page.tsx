@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { STEP_LABEL, can, describeAuditScope, type StepState } from "@/domain";
+import { STEP_LABEL, can, describeAuditScope, type StepState, formatDate } from "@/domain";
 import { bookProgress } from "@/server/book-progress";
 import { monthName } from "@/server/periods";
 
 const day = (d: Date | null | undefined) =>
-  d ? d.toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric" }) : "";
+  d ? formatDate(d) : "";
 
 const vrs = (list: string[]) => list.length > 12 ? `${list.slice(0, 12).join(", ")} and ${list.length - 12} more` : list.join(", ");
 
@@ -173,8 +173,8 @@ export default async function ProgressPage({ params }: { params: Promise<{ accou
         {p.reports.length === 0 ? (
           <p className="note" style={{ margin: 0 }}>No report issued on this book&apos;s year yet.</p>
         ) : p.reports.map((r) => {
-          const title = r.kind === "clearance" ? `Clearance memo, for the years up to ${r.periodTo}`
-            : r.kind === "primary" ? `Audited financial statements, ${r.periodFrom} to ${r.periodTo}`
+          const title = r.kind === "clearance" ? `Clearance memo, for the years up to ${formatDate(r.periodTo)}`
+            : r.kind === "primary" ? `Audited financial statements, ${formatDate(r.periodFrom)} to ${formatDate(r.periodTo)}`
             : `IPSAS internal audit report, ${r.years ? (JSON.parse(r.years) as string[]).join(" and ") : ""}`;
           return (
             <p key={r.id} style={{ margin: ".3rem 0" }}>

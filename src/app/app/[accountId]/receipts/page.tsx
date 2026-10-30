@@ -1,7 +1,7 @@
 import Link from "next/link";
 import {
   buildLedger, can, circularsFor, circularYear, LEVEL_LABEL, entryDates, flatOnlyHeadCodes, formatKes, isCapitationAccount, PROJECT_APPROVALS,
-  PROJECT_STATUSES, seesCapitationLetter, takesProject, toKes,
+  PROJECT_STATUSES, seesCapitationLetter, takesProject, toKes, formatDate,
 } from "@/domain";
 import type { AccountType } from "@/domain";
 import { loadBook } from "@/server/book-context";
@@ -74,7 +74,7 @@ export default async function ReceiptsPage({
         dates={entryDates(fy, txns.map((t) => t.date))}
         circulars={circularsFor(school.level, account.type as AccountType).map((c) => ({
           key: `${c.ref}|${c.date}`,
-          label: `${c.programme} ${c.term} — ${c.ref}, ${c.date}`,
+          label: `${c.programme} ${c.term} — ${c.ref}, ${formatDate(c.date)}`,
           note: c.note,
           year: circularYear(c.date),
           date: c.date,
@@ -115,7 +115,7 @@ export default async function ReceiptsPage({
               <div style={{ fontSize: ".9rem" }}>
                 <div style={{ fontWeight: 500 }}>{queried.has(r.id) && <span title="An audit query on this entry is not yet closed" style={{ color: "var(--alarm)" }}>⚑ </span>}{r.particulars}</div>
                 <div className="note">
-                  {r.date}{r.kind === "receipt" && r.receiptNo ? ` · ${r.receiptNo}` : ""}
+                  {formatDate(r.date)}{r.kind === "receipt" && r.receiptNo ? ` · ${r.receiptNo}` : ""}
                 </div>
                 {projects.get(r.id) && (
                   <div className="note" style={{ marginTop: ".3rem" }}>

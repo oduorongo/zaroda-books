@@ -2,7 +2,7 @@ import "server-only";
 import type { AccountType, SchoolLevel } from "@/domain";
 import {
   balancesAfter, buildCashBook, buildCashFlow, buildLedger, buildTrialBalance,
-  csvAmount, isCapitationAccount, toCsv, voucherAuthorisationText,
+  csvAmount, formatDate, isCapitationAccount, toCsv, voucherAuthorisationText,
 } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import {
@@ -80,7 +80,7 @@ export async function reportDoc(
     ): Section => {
       const carryRow: Cell[] = ["", carry.label, "", csvAmount(carry.cash), csvAmount(carry.bank), "", ...heads.map(() => "")];
       const body: Cell[][] = lines.map((r) => [
-        r.date, r.particulars, r.ref ?? "",
+        formatDate(r.date), r.particulars, r.ref ?? "",
         csvAmount(r.cash), csvAmount(r.bank), csvAmount(r.total),
         ...heads.map((h) => csvAmount(r.analysis[h.code] ?? 0)),
       ]);
@@ -253,13 +253,13 @@ export async function reportDoc(
       ...(r.uncredited.length ? [{
         heading: "Deposits not yet credited by the bank",
         columns: ["Date", "Particulars", "Ref", "Amount"],
-        rows: r.uncredited.map((i) => [i.date, i.particulars, i.ref ?? "", csvAmount(i.amount)]),
+        rows: r.uncredited.map((i) => [formatDate(i.date), i.particulars, i.ref ?? "", csvAmount(i.amount)]),
         total: ["", "", "Total", csvAmount(r.uncreditedTotal)],
       }] : []),
       ...(r.unpresented.length ? [{
         heading: "Cheques not yet presented",
         columns: ["Date", "Particulars", "Cheque no.", "Amount"],
-        rows: r.unpresented.map((i) => [i.date, i.particulars, i.ref ?? "", csvAmount(i.amount)]),
+        rows: r.unpresented.map((i) => [formatDate(i.date), i.particulars, i.ref ?? "", csvAmount(i.amount)]),
         total: ["", "", "Total", csvAmount(r.unpresentedTotal)],
       }] : []),
     ];
@@ -318,7 +318,7 @@ export async function reportDoc(
         csvAmount(heads.reduce((a, h) => a + (received[h.code] ?? 0), 0))],
       note: enrolment
         ? `${learners.toLocaleString("en-KE")} learners, derived from the disbursement receipted `
-          + `on ${enrolment.date}${enrolment.receiptNo ? ` (${enrolment.receiptNo})` : ""}. `
+          + `on ${formatDate(enrolment.date)}${enrolment.receiptNo ? ` (${enrolment.receiptNo})` : ""}. `
           + "The amounts due are what the rates come to at that enrolment, not what was received."
         : "No capitation receipt has been posted yet, so there is no enrolment to work from.",
     }];
@@ -360,14 +360,14 @@ export async function acknowledgementDoc(
     level: school.level,
     account: account.name,
     fyLabel: fy.label,
-    period: txn.date,
+    period: formatDate(txn.date),
     landscape: false,
     filename: slug(`${school.name} acknowledgement ${txn.receiptNo || txn.date}`),
     sections: [
       {
         columns: ["Details", ""],
         rows: [
-          ["Date received", txn.date],
+          ["Date received", formatDate(txn.date)],
           ["Receipt no.", txn.receiptNo ?? "—"],
           ["Particulars", txn.particulars],
           ["Amount received", csvAmount(total)],
@@ -407,14 +407,14 @@ export async function paymentVoucherDoc(
     level: school.level,
     account: account.name,
     fyLabel: fy.label,
-    period: txn.date,
+    period: formatDate(txn.date),
     landscape: false,
     filename: slug(`${school.name} payment voucher ${txn.vrNo || txn.date}`),
     sections: [
       {
         columns: ["Details", ""],
         rows: [
-          ["Date paid", txn.date],
+          ["Date paid", formatDate(txn.date)],
           ["Voucher no.", txn.vrNo ?? "—"],
           ["Cheque no.", txn.chequeNo ?? "—"],
           ["Payee / paid to", txn.particulars],

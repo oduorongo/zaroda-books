@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { formatKes } from "@/domain";
+import { formatKes, formatDate } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getTxns } from "@/server/queries";
 import { PrintButton } from "../../print-button";
@@ -70,7 +70,7 @@ export default async function VoucherBookPage({
 
             <table style={{ marginTop: "1.25rem" }}>
               <tbody>
-                <tr><td>Date paid</td><td className="n">{txn.date}</td></tr>
+                <tr><td>Date paid</td><td className="n">{formatDate(txn.date)}</td></tr>
                 <tr><td>Cheque no.</td><td className="n">{txn.chequeNo ?? "—"}</td></tr>
                 <tr><td>Payee / paid to</td><td className="n">{txn.particulars}</td></tr>
                 {txn.narration && <tr><td>Narration</td><td className="n">{txn.narration}</td></tr>}

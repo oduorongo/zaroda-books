@@ -1,3 +1,4 @@
+import { formatDate } from "@/domain";
 import Link from "next/link";
 import { auditedSchool, latestHandover, reportsOn, sentYears } from "@/server/audit-reports";
 import { createClearance, createIpsasReport, createPrimary } from "../../reports/actions";
@@ -65,7 +66,7 @@ export default async function AuditSchoolPage({ params, searchParams }: {
         <h2 style={{ marginTop: 0 }}>New clearance memo</h2>
         <p className="note">
           {handover
-            ? `The school recorded a handover: ${handover.officer} (TSC ${handover.tscNo}), ${handover.reason}, on ${handover.handoverDate}. The memo starts from these details.`
+            ? `The school recorded a handover: ${handover.officer} (TSC ${handover.tscNo}), ${handover.reason}, on ${formatDate(handover.handoverDate)}. The memo starts from these details.`
             : "For a head of institution leaving the school: retiring, on transfer, promoted or resigning. The school has not recorded a handover, so you enter the details."}
         </p>
         <form action={createClearance} style={{ marginTop: ".75rem" }}>
@@ -82,9 +83,9 @@ export default async function AuditSchoolPage({ params, searchParams }: {
             {reports.map((r) => (
               <tr key={r.id}>
                 <td><Link href={`/audit/reports/${r.id}`}>{KIND_LABEL[r.kind]}</Link></td>
-                <td>{r.years ? JSON.parse(r.years).join(", ") : r.kind === "primary" ? `${r.periodFrom} to ${r.periodTo}` : r.periodTo ? `up to ${r.periodTo}` : ""}</td>
+                <td>{r.years ? JSON.parse(r.years).join(", ") : r.kind === "primary" ? `${formatDate(r.periodFrom)} to ${formatDate(r.periodTo)}` : r.periodTo ? `up to ${formatDate(r.periodTo)}` : ""}</td>
                 <td style={r.status === "draft" ? { color: "var(--alarm)" } : undefined}>
-                  {r.status === "draft" ? "Draft" : `Issued ${r.issuedAt?.toLocaleDateString("en-KE")}`}
+                  {r.status === "draft" ? "Draft" : `Issued ${formatDate(r.issuedAt)}`}
                 </td>
               </tr>
             ))}

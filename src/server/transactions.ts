@@ -2,7 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { db, schema } from "@/db";
 import { and, eq } from "drizzle-orm";
-import { bankingContraFor, cashAvailableAsAt, validateTransaction } from "@/domain";
+import { bankingContraFor, cashAvailableAsAt, validateTransaction, formatDate } from "@/domain";
 import type { NewTxn, ReceiptProject, Txn } from "@/domain";
 import { getTxns } from "./queries";
 
@@ -49,7 +49,7 @@ async function assertCashStaysCovered(
     const now = cashAvailableAsAt(openingCash, after, date);
     if (now < 0 && now < cashAvailableAsAt(openingCash, txns, date)) {
       throw new Error(
-        `This would leave the cash box short on ${date}, where cash has already been paid out. ` +
+        `This would leave the cash box short on ${formatDate(date)}, where cash has already been paid out. ` +
         "Amend or remove those cash payments first.",
       );
     }

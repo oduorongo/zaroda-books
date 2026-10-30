@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { AUTH_ROUTE_LABEL, authorisationLine, formatKes, projectKey, takesProject, type AccountType } from "@/domain";
+import { AUTH_ROUTE_LABEL, authorisationLine, formatKes, projectKey, takesProject, type AccountType, formatDate } from "@/domain";
 import { documentsFor, schoolProjects } from "@/server/documents";
 import { loadBook } from "@/server/book-context";
 import { getTxns } from "@/server/queries";
 import { paymentStatuses, requestsFor, settingsHistory } from "@/server/authorisation";
 import { ReportShell } from "../../report-shell";
 
-const day = (d: Date) => d.toISOString().slice(0, 10);
+const day = (d: Date) => formatDate(d);
 
 /**
  * How every payment of the year was authorised, and every change to who the
@@ -59,7 +59,7 @@ export default async function AuthorisationRegisterPage({ params }: {
           {statuses.map(({ payment: p, status: s }) => (
             <tr key={p.id}>
               <td className="mono">{p.vrNo ?? "—"}</td>
-              <td className="mono">{p.date}</td>
+              <td className="mono">{formatDate(p.date)}</td>
               <td>{p.particulars}</td>
               <td className="n">{formatKes(p.cash + p.bank)}</td>
               <td>
@@ -133,7 +133,7 @@ export default async function AuthorisationRegisterPage({ params }: {
               <td className="n">{JSON.parse(r.payments).length}</td>
               <td>
                 {r.completedAt
-                  ? r.route === "paper" ? `Signed ${r.signedOn}` : `Decided ${day(r.completedAt)}`
+                  ? r.route === "paper" ? `Signed ${formatDate(r.signedOn)}` : `Decided ${day(r.completedAt)}`
                   : r.expiresAt < new Date() ? "Lapsed unanswered" : "Awaiting the head"}
               </td>
             </tr>

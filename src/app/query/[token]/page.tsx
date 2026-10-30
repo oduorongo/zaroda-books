@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/domain";
 import type { Metadata } from "next";
 import { queryForToken } from "@/server/audit-queries";
 import { AnswerForm } from "./form";
@@ -5,7 +6,7 @@ import { AnswerForm } from "./form";
 export const metadata: Metadata = { title: "Audit query", robots: { index: false } };
 
 const when = (d: Date) =>
-  d.toLocaleString("en-KE", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Africa/Nairobi" });
+  formatDateTime(d);
 
 /**
  * The head of institution's view of one audit query, from an emailed link.

@@ -3,7 +3,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db, schema } from "@/db";
 import {
   auditBlockReason, auditorCanSee, closedThrough, handoverCutoff, missingDocumentsWarning, statementGaps, scdeAuditBlock, statementsAuditBlock, takesProject, yearClosed,
-  type AccountType, type Placed,
+  type AccountType, type Placed, formatDate,
 } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { unauthorisedVouchers } from "@/server/authorisation";
@@ -75,7 +75,7 @@ export async function sendForAudit(accountId: string, grantId: string, scope: "y
   const what = upTo && handover
     ? `has been closed up to ${monthName(`${upTo}-01`)} and sent to you for a handover audit: `
       + `${handover.officer.replace(/</g, "&lt;")} (TSC ${handover.tscNo.replace(/</g, "&lt;")}) is leaving on `
-      + `${handover.reason}, handing over on ${handover.handoverDate}.`
+      + `${handover.reason}, handing over on ${formatDate(handover.handoverDate)}.`
     : "has been closed and sent to you for audit.";
   const url = `${SITE_URL}/audit`;
   try {

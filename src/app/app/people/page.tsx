@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { ROLE_DESCRIPTION, ROLE_LABEL, can } from "@/domain";
+import { ROLE_DESCRIPTION, ROLE_LABEL, can, formatDate } from "@/domain";
 import { getCurrentUser } from "@/server/auth";
 import { db, schema } from "@/db";
 import { eq } from "drizzle-orm";
@@ -9,7 +9,7 @@ import { BackLink } from "../back-link";
 import { InviteForm, RemoveButton, RevokeInviteButton, RoleSelect } from "./forms";
 
 const day = (d: Date) =>
-  new Date(d).toLocaleDateString("en-KE", { day: "2-digit", month: "short", year: "numeric" });
+  formatDate(new Date(d));
 
 export default async function PeoplePage() {
   const user = await getCurrentUser();

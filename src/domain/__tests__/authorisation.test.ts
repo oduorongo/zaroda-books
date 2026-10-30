@@ -99,7 +99,7 @@ describe("authorisationLine, printed on the voucher", () => {
   it("names the signed schedule for a paper authorisation", () => {
     const line = authorisationLine(rec({ route: "paper", sentTo: null, signedOn: "2025-02-14" }));
     expect(line).toMatch(/signed schedule/i);
-    expect(line).toMatch(/2025-02-14/);
+    expect(line).toMatch(/14\/02\/2025/);
   });
 
   it("says so when the head entered the payment and authorised it too", () => {

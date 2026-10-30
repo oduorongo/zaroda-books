@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { chargeAmount, financialYearInProgress, financialYearLabels, formatKes } from "@/domain";
+import { chargeAmount, financialYearInProgress, financialYearLabels, formatKes, formatDateTime } from "@/domain";
 import { getCurrentUser } from "@/server/auth";
 import { orgPayments } from "@/server/billing";
 import { orgEntitlements } from "@/server/books";
@@ -10,7 +10,7 @@ import { BackLink } from "../back-link";
 import { SubscribeForm } from "./form";
 
 const stamp = (d: Date | null) =>
-  d ? new Date(d).toLocaleString("en-KE", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
+  d ? formatDateTime(d) : "—";
 
 export default async function SubscribePage() {
   const user = await getCurrentUser();

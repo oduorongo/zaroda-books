@@ -7,7 +7,7 @@ import { auditorsForSchool, sendForAudit } from "@/server/audit-send";
 import { auditMail, escapeHtml } from "@/server/audit-mail";
 import { saveAuthorisationSettings } from "@/server/authorisation";
 import { sendOpenQueriesToHoi } from "@/server/audit-queries";
-import { isSubCountyOf, readHandover } from "@/domain";
+import { isSubCountyOf, readHandover, formatDate } from "@/domain";
 import { db, schema } from "@/db";
 import {
   archiveBook, changeAccountType, changeFinancialYear, saveSchool, saveSchoolLocation,
@@ -148,7 +148,7 @@ export async function saveHandoverAction(
     subject: `${school.name}: head of institution handing over`,
     heading: "A head of institution is handing over",
     body: `<strong>${escapeHtml(school.name)}</strong> has recorded that <strong>${escapeHtml(h.officer)}</strong> `
-      + `(TSC ${escapeHtml(h.tscNo)}) is leaving on ${h.reason}, handing over on ${h.handoverDate}. `
+      + `(TSC ${escapeHtml(h.tscNo)}) is leaving on ${h.reason}, handing over on ${formatDate(h.handoverDate)}. `
       + "A clearance memo you start for the school will be filled in from these details.",
     buttonLabel: "Open your audit list",
     linkPath: "/audit",

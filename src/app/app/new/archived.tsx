@@ -1,5 +1,6 @@
 "use server";
 
+import { formatDate } from "@/domain";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/server/auth";
 import { getArchivedBooks, restoreBook } from "@/server/books";
@@ -33,9 +34,7 @@ export async function ArchivedBooks({ orgId }: { orgId: string }) {
             <tr key={account.id}>
               <td>{school.name} — {account.name}</td>
               <td className="note">
-                archived {account.archivedAt?.toLocaleDateString("en-KE", {
-                  day: "numeric", month: "long", year: "numeric",
-                })}
+                archived {formatDate(account.archivedAt)}
               </td>
               <td className="n">
                 <form action={restore}>

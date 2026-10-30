@@ -2,7 +2,7 @@ import "server-only";
 import { and, asc, desc, eq, inArray, lt, ne, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import {
-  CODE_MINUTES, MAX_CODES, MAX_CODE_TRIES, auditorCanSee, closeRefusal, codeUsable, formatKes, queryPartyFor,
+  CODE_MINUTES, MAX_CODES, MAX_CODE_TRIES, auditorCanSee, closeRefusal, codeUsable, formatDate, formatKes, queryPartyFor,
   reminderDue, statusAfterMessage,
   type QueryAddressee, type QueryParty, type QueryStatus,
 } from "@/domain";
@@ -87,7 +87,7 @@ async function subjectOf(accountId: string, transactionId: string | null) {
     : t.kind === "receipt" ? `Receipt ${t.receiptNo || "—"}`
     : "Transfer";
   const amount = t.kind === "contra" ? t.cash : t.cash + t.bank;
-  return `${ref} · ${t.date} · ${t.particulars} · ${formatKes(amount)}`;
+  return `${ref} · ${formatDate(t.date)} · ${t.particulars} · ${formatKes(amount)}`;
 }
 
 const escape = (s: string) =>

@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 import {
-  cashAsAt, formatKes, parseAmount, type EntryDates, voteBalancesAsAt, type CashMove, type VoteEntry, type VoteHead,
+  balancesAsAt, formatDate, formatKes, parseAmount, type Balances, type EntryDates, voteBalancesAsAt, type MoneyMove,
+  type VoteEntry, type VoteHead,
 } from "@/domain";
 import { amendPayment, attachDocumentAction, postPayment } from "./actions";
 import { DocumentRows, takeDocuments, type PendingDocument } from "./documents";
@@ -23,7 +24,7 @@ export interface PaymentDraft {
 }
 
 export function PaymentForm({
-  accountId, heads, entries, openingCash, cashMoves, dates, payment, projects,
+  accountId, heads, entries, opening, moves, dates, payment, projects,
 }: {
   accountId: string;
   heads: VoteHead[];
@@ -33,11 +34,11 @@ export function PaymentForm({
    */
   entries: VoteEntry[];
   /**
-   * The cash side of every other entry, so cash in hand is shown as at the
+   * The cash and bank side of every other entry, so both are shown as at the
    * payment's date — the date the server refuses by, not the year end.
    */
-  openingCash: number;
-  cashMoves: CashMove[];
+  opening: Balances;
+  moves: MoneyMove[];
   /** The book's year, which the calendar is held to. */
   dates: EntryDates;
   payment?: PaymentDraft;
@@ -113,7 +114,8 @@ export function PaymentForm({
     toAttach.current = docs;
     startTransition(() => action(data));
   };
-  const cashInHand = cashAsAt(openingCash, cashMoves, date);
+  const onTheDay = balancesAsAt(opening, moves, date);
+  const cashInHand = onTheDay.cash;
 
   // One parser, shared with the server — see parse-amount.ts. Anything
   // unreadable counts as nothing here and is refused on save, rather than
@@ -127,6 +129,7 @@ export function PaymentForm({
   // Judged on the date being entered, not the year: a vote funded in June
   // did not fund a payment made in October.
   const balances = voteBalancesAsAt(entries, date);
+  const onVotes = heads.reduce((a, h) => a + (balances[h.code] ?? 0), 0);
   const overdrawn = date ? heads.filter((h) => charged(h.code) > (balances[h.code] ?? 0)) : [];
 
   // Capitation is banked, so paying cash without drawing it first sends cash
@@ -223,7 +226,16 @@ export function PaymentForm({
           value={narration} onChange={(e) => setNarration(e.target.value)} />
       </label>
 
-      <div className="eyebrow" style={{ margin: "1.75rem 0 .6rem" }}>Charged to</div>
+      <p className="note" style={{ margin: "1.5rem 0 0" }}>
+        {date ? (
+          <>
+            On {formatDate(date)}: cash in hand <span className="mono">{formatKes(onTheDay.cash)}</span>
+            {" · "}bank <span className="mono">{formatKes(onTheDay.bank)}</span>
+          </>
+        ) : "Choose the date to see cash, bank and each vote as they stood that day."}
+      </p>
+
+      <div className="eyebrow" style={{ margin: "1.25rem 0 .6rem" }}>Charged to</div>
       <div style={{ overflowX: "auto" }}>
         <table>
           <thead>
@@ -266,8 +278,8 @@ export function PaymentForm({
             <tr className="total">
               <td>Total paid</td>
               <td className="n">{formatKes(total)}</td>
-              <td></td>
-              <td></td>
+              <td className="n">{date ? formatKes(onVotes) : "—"}</td>
+              <td className="n">{date && total ? formatKes(onVotes - total) : "—"}</td>
             </tr>
           </tbody>
         </table>
@@ -294,7 +306,7 @@ export function PaymentForm({
       </div>
       {shortOfCash && (
         <p className="note" style={{ marginTop: ".9rem", color: "var(--alarm)" }}>
-          Cash in hand on {date} is {formatKes(cashInHand)}, so this leaves it{" "}
+          Cash in hand on {formatDate(date)} is {formatKes(cashInHand)}, so this leaves it{" "}
           {formatKes(total - cashInHand)} short. Draw the cash from the bank first on the{" "}
           <Link href={`/app/${accountId}/cash-and-bank`}>cash and bank</Link> page — a month cannot
           be closed while cash in hand is negative.

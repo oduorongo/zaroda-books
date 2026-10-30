@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { DOCUMENT_KINDS } from "@/domain";
+import { DOCUMENT_KINDS, formatDate } from "@/domain";
 import { FileInput } from "../file-input";
 import { attachDocumentAction, removeDocumentAction } from "./actions";
 
@@ -33,7 +33,7 @@ export function PaymentDocuments({ accountId, transactionId, docs, canAttach, ca
             {d.onPaper ? "on the paper file" : (
               <a href={`/app/${accountId}/documents/${d.id}`} target="_blank" rel="noreferrer">{d.fileName}</a>
             )}
-            <span className="note"> · added {d.addedOn}</span>
+            <span className="note"> · added {formatDate(d.addedOn)}</span>
             {canRemove && <Remove accountId={accountId} documentId={d.id} />}
           </li>
         ))}

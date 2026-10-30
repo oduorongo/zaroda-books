@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDate } from "@/domain";
 import { useState } from "react";
 import type { SchoolLevel } from "@/domain";
 import { drawLevelBand, drawLevelRule, drawPoweredBy } from "./pdf-marks";
@@ -109,9 +110,7 @@ export function PdfButton({ href, landscape }: { href: string; landscape?: boole
         }
       }
 
-      const printed = new Date().toLocaleDateString("en-KE", {
-        day: "numeric", month: "long", year: "numeric",
-      });
+      const printed = formatDate(new Date());
       const pages = pdf.getNumberOfPages();
       for (let p = 1; p <= pages; p += 1) {
         pdf.setPage(p);

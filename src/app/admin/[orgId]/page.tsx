@@ -1,6 +1,6 @@
 import Link from "next/link";
 import {
-  LEVEL_PRICE, financialYearInProgress, financialYearLabels, formatKes, revenue,
+  LEVEL_PRICE, financialYearInProgress, financialYearLabels, formatKes, revenue, formatDateTime,
 } from "@/domain";
 import { getTenant } from "@/server/platform";
 import { viewAsAction } from "./actions";
@@ -9,7 +9,7 @@ import {
 } from "./subscription-forms";
 
 const stamp = (d: Date | null) =>
-  d ? new Date(d).toLocaleString("en-KE", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
+  d ? formatDateTime(d) : "—";
 
 export default async function TenantPage({ params }: { params: Promise<{ orgId: string }> }) {
   const { orgId } = await params;

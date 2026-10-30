@@ -13,7 +13,7 @@ import { createTransaction, deleteTransaction, updateTransaction } from "@/serve
  * Posting and amending read the same form, so a transfer cannot mean one thing
  * when posted and another when corrected.
  */
-function readTransferForm(form: FormData): { error: string } | { txn: NewTxn } {
+function readTransferForm(form: FormData): { error: string } | { txn: Extract<NewTxn, { kind: "contra" }> } {
   const date = String(form.get("date") ?? "");
   const direction = String(form.get("direction") ?? "");
   const chequeNo = String(form.get("chequeNo") ?? "").trim();
@@ -46,15 +46,21 @@ function readTransferForm(form: FormData): { error: string } | { txn: NewTxn } {
 const BANKED_WITH_RECEIPT =
   "This banking was made by its receipt. Amend the receipt instead — untick Banked or change the date banked there.";
 
+/** What the transfer form hears back: why a save was refused, or what was posted. */
+export type TransferState = {
+  error?: string;
+  posted?: { date: string; amount: number; toBank: boolean };
+} | null;
+
 export async function postTransfer(
-  _prev: string | null,
+  _prev: TransferState,
   form: FormData,
-): Promise<string | null> {
+): Promise<TransferState> {
   const accountId = String(form.get("accountId") ?? "");
   const { user, fy } = await loadBook(accountId, { write: true, require: "entry.post" });
 
   const r = readTransferForm(form);
-  if ("error" in r) return r.error;
+  if ("error" in r) return { error: r.error };
 
   try {
     const period = await getPeriodForDate(fy.id, r.txn.date);
@@ -66,32 +72,32 @@ export async function postTransfer(
       txn: r.txn,
     });
   } catch (e) {
-    return e instanceof Error ? e.message : "The transfer could not be posted.";
+    return { error: e instanceof Error ? e.message : "The transfer could not be posted." };
   }
 
   revalidatePath(`/app/${accountId}/cash-and-bank`);
-  return null;
+  return { posted: { date: r.txn.date, amount: r.txn.amount, toBank: r.txn.to === "bank" } };
 }
 
 export async function amendTransfer(
-  _prev: string | null,
+  _prev: TransferState,
   form: FormData,
-): Promise<string | null> {
+): Promise<TransferState> {
   const accountId = String(form.get("accountId") ?? "");
   const transactionId = String(form.get("transactionId") ?? "");
   const { user, fy } = await loadBook(accountId, { write: true, require: "entry.amend" });
 
   const transfer = await getTransferForEdit(transactionId, fy.id);
-  if (!transfer) return "Transfer not found.";
-  if (transfer.bankedFrom) return BANKED_WITH_RECEIPT;
+  if (!transfer) return { error: "Transfer not found." };
+  if (transfer.bankedFrom) return { error: BANKED_WITH_RECEIPT };
 
   const r = readTransferForm(form);
-  if ("error" in r) return r.error;
+  if ("error" in r) return { error: r.error };
 
   try {
     await updateTransaction({ transactionId, accountId, userId: user.id, orgId: user.orgId, txn: r.txn });
   } catch (e) {
-    return e instanceof Error ? e.message : "The amendment could not be saved.";
+    return { error: e instanceof Error ? e.message : "The amendment could not be saved." };
   }
 
   revalidatePath(`/app/${accountId}`, "layout");

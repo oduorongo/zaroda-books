@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { formatKes, isCapitationAccount } from "@/domain";
+import { formatKes, isCapitationAccount, formatDate } from "@/domain";
 import type { AccountType } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getTxns } from "@/server/queries";
@@ -59,7 +59,7 @@ export default async function AcknowledgementPage({
 
         <table>
           <tbody>
-            <tr><td>Date received</td><td className="n">{txn.date}</td></tr>
+            <tr><td>Date received</td><td className="n">{formatDate(txn.date)}</td></tr>
             <tr><td>Receipt no.</td><td className="n">{txn.receiptNo ?? "—"}</td></tr>
             <tr><td>Particulars</td><td className="n">{txn.particulars}</td></tr>
             <tr><td>Amount received</td><td className="n">{formatKes(total)}</td></tr>

@@ -1,4 +1,4 @@
-import { buildLedger, formatKes, isCapitationAccount } from "@/domain";
+import { buildLedger, formatKes, isCapitationAccount, formatDate } from "@/domain";
 import type { AccountType } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getEnrolmentInForce, getTxns, getVoteHeadRates } from "@/server/queries";
@@ -51,7 +51,7 @@ export default async function VoteHeadsPage({
             + "receipts have given it so far."
           : enrolment
           ? `${learners.toLocaleString("en-KE")} learners, derived from the disbursement receipted on `
-            + `${enrolment.date}${enrolment.receiptNo ? ` (${enrolment.receiptNo})` : ""}. `
+            + `${formatDate(enrolment.date)}${enrolment.receiptNo ? ` (${enrolment.receiptNo})` : ""}. `
             + "The amounts due are what the rates come to at that enrolment, not what was received."
           : "No capitation receipt has been posted yet, so there is no enrolment to work from."}
       </p>

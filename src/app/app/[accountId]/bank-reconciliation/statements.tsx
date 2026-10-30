@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDate } from "@/domain";
 import { useActionState, useState } from "react";
 import { FileInput } from "../file-input";
 import { attachStatementAction, removeStatementAction } from "./actions";
@@ -41,7 +42,7 @@ export function BankStatements({ accountId, statements, missing, yearEnd, months
           <li key={s.id} style={{ margin: ".3rem 0" }}>
             <strong>{s.kind === "certificate" ? "Certificate of balance" : "Statement"}</strong>, {s.covers}{" — "}
             <a href={`/app/${accountId}/bank-reconciliation/statements/${s.id}`} target="_blank" rel="noreferrer">{s.fileName}</a>
-            <span className="note"> · added {s.addedOn}</span>
+            <span className="note"> · added {formatDate(s.addedOn)}</span>
             {s.removable && <Remove accountId={accountId} statementId={s.id} />}
           </li>
         ))}

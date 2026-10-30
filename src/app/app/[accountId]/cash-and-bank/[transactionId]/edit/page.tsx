@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { balancesAfter, entryDates, toKes } from "@/domain";
+import { entryDates, moneyMoves, toKes } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getTransferForEdit, getTxns } from "@/server/queries";
 import { DeleteTransfer, TransferForm } from "../../form";
@@ -24,7 +24,6 @@ export default async function AmendTransferPage({
   // The balances shown leave this transfer out, so they read as they will once
   // it is saved again.
   const others = txns.filter((t) => t.id !== transactionId);
-  const balances = balancesAfter({ cash: fy.openingCash, bank: fy.openingBank }, others);
 
   return (
     <>
@@ -40,8 +39,8 @@ export default async function AmendTransferPage({
 
       <TransferForm
         accountId={accountId}
-        cash={balances.cash}
-        bank={balances.bank}
+        opening={{ cash: fy.openingCash, bank: fy.openingBank }}
+        moves={moneyMoves(others)}
         dates={entryDates(fy, [])}
         transfer={{
           id: transfer.id,
