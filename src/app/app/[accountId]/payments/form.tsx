@@ -229,8 +229,8 @@ export function PaymentForm({
       <p className="note" style={{ margin: "1.5rem 0 0" }}>
         {date ? (
           <>
-            On {formatDate(date)}: cash in hand <span className="mono">{formatKes(onTheDay.cash)}</span>
-            {" · "}bank <span className="mono">{formatKes(onTheDay.bank)}</span>
+            On {formatDate(date)}: cash in hand <strong className="mono">{formatKes(onTheDay.cash)}</strong>
+            {" · "}bank <strong className="mono">{formatKes(onTheDay.bank)}</strong>
           </>
         ) : "Choose the date to see cash, bank and each vote as they stood that day."}
       </p>

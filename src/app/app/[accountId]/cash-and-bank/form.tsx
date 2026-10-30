@@ -79,13 +79,13 @@ export function TransferForm({
       <div className="grid-2" style={{ marginBottom: "1.6rem" }}>
         <div className="card">
           <div className="note">Cash in hand{date ? on : " (all entries)"}</div>
-          <div className="mono" style={{ fontSize: "1.5rem", marginTop: ".35rem" }}>
+          <div className="mono" style={{ fontSize: "1.5rem", marginTop: ".35rem", fontWeight: date ? 700 : undefined }}>
             {formatKes(balances.cash)}
           </div>
         </div>
         <div className="card">
           <div className="note">Balance at bank{date ? on : " (all entries)"}</div>
-          <div className="mono" style={{ fontSize: "1.5rem", marginTop: ".35rem" }}>
+          <div className="mono" style={{ fontSize: "1.5rem", marginTop: ".35rem", fontWeight: date ? 700 : undefined }}>
             {formatKes(balances.bank)}
           </div>
         </div>
