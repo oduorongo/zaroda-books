@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Archivo, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import { SITE_URL } from "./site-url";
 import { ServiceWorker } from "./service-worker";
+import { BottomRibbon, TopRibbon } from "./ribbons";
 
 const heading = Archivo({ subsets: ["latin"], weight: ["500", "600", "700"], variable: "--font-heading" });
 const sans = IBM_Plex_Sans({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-sans" });
@@ -27,7 +28,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${heading.variable} ${sans.variable} ${mono.variable}`}>
       <body>
+        <TopRibbon />
         {children}
+        <BottomRibbon />
         <ServiceWorker />
       </body>
     </html>

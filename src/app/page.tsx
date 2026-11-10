@@ -62,25 +62,6 @@ export default function Home() {
   return (
     <main>
       <div className="dark-band">
-        <div className="wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1.5rem", flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: ".9rem" }}>
-            <Logo height={38} priority />
-            <div className="mono" style={{ letterSpacing: ".14em", fontSize: ".8rem", textTransform: "uppercase", borderLeft: "1px solid rgba(251,250,247,.3)", paddingLeft: ".9rem" }}>
-              Zaroda&nbsp;Books
-            </div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "1.75rem", fontSize: ".9rem" }}>
-            <a href="#how">How it works</a>
-            <a href="#books">What it produces</a>
-            <a href="#pricing">Pricing</a>
-            <a href="#faq">Questions</a>
-            <Link href="/login" style={{ color: "var(--paper)" }}>Log in</Link>
-            <Link href="/signup" className="btn btn-gold" style={{ color: "#fff", textDecoration: "none", padding: ".7rem 1.25rem", fontSize: ".9rem" }}>
-              Create account
-            </Link>
-          </div>
-        </div>
-
         <div className="hero">
           <Image
             src="/books-ui.png"

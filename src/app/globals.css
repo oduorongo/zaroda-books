@@ -499,3 +499,33 @@ a:hover { color: var(--gold); }
   .letterhead.level-senior::after { content: ""; position: absolute; left: 0; right: 0; bottom: -4pt; border-bottom: .6pt solid #000; }
   .z-powered { margin-top: 5mm; padding-top: 2mm; border-top: .5pt solid #999; font-size: 7.5pt; color: #666; }
 }
+
+/* The top and bottom ribbons shared with the other Zaroda apps, each divided from the page by a gold line. */
+.ribbon { position: sticky; z-index: 40; background: var(--ink-deep); color: var(--paper); }
+.ribbon-top {
+  top: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: .5rem 1.5rem; padding: .65rem 1.5rem;
+  border-bottom: 3px solid #d4af37; box-shadow: 0 2px 10px rgba(5, 12, 35, .25);
+}
+.ribbon-brand { display: flex; align-items: center; gap: .9rem; text-decoration: none; }
+.ribbon-brand span {
+  font-family: var(--font-mono), ui-monospace, monospace; font-size: .8rem; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--gold-bright);
+  border-left: 1px solid rgba(251, 250, 247, .3); padding-left: .9rem;
+}
+.ribbon-nav { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1.75rem; font-size: .9rem; }
+.ribbon-nav a { color: var(--on-dark); }
+.ribbon-nav a:hover { color: var(--paper); }
+.ribbon-bottom {
+  bottom: 0; padding: .55rem 1rem; text-align: center; font-size: .8rem; color: rgba(251, 250, 247, .8);
+  border-top: 3px solid #d4af37; box-shadow: 0 -2px 10px rgba(5, 12, 35, .25);
+}
+.ribbon-bottom strong { color: #fff; }
+.ribbon-short { display: none; }
+@media (max-width: 640px) {
+  .ribbon-top { padding: .55rem 1rem; }
+  .ribbon-nav { gap: .4rem 1rem; font-size: .82rem; }
+  .ribbon-bottom { font-size: .68rem; padding: .4rem .5rem; }
+  .ribbon-long { display: none; }
+  .ribbon-short { display: inline; }
+}
