@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { logout } from "../login/actions";
-import { Logo } from "../logo";
 import { requirePlatformAdmin } from "@/server/platform";
 import { countUnseen } from "@/server/problems";
 
@@ -18,10 +17,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1.5rem", flexWrap: "wrap" }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: ".9rem" }}>
-            <Logo height={34} priority />
             <div
               className="mono"
-              style={{ letterSpacing: ".14em", fontSize: ".78rem", textTransform: "uppercase", borderLeft: "1px solid rgba(251,250,247,.3)", paddingLeft: ".9rem", color: "var(--gold)" }}
+              style={{ letterSpacing: ".14em", fontSize: ".78rem", textTransform: "uppercase", color: "var(--gold-bright)" }}
             >
               System&nbsp;owner
             </div>
