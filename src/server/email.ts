@@ -45,7 +45,7 @@ export async function sendEmail(input: {
   // Sending happens from whichever domain is verified with Resend, which need
   // not be the one people should write back to. Replies go to the address the
   // site advertises and that forwards to a real inbox.
-  const replyTo = process.env.RESEND_REPLY_TO || "support@zarodabooks.com";
+  const replyTo = process.env.RESEND_REPLY_TO || "info@zarodasolutions.app";
 
   try {
     const resp = await fetch("https://api.resend.com/emails", {
