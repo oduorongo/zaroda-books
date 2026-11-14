@@ -1,4 +1,4 @@
-import { bankEffect, can, formatKes, monthsToClose, monthsToReopen, toKes, formatDate } from "@/domain";
+import { bankEffect, can, closesWithoutStatement, formatKes, monthsToClose, monthsToReopen, toKes, formatDate } from "@/domain";
 import { nextFinancialYear, nextYearBook } from "@/server/books";
 import { getReconciliation } from "@/server/reconciliation";
 import { getTxns, upTo } from "@/server/queries";
@@ -47,6 +47,10 @@ export default async function Page({ params, searchParams }: {
   const nameOf = (m: string) => monthName(`${m}-01`);
   const coversName = (from: string, to: string) => from === to ? nameOf(from) : `${nameOf(from)} to ${nameOf(to)}`;
 
+  const closing = monthsToClose(periods, period.month).months ?? [];
+  // Nothing posted since the last closed month: it closes on that month's reconciliation.
+  const quiet = !hasStatement && closing.length > 0 && closesWithoutStatement(periods, closing, posted);
+
   const outstanding = new Set([...r.uncredited, ...r.unpresented].map((i) => i.id));
 
   const Row = ({ label, amount, sign }: { label: string; amount: number; sign?: string }) => (
@@ -78,8 +82,9 @@ export default async function Page({ params, searchParams }: {
 
       {!hasStatement ? (
         <p className="note" style={{ marginTop: "1.5rem" }}>
-          Enter the closing balance from the bank statement above. Until it is entered there is
-          nothing to reconcile the book against.
+          {quiet
+            ? `Nothing was posted in ${closing.map(monthName).join(", ")} and the month before is closed, so ${closing.length > 1 ? "they" : "it"} can close on that month's reconciled bank balance without a new statement.`
+            : "Enter the closing balance from the bank statement above. Until it is entered there is nothing to reconcile the book against."}
         </p>
       ) : (
         <>
@@ -192,13 +197,13 @@ export default async function Page({ params, searchParams }: {
       />
 
       <CloseMonth
-        missingStatements={(monthsToClose(periods, period.month).months ?? []).filter((m) => missing.includes(m.slice(0, 7))).map(monthName)}
+        missingStatements={closing.filter((m) => missing.includes(m.slice(0, 7))).map(monthName)}
         accountId={accountId}
         month={period.month}
         monthName={monthName(period.month)}
         closed={closed}
-        reconciled={hasStatement && r.reconciled}
-        closes={(monthsToClose(periods, period.month).months ?? []).map(monthName)}
+        reconciled={(hasStatement && r.reconciled) || quiet}
+        closes={closing.map(monthName)}
         reopens={(monthsToReopen(periods, period.month).months ?? []).map(monthName)}
         canClose={can(user.role, "period.close") && !user.readOnly}
         canReopen={can(user.role, "period.reopen") && !user.readOnly}
