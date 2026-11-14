@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { monthsToClose, monthsToReopen, yearClosed } from "../period-order";
+import { closesWithoutStatement, monthsToClose, monthsToReopen, yearClosed } from "../period-order";
 
 const months = (...statuses: ("open" | "closed")[]) =>
   statuses.map((status, i) => ({ month: `2024-${String(7 + i).padStart(2, "0")}-01`, status }));
@@ -44,5 +44,20 @@ describe("yearClosed", () => {
 
   it("is false while the last month is open", () => {
     expect(yearClosed(months("closed", "closed", "open"))).toBe(false);
+  });
+});
+
+describe("closesWithoutStatement", () => {
+  const periods = months("closed", "closed", "open", "open");
+  it("lets empty months after a closed one close on its reconciliation", () => {
+    expect(closesWithoutStatement(periods, ["2024-09-01", "2024-10-01"], new Set(["2024-07", "2024-08"]))).toBe(true);
+  });
+
+  it("needs a statement when anything was posted in the months closing", () => {
+    expect(closesWithoutStatement(periods, ["2024-09-01", "2024-10-01"], new Set(["2024-10"]))).toBe(false);
+  });
+
+  it("needs a statement for the first month of the year", () => {
+    expect(closesWithoutStatement(months("open"), ["2024-07-01"], new Set())).toBe(false);
   });
 });

@@ -42,3 +42,14 @@ export function monthsToReopen(periods: PeriodStatus[], month: string): Months {
     months: inOrder(periods).filter((p) => p.status === "closed").map((p) => p.month).reverse(),
   };
 }
+
+/**
+ * Months with nothing posted, straight after a closed month, close on that
+ * month's reconciliation: the bank column has not moved, so no new statement
+ * is needed. A May closed and a June left empty lets June, and the year, close.
+ */
+export function closesWithoutStatement(periods: PeriodStatus[], months: string[], posted: Set<string>): boolean {
+  const sorted = inOrder(periods);
+  const first = sorted.findIndex((p) => p.month === months[0]);
+  return first > 0 && sorted[first - 1].status === "closed" && months.every((m) => !posted.has(m.slice(0, 7)));
+}

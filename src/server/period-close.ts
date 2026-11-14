@@ -1,7 +1,7 @@
 import "server-only";
 import { db, schema } from "@/db";
 import { eq, inArray } from "drizzle-orm";
-import { monthEndExclusive, monthsToClose, monthsToReopen } from "@/domain";
+import { closesWithoutStatement, monthEndExclusive, monthsToClose, monthsToReopen } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { auditMail, auditorEmail, escapeHtml } from "@/server/audit-mail";
 import { assertClosable, assertReconciled, monthKey } from "@/server/periods";
@@ -39,7 +39,8 @@ export async function closeMonth(accountId: string, month: string) {
     getTxns(fy.id),
     getReconciliation(accountId, monthKey(month)),
   ]);
-  assertReconciled(hasStatement ? reconciliation : null);
+  const posted = new Set(txns.map((t) => t.date.slice(0, 7)));
+  if (hasStatement || !closesWithoutStatement(periods, chosen.months, posted)) assertReconciled(hasStatement ? reconciliation : null);
 
   const opening = { cash: fy.openingCash, bank: fy.openingBank };
   const snapshots = chosen.months.map((m) => {
