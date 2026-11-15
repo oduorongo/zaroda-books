@@ -5,6 +5,7 @@ import { getReportPeriod, monthKey, monthName } from "@/server/periods";
 import { BookTabs } from "../book-tabs";
 import { MonthPicker } from "../month-picker";
 import { ReportShell } from "../report-shell";
+import { entryMonths } from "@/server/queries";
 
 export default async function Page({ params, searchParams }: {
   params: Promise<{ accountId: string }>;
@@ -30,6 +31,7 @@ export default async function Page({ params, searchParams }: {
       sub={<>Year to date, {monthName(period.month)} — {school.name}, {account.name} account</>}
       school={school.name} level={school.level} account={account.name} fyLabel={fy.label}
       period={`Year to date, ${monthName(period.month)}`}
+      entryMonths={entryMonths(txns)}
       csvHref={`/app/${accountId}/ledger/export?month=${month}`}
       landscape
     >

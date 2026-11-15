@@ -419,3 +419,7 @@ export async function receiptProjects(financialYearId: string) {
     .where(and(eq(schema.periods.financialYearId, financialYearId), isNotNull(schema.transactions.project)));
   return new Map(rows.map((r) => [r.id, r]));
 }
+
+/** Months with a receipt or payment in them, earliest first ("2025-07"); transfers alone do not count. */
+export const entryMonths = (txns: Txn[]) =>
+  [...new Set(txns.filter((t) => t.kind !== "contra").map((t) => t.date.slice(0, 7)))].sort();
