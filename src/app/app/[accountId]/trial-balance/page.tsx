@@ -5,6 +5,7 @@ import { getReportPeriod, monthKey, monthName } from "@/server/periods";
 import { BookTabs } from "../book-tabs";
 import { MonthPicker } from "../month-picker";
 import { ReportShell } from "../report-shell";
+import { entryMonths } from "@/server/queries";
 
 export default async function Page({ params, searchParams }: {
   params: Promise<{ accountId: string }>;
@@ -31,6 +32,7 @@ export default async function Page({ params, searchParams }: {
       sub={<>{school.name} &mdash; {account.name} account</>}
       school={school.name} level={school.level} account={account.name} fyLabel={fy.label}
       period={`As at ${tb.asAt}`}
+      entryMonths={entryMonths(txns)}
       csvHref={`/app/${accountId}/trial-balance/export?month=${monthKey(period.month)}`}
     >
       <BookTabs accountId={accountId} active="trial-balance" />

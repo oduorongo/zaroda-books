@@ -6,6 +6,7 @@ import { getReportPeriod, monthKey, monthName } from "@/server/periods";
 import { BookTabs } from "../book-tabs";
 import { MonthPicker } from "../month-picker";
 import { ReportShell } from "../report-shell";
+import { entryMonths } from "@/server/queries";
 
 const Amount = ({ c }: { c: number }) =>
   c === 0 ? <span className="zero">&ndash;</span> : <>{formatKes(c)}</>;
@@ -108,6 +109,7 @@ export default async function Page({ params, searchParams }: {
       sub={<>{monthName(period.month)} — {school.name}, {account.name} account</>}
       school={school.name} level={school.level} account={account.name} fyLabel={fy.label}
       period={monthName(period.month)}
+      entryMonths={entryMonths(txns)}
       csvHref={`/app/${accountId}/cash-book/export?month=${month}`}
       landscape
     >

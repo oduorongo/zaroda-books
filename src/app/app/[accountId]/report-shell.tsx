@@ -11,7 +11,7 @@ import { PrintButton } from "./print-button";
  * auditor expect, and the screen chrome dropped. Wide books go landscape.
  */
 export function ReportShell({
-  title, sub, school, level, account, fyLabel, period, csvHref, landscape, children,
+  title, sub, school, level, account, fyLabel, period, csvHref, landscape, entryMonths, children,
 }: {
   title: string;
   sub: ReactNode;
@@ -22,6 +22,8 @@ export function ReportShell({
   period?: string;
   csvHref?: string;
   landscape?: boolean;
+  /** Months with a receipt or payment: the year's PDF prints only these. */
+  entryMonths?: string[];
   children: ReactNode;
 }) {
   const printed = formatDate(new Date());
@@ -48,6 +50,10 @@ export function ReportShell({
         </div>
         <div className="report-actions">
           {csvHref && <PdfButton href={csvHref} landscape={landscape} />}
+          {csvHref && entryMonths && entryMonths.length > 1 && (
+            <PdfButton href={csvHref} landscape={landscape} months={entryMonths}
+              label={`PDF of all months with entries (${entryMonths.length})`} />
+          )}
           {csvHref && <a className="btn btn-quiet" href={csvHref} download>Download CSV</a>}
           <PrintButton />
         </div>
