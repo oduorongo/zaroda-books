@@ -1,5 +1,5 @@
 import "server-only";
-import type { AccountType, SchoolLevel } from "@/domain";
+import type { AccountType, Payment, SchoolLevel } from "@/domain";
 import {
   balancesAfter, buildCashBook, buildCashFlow, buildLedger, buildTrialBalance,
   csvAmount, formatDate, isCapitationAccount, toCsv, voucherAuthorisationText,
@@ -395,11 +395,32 @@ export async function paymentVoucherDoc(
   const txns = await getTxns(fy.id);
   const txn = txns.find((t) => t.id === transactionId);
   if (!txn || txn.kind !== "payment") throw new Error("Payment not found.");
-
-  const nameOf = (code: string) => heads.find((h) => h.code === code)?.name ?? code;
-  const total = txn.cash + txn.bank;
   const authorisation = (await paymentStatuses(txns)).find((s) => s.payment.id === transactionId)?.status;
   const docs = await documentsFor([transactionId]);
+  return voucherDoc({ heads, fy, school, account }, txn, authorisation, docs.get(transactionId));
+}
+
+/** Every payment voucher of the financial year in voucher-number order: the voucher book, one voucher per PDF page. */
+export async function voucherBookDocs(accountId: string): Promise<ReportDoc[]> {
+  const { heads, fy, school, account } = await loadBook(accountId);
+  const txns = await getTxns(fy.id);
+  const payments = txns.filter((t): t is Payment => t.kind === "payment").sort((a, b) => Number(a.vrNo ?? 0) - Number(b.vrNo ?? 0));
+  const statusOf = new Map((await paymentStatuses(txns)).map((s) => [s.payment.id, s.status]));
+  const docs = await documentsFor(payments.map((t) => t.id));
+  return payments.map((t) => voucherDoc({ heads, fy, school, account }, t, statusOf.get(t.id), docs.get(t.id)));
+}
+
+type Book = Pick<Awaited<ReturnType<typeof loadBook>>, "heads" | "fy" | "school" | "account">;
+
+
+function voucherDoc(
+  { heads, fy, school, account }: Book,
+  txn: Payment,
+  authorisation: Awaited<ReturnType<typeof paymentStatuses>>[number]["status"] | undefined,
+  supporting: Parameters<typeof documentsLine>[0],
+): ReportDoc {
+  const nameOf = (code: string) => heads.find((h) => h.code === code)?.name ?? code;
+  const total = txn.cash + txn.bank;
 
   return {
     title: "Payment voucher",
@@ -420,7 +441,7 @@ export async function paymentVoucherDoc(
           ["Payee / paid to", txn.particulars],
           ...(txn.narration ? [["Narration", txn.narration]] : []),
           ...(txn.project ? [["Project", txn.project]] : []),
-          ["Supporting documents", documentsLine(docs.get(transactionId))],
+          ["Supporting documents", documentsLine(supporting)],
           ["Paid from", txn.cash > 0 ? "Cash" : "Bank"],
           ["Amount paid", csvAmount(total)],
           ["Authorisation", voucherAuthorisationText(authorisation, account.authorisationExempt)],

@@ -39,9 +39,9 @@ const jsonFor = (href: string, month?: string) => {
   return url.toString();
 };
 
-/** One PDF, one report each month given (or just the one asked for), each starting on a new page. */
-export function PdfButton({ href, landscape, months, label = "Download PDF" }: {
-  href: string; landscape?: boolean; months?: string[]; label?: string;
+/** One PDF, one report each month given (or just the one asked for), each starting on a new page. A link may answer with several documents (the voucher book). */
+export function PdfButton({ href, landscape, months, label = "Download PDF", filename }: {
+  href: string; landscape?: boolean; months?: string[]; label?: string; filename?: string;
 }) {
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -50,11 +50,12 @@ export function PdfButton({ href, landscape, months, label = "Download PDF" }: {
     setBusy(true);
     setFailed(false);
     try {
-      const docs: ReportDoc[] = await Promise.all((months?.length ? months : [undefined]).map(async (m) => {
+      const docs: ReportDoc[] = (await Promise.all((months?.length ? months : [undefined]).map(async (m) => {
         const res = await fetch(jsonFor(href, m));
         if (!res.ok) throw new Error(String(res.status));
-        return res.json();
-      }));
+        return res.json() as Promise<ReportDoc | ReportDoc[]>;
+      }))).flat();
+      if (!docs.length) throw new Error("nothing to print");
 
       // Loaded only when the button is pressed, so the library never sits in
       // the first load of a page that is mostly read, not printed.
@@ -141,7 +142,7 @@ export function PdfButton({ href, landscape, months, label = "Download PDF" }: {
       }
       drawPoweredBy(pdf);
 
-      pdf.save(`${docs.length > 1 ? docs[0].filename.replace(/-d{4}-d{2}$/, "") + "-months-with-entries" : docs[0].filename}.pdf`);
+      pdf.save(filename ? `${filename}.pdf` : `${docs.length > 1 ? docs[0].filename.replace(/-d{4}-d{2}$/, "") + "-months-with-entries" : docs[0].filename}.pdf`);
     } catch {
       setFailed(true);
     } finally {
