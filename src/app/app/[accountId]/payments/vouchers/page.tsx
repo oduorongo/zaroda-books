@@ -3,6 +3,7 @@ import { formatKes, formatDate } from "@/domain";
 import { loadBook } from "@/server/book-context";
 import { getTxns } from "@/server/queries";
 import { PrintButton } from "../../print-button";
+import { PdfButton } from "../../pdf-button";
 import { VoucherAuthorisation, VoucherSignatures } from "../signatures";
 import { paymentStatuses } from "@/server/authorisation";
 import { documentsFor, documentsLine } from "@/server/documents";
@@ -35,6 +36,13 @@ export default async function VoucherBookPage({
       <div className="no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", marginBottom: "1.5rem", flexWrap: "wrap" }}>
         <Link href={`/app/${accountId}/payments`}>← Back to payments</Link>
         <span className="report-actions">
+          {vouchers.length > 0 && (
+            <PdfButton
+              href={`/app/${accountId}/payments/vouchers/export`}
+              label={`Download PDF (${vouchers.length} voucher${vouchers.length === 1 ? "" : "s"})`}
+              filename={`${school.name} voucher book FY ${fy.label}`.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase()}
+            />
+          )}
           <PrintButton />
         </span>
       </div>
