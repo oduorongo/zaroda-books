@@ -1,7 +1,7 @@
 "use client";
 
 import { formatDate } from "@/domain";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { SchoolLevel } from "@/domain";
 import { drawLevelBand, drawLevelRule, drawPoweredBy } from "./pdf-marks";
 
@@ -40,22 +40,25 @@ const jsonFor = (href: string, month?: string) => {
 };
 
 /** One PDF, one report each month given (or just the one asked for), each starting on a new page. A link may answer with several documents (the voucher book). */
-export function PdfButton({ href, landscape, months, label = "Download PDF", filename }: {
-  href: string; landscape?: boolean; months?: string[]; label?: string; filename?: string;
+export function PdfButton({ href, landscape, months, label = "Download PDF", filename, disabled }: {
+  href: string; landscape?: boolean; months?: string[]; label?: string; filename?: string; disabled?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [empty, setEmpty] = useState(false);
+  useEffect(() => setEmpty(false), [href]);
 
   async function download() {
     setBusy(true);
     setFailed(false);
+    setEmpty(false);
     try {
       const docs: ReportDoc[] = (await Promise.all((months?.length ? months : [undefined]).map(async (m) => {
         const res = await fetch(jsonFor(href, m));
         if (!res.ok) throw new Error(String(res.status));
         return res.json() as Promise<ReportDoc | ReportDoc[]>;
       }))).flat();
-      if (!docs.length) throw new Error("nothing to print");
+      if (!docs.length) return setEmpty(true);
 
       // Loaded only when the button is pressed, so the library never sits in
       // the first load of a page that is mostly read, not printed.
@@ -151,8 +154,8 @@ export function PdfButton({ href, landscape, months, label = "Download PDF", fil
   }
 
   return (
-    <button type="button" className="btn btn-quiet" onClick={download} disabled={busy}>
-      {busy ? "Preparing…" : failed ? "Failed — try again" : label}
+    <button type="button" className="btn btn-quiet" onClick={download} disabled={busy || disabled}>
+      {busy ? "Preparing…" : failed ? "Failed — try again" : empty ? "Nothing to download" : label}
     </button>
   );
 }

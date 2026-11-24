@@ -400,11 +400,21 @@ export async function paymentVoucherDoc(
   return voucherDoc({ heads, fy, school, account }, txn, authorisation, docs.get(transactionId));
 }
 
-/** Every payment voucher of the financial year in voucher-number order: the voucher book, one voucher per PDF page. */
-export async function voucherBookDocs(accountId: string): Promise<ReportDoc[]> {
+export interface VoucherFilter {
+  ids?: string[];
+  from?: string;
+  to?: string;
+}
+
+/** The financial year's payment vouchers in voucher-number order (only the ticked ones, or those dated from/to, when asked): one per PDF page. */
+export async function voucherBookDocs(accountId: string, filter: VoucherFilter = {}): Promise<ReportDoc[]> {
   const { heads, fy, school, account } = await loadBook(accountId);
   const txns = await getTxns(fy.id);
-  const payments = txns.filter((t): t is Payment => t.kind === "payment").sort((a, b) => Number(a.vrNo ?? 0) - Number(b.vrNo ?? 0));
+  const ids = filter.ids?.length ? new Set(filter.ids) : null;
+  const payments = txns
+    .filter((t): t is Payment => t.kind === "payment")
+    .filter((t) => (!ids || ids.has(t.id)) && (!filter.from || t.date >= filter.from) && (!filter.to || t.date <= filter.to))
+    .sort((a, b) => Number(a.vrNo ?? 0) - Number(b.vrNo ?? 0));
   const statusOf = new Map((await paymentStatuses(txns)).map((s) => [s.payment.id, s.status]));
   const docs = await documentsFor(payments.map((t) => t.id));
   return payments.map((t) => voucherDoc({ heads, fy, school, account }, t, statusOf.get(t.id), docs.get(t.id)));

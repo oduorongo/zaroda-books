@@ -6,6 +6,7 @@ import { queriedEntries } from "@/server/audit-queries";
 import { getTxns } from "@/server/queries";
 import { PaymentForm } from "./form";
 import { SearchBox } from "./search-box";
+import { BulkVouchers, VoucherTick } from "./bulk-vouchers";
 import { ReportShell } from "../report-shell";
 import { AuthorisationPanel } from "./authorisation-panel";
 import { decisionRow } from "../../../decision-table";
@@ -154,19 +155,28 @@ export default async function PaymentsPage({
         <form method="get" className="no-print" style={{ display: "flex", gap: ".6rem", alignItems: "center", flexWrap: "wrap", margin: "0 0 1rem" }}>
           <SearchBox initial={q} />
         </form>
+        {payments.length > 0 && (
+          <BulkVouchers
+            accountId={accountId}
+            fyStart={String(fy.startsOn)}
+            fyEnd={String(fy.endsOn)}
+            slug={`${school.name} FY ${fy.label}`.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase()}
+          />
+        )}
         <table>
           <thead>
             <tr>
-              <th>Date</th><th>VR no.</th><th>Particulars</th><th>Vote heads</th>
+              <th className="no-print"></th><th>Date</th><th>VR no.</th><th>Particulars</th><th>Vote heads</th>
               <th className="n">Cash</th><th className="n">Bank</th><th>Evidence</th><th>Head</th><th></th>
             </tr>
           </thead>
           <tbody>
             {q && shown.length === 0 && (
-              <tr><td colSpan={9} className="note">No payment matches “{q}”.</td></tr>
+              <tr><td colSpan={10} className="note">No payment matches “{q}”.</td></tr>
             )}
             {shown.map((p) => (
               <tr key={p.id}>
+                <td className="no-print"><VoucherTick id={p.id} /></td>
                 <td className="mono" style={{ color: "var(--muted)" }}>{formatDate(p.date)}</td>
                 <td className="mono">{p.kind === "payment" ? p.vrNo ?? "—" : "—"}</td>
                 <td>{queried.has(p.id) && <span title="An audit query on this entry is not yet closed" style={{ color: "var(--alarm)" }}>⚑ </span>}{p.particulars}</td>
@@ -192,6 +202,7 @@ export default async function PaymentsPage({
               </tr>
             ))}
             <tr className="total">
+              <td className="no-print"></td>
               <td colSpan={4}>{q ? `Total of ${shown.length} found` : "Total paid"}</td>
               <td className="n">{formatKes(totalCash)}</td>
               <td className="n">{formatKes(totalBank)}</td>
